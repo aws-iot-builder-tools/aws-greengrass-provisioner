@@ -1,0 +1,7 @@
+FROM openjdk:8
+
+RUN apt-get update -y && apt-get upgrade -y
+
+COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
+
+ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]

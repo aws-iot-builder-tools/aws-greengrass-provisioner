@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+# Check if we're root and re-execute if we're not.
+rootcheck () {
+    if [ $(id -u) != "0" ]
+    then
+        sudo "$0" "$@"  # Modified as suggested below.
+        exit $?
+    fi
+}
+
+rootcheck "${@}"
+
+./${STOP_SCRIPT}
+
+rm -rf /greengrass \
+  ./${START_SCRIPT} \
+  ./${STOP_SCRIPT} \
+  ./${MONITOR_SCRIPT} \
+  ./${CLEAN_SCRIPT} \
+  ./${INSTALL_SCRIPT} \
+  ./${SYSTEMD_SCRIPT} \
+  ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT} \
+  ./${GG_SH} \
+  ./${GG_SH}.DEPLOYED \
+  ./${GG_BITS} \
+  ./ggds \
+  ./ggd.*.tar \
+  ./groupCA \
+  ./ggd.*.device.key \
+  ./ggd.*.device.crt \
+  ./run-*.sh \
+  ./${ROOT_CA} \
+

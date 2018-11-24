@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+./${SCRIPT_NAME} -e ${ENDPOINT} -r ${ROOT_CA} -c ${DEVICE_PUBLIC_CERTIFICATE} -k ${DEVICE_PRIVATE_KEY} -n ${DEVICE_THING_NAME}

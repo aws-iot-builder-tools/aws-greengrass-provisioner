@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+# Check if we're root and re-execute if we're not.
+rootcheck () {
+    if [ $(id -u) != "0" ]
+    then
+        sudo "$0" "$@"  # Modified as suggested below.
+        exit $?
+    fi
+}
+
+rootcheck "${@}"
+
+rm -rf /greengrass
+mkdir -p /greengrass && sudo tar -zxf ${GG_BITS} -C /
+cp ${ROOT_CA} /greengrass/certs/${ROOT_CA}
+mv ${CORE_PUBLIC_CERTIFICATE} /greengrass/certs/${CORE_PUBLIC_CERTIFICATE}
+mv ${CORE_PRIVATE_KEY} /greengrass/certs/${CORE_PRIVATE_KEY}
+mv ${CONFIG_FILE} /greengrass/config/${CONFIG_FILE}

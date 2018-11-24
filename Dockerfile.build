@@ -1,0 +1,23 @@
+FROM openjdk:8
+
+RUN apt-get update -y && apt-get upgrade -y && apt-get install gradle -y
+
+COPY build.gradle /build/
+COPY gradlew /build/
+COPY gradle/wrapper/ /build/gradle/wrapper
+WORKDIR /build/
+
+# Run clean to at least fetch gradle
+RUN ./gradlew clean
+
+# Fetch dependencies
+RUN ./gradlew resolveDependencies
+
+# Fetch binaries
+RUN ./gradlew downloadAll
+
+# Run downloadAll to fetch binary dependencies
+# RUN ./gradlew downloadAll
+
+COPY src /build/src
+RUN ./gradlew build

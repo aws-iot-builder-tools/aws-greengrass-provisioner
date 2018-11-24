@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+# Check if we're root and re-execute if we're not.
+rootcheck () {
+    if [ $(id -u) != "0" ]
+    then
+        sudo "$0" "$@"  # Modified as suggested below.
+        exit $?
+    fi
+}
+
+rootcheck "${@}"
+
+sh -c "echo 1 > /proc/sys/fs/protected_hardlinks"
+sh -c "echo 1 > /proc/sys/fs/protected_symlinks"
+
+if [ -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
+    echo "Starting with systemd"
+    systemctl start greengrass
+else
+    echo "Starting manually"
+    ${GREENGRASS_DAEMON} start
+fi
+
+./${MONITOR_SCRIPT}
