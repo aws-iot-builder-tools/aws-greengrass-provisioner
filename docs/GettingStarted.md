@@ -32,7 +32,8 @@ Python, Java, and NodeJS are pre-installed on the Docker container.  You do not 
 
 ## Do a simple deployment first
 
-**Note:** You will need the deployments and functions directories from the AWS Labs Greengrass functions repo.
+**Note:** You will need the deployments and functions directories from the
+[AWS Samples Greengrass Lambda Functions repo](https://github.com/aws-samples/aws-greengrass-lambda-functions).
 
 **Remember: Any references to `GGP` in commands in this documentation must be replaced with the appropriate command for
 your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
