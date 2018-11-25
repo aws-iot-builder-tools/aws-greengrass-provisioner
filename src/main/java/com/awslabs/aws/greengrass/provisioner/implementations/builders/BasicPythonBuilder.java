@@ -93,7 +93,7 @@ public class BasicPythonBuilder implements PythonBuilder {
                 .map(path -> path.resolve(INIT_PY).toFile())
                 .forEach(this::touch);
 
-        ZipUtil.pack(functionConf.getBuildDirectory(), tempFile);
+        ZipUtil.pack(functionConf.getBuildDirectory().toFile(), tempFile);
 
         try {
             Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
@@ -116,7 +116,7 @@ public class BasicPythonBuilder implements PythonBuilder {
                 programAndArguments.add(".");
 
                 ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-                processBuilder.directory(functionConf.getBuildDirectory());
+                processBuilder.directory(functionConf.getBuildDirectory().toFile());
 
                 List<String> stdoutStrings = new ArrayList<>();
                 List<String> stderrStrings = new ArrayList<>();
@@ -143,7 +143,7 @@ public class BasicPythonBuilder implements PythonBuilder {
 
     private List<Path> getDirectorySnapshot(FunctionConf functionConf) {
         try {
-            return Files.list(functionConf.getBuildDirectory().toPath()).collect(Collectors.toList());
+            return Files.list(functionConf.getBuildDirectory()).collect(Collectors.toList());
         } catch (IOException e) {
             throw new UnsupportedOperationException(e);
         }

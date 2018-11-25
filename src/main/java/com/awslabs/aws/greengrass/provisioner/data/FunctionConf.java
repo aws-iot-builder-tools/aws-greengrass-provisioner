@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.Singular;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
@@ -14,7 +15,7 @@ import java.util.Map;
 public class FunctionConf {
     private Language language;
     private EncodingType encodingType;
-    private File buildDirectory;
+    private Path buildDirectory;
     private String groupName;
     private String functionName;
     private String handlerName;
@@ -49,5 +50,5 @@ public class FunctionConf {
     @Singular
     private Map<String, String> environmentVariables;
 
-    private String cfTemplate;
+    private File cfTemplate;
 }

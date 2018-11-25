@@ -37,8 +37,8 @@ public interface IoHelper {
         }
     }
 
-    default String readFileAsString(String filename) {
-        byte[] data = readFile(filename);
+    default String readFileAsString(File file) {
+        byte[] data = readFile(file);
 
         return new String(data);
     }

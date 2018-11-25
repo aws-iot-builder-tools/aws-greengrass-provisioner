@@ -58,12 +58,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         return getFunctionConfPath(function.getName());
     }
 
-    private File getFunctionPath(File functionConf) {
-        return functionConf.toPath().getParent().toFile();
-    }
-
-    private String getFunctionCfTemplatePath(File function) {
-        return getFunctionCfTemplatePath(function.getName());
+    private Path getFunctionPath(File functionConf) {
+        return functionConf.toPath().getParent();
     }
 
     private File getFunctionConfPath(String functionName) {
@@ -163,8 +159,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         return tempDir;
     }
 
-    private String getFunctionCfTemplatePath(String functionName) {
-        return FUNCTIONS + "/" + functionName + "/function.cf.yaml";
+    private Path getFunctionCfTemplatePath(Path function) {
+        return function.resolve("function.cf.yaml");
     }
 
     private boolean kitchenSinkDeployment(DeploymentConf deploymentConf) {
@@ -202,7 +198,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
 
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
-            File function = getFunctionPath(enabledFunctionConf);
+            Path functionPath = getFunctionPath(enabledFunctionConf);
 
             FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
 
@@ -220,7 +216,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
                 config = config.resolve();
 
-                functionConfBuilder.buildDirectory(function);
+                functionConfBuilder.buildDirectory(functionPath);
                 functionConfBuilder.language(Language.valueOf(config.getString("conf.language")));
                 functionConfBuilder.encodingType(EncodingType.valueOf(config.getString("conf.encodingType")));
                 functionConfBuilder.functionName(config.getString("conf.functionName"));
@@ -250,10 +246,10 @@ public class BasicFunctionHelper implements FunctionHelper {
                 setEnvironmentVariables(functionConfBuilder, config);
                 addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
 
-                File cfTemplate = new File(getFunctionCfTemplatePath(function));
+                File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
 
                 if (cfTemplate.exists()) {
-                    functionConfBuilder.cfTemplate(cfTemplate.getPath());
+                    functionConfBuilder.cfTemplate(cfTemplate);
                 }
             } catch (ConfigException e) {
                 throw new UnsupportedOperationException(e);
