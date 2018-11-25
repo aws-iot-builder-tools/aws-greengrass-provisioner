@@ -34,6 +34,7 @@ public class BasicGradleBuilder implements GradleBuilder {
 
     @Override
     public String getArchivePath(FunctionConf functionConf) {
+        // The gradle build output is expected in the /build/libs directory in an artifact that ends with "-1.0-SNAPSHOT-all.jar"
         return functionConf.getBuildDirectory().toString() + "/build/libs/" + functionConf.getFunctionName() + "-1.0-SNAPSHOT-all.jar";
     }
 
@@ -45,6 +46,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public boolean isGradleFunction(FunctionConf functionConf) {
         if (new File(getGradleBuildPath(functionConf) + "/" + BUILD_GRADLE).exists()) {
+            // Found build.gradle in the expected location, assume this is a gradle function
             return true;
         }
 
@@ -67,12 +69,17 @@ public class BasicGradleBuilder implements GradleBuilder {
 
     @Override
     public void runGradle(Optional<File> gradleBuildPath, Optional<String> functionName) {
+        if (!gradleBuildPath.isPresent()) {
+            throw new UnsupportedOperationException("gradle build path is not present.  This is a bug.");
+        }
+
         // Guidance from: https://discuss.gradle.org/t/how-to-execute-a-gradle-task-from-java-code/7421
         ProjectConnection connection = GradleConnector.newConnector()
                 .forProjectDirectory(gradleBuildPath.get())
                 .connect();
 
         try {
+            // Build with gradle and send the output to stdout
             BuildLauncher build = connection.newBuild();
             build.forTasks("build");
             build.setStandardOutput(System.out);

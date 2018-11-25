@@ -33,12 +33,14 @@ public class BasicDockerPushHandler implements DockerPushHandler {
     @Override
     public void onNext(PushResponseItem object) {
         if (object.getProgressDetail() == null) {
+            // No progress information, do nothing
             return;
         }
 
         ResponseItem.ProgressDetail progressDetail = object.getProgressDetail();
 
         if ((progressDetail.getCurrent() == null) || (progressDetail.getTotal() == null)) {
+            // Without the current and total we can't indicate progress properly, do nothing
             return;
         }
 
@@ -47,13 +49,16 @@ public class BasicDockerPushHandler implements DockerPushHandler {
         Long totalValue = object.getProgressDetail().getTotal();
 
         if (currentValue > totalValue) {
+            // If we are finished with the current item remove it from the totals
             current.remove(id);
             total.remove(id);
         } else {
+            // Add the position and size for the current object
             current.put(id, currentValue);
             total.put(id, totalValue);
         }
 
+        // Calculate the total and how far along we are
         Long sumTotal = total.values().stream().mapToLong(Long::longValue).sum();
         Long currentTotal = current.values().stream().mapToLong(Long::longValue).sum();
 
@@ -62,6 +67,7 @@ public class BasicDockerPushHandler implements DockerPushHandler {
             return;
         }
 
+        // Calculate a percentage
         double percentComplete = (double) currentTotal / (double) sumTotal;
         percentComplete = Math.round(percentComplete * 10000) / 100.0;
 
