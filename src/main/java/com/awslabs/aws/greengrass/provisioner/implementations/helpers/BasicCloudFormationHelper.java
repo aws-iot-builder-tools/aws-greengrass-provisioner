@@ -15,8 +15,6 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BasicCloudFormationHelper implements CloudFormationHelper {
-    public static final String ARN_AWS_CLOUDFORMATION = "arn:aws:cloudformation:";
-    public static final String STACKS = "stacks/";
     public static final String CREATE_COMPLETE = "CREATE_COMPLETE";
     public static final String ROLLBACK = "ROLLBACK";
     @Inject
