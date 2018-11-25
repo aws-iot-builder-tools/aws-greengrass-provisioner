@@ -32,6 +32,15 @@ an alias for the version that was published is created.  This makes the subscrip
 
 Function configuration defaults are stored in `functions/deployment.defaults.conf`.
 
+## Per function CloudFormation templates
+
+If a function requires some infrastructure to be launched on AWS, rules engine republish rules for example, GGP can
+launch a CloudFormation template for each function.
+
+CloudFormation templates named `function.cf.yaml ` in function directories will be launched when a function is launched
+as part of a deployment.  This CloudFormation template will be given a group specific name so multiple groups can have
+the same functions and templates launched without name collisions.
+
 ### Input topics
 
 Input topics are topics that a local Lambda function expects to receive messages on from other local Lambda functions.
