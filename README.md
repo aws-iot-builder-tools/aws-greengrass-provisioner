@@ -14,6 +14,8 @@ them as a baseline to build more advanced scripts.
 
 GGP creates a bootstrap script that you copy to your host that installs Greengrass.
 
+GGP launches any CloudFormation templates necessary to support your functions.
+
 If there's something it doesn't do or you find a bug please create a Github issue.
 
 For brevity this application will be referred to as GGP in the docs.
