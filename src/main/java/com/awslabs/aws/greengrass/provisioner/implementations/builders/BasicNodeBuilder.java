@@ -46,30 +46,8 @@ public class BasicNodeBuilder implements NodeBuilder {
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
 
-            try {
-                for (String dependency : functionConf.getDependencies()) {
-                    loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
-                    List<String> programAndArguments = new ArrayList<>();
-                    programAndArguments.add("npm");
-                    programAndArguments.add("install");
-                    programAndArguments.add(dependency);
-
-                    ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-                    processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
-
-                    List<String> stdoutStrings = new ArrayList<>();
-                    List<String> stderrStrings = new ArrayList<>();
-
-                    Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
-
-                    if (!exitVal.isPresent() || exitVal.get() != 0) {
-                        log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
-                        System.exit(1);
-                    }
-                }
-            } catch (Exception e) {
-                throw new UnsupportedOperationException(e);
-            }
+            // Install all of the dependencies for this function
+            installDependencies(functionConf);
         }
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
@@ -83,12 +61,35 @@ public class BasicNodeBuilder implements NodeBuilder {
             throw new UnsupportedOperationException(e);
         }
 
+        // Create the deployment package
         ZipUtil.pack(new File(functionConf.getBuildDirectory().toString()), tempFile);
 
+        moveDeploymentPackage(functionConf, tempFile);
+    }
+
+    private void installDependencies(FunctionConf functionConf) {
         try {
-            Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            e.printStackTrace();
+            for (String dependency : functionConf.getDependencies()) {
+                loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
+                List<String> programAndArguments = new ArrayList<>();
+                programAndArguments.add("npm");
+                programAndArguments.add("install");
+                programAndArguments.add(dependency);
+
+                ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+                processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
+
+                List<String> stdoutStrings = new ArrayList<>();
+                List<String> stderrStrings = new ArrayList<>();
+
+                Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+
+                if (!exitVal.isPresent() || exitVal.get() != 0) {
+                    log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
+                    System.exit(1);
+                }
+            }
+        } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
     }
