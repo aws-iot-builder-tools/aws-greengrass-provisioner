@@ -52,33 +52,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");
 
-            try {
-                for (String dependency : functionConf.getDependencies()) {
-                    loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
-                    List<String> programAndArguments = new ArrayList<>();
-                    programAndArguments.add("pip");
-                    programAndArguments.add("install");
-                    programAndArguments.add("--upgrade");
-                    programAndArguments.add(dependency);
-                    programAndArguments.add("-t");
-                    programAndArguments.add(".");
-
-                    ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-                    processBuilder.directory(functionConf.getBuildDirectory());
-
-                    List<String> stdoutStrings = new ArrayList<>();
-                    List<String> stderrStrings = new ArrayList<>();
-
-                    Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
-
-                    if (!exitVal.isPresent() || exitVal.get() != 0) {
-                        log.error("Failed to install Python dependency.  Make sure Python and pip are installed and on your path.");
-                        System.exit(1);
-                    }
-                }
-            } catch (Exception e) {
-                throw new UnsupportedOperationException(e);
-            }
+            installDependencies(functionConf);
         }
 
         // Snapshot the directory after installing dependencies
@@ -125,6 +99,36 @@ public class BasicPythonBuilder implements PythonBuilder {
             Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    private void installDependencies(FunctionConf functionConf) {
+        try {
+            for (String dependency : functionConf.getDependencies()) {
+                loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
+                List<String> programAndArguments = new ArrayList<>();
+                programAndArguments.add("pip");
+                programAndArguments.add("install");
+                programAndArguments.add("--upgrade");
+                programAndArguments.add(dependency);
+                programAndArguments.add("-t");
+                programAndArguments.add(".");
+
+                ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+                processBuilder.directory(functionConf.getBuildDirectory());
+
+                List<String> stdoutStrings = new ArrayList<>();
+                List<String> stderrStrings = new ArrayList<>();
+
+                Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+
+                if (!exitVal.isPresent() || exitVal.get() != 0) {
+                    log.error("Failed to install Python dependency.  Make sure Python and pip are installed and on your path.");
+                    System.exit(1);
+                }
+            }
+        } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
     }
