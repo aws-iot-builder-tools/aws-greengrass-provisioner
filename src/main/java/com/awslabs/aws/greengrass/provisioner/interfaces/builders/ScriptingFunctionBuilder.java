@@ -7,6 +7,8 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -137,5 +139,18 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     default String trimFilenameIfNecessary(String filename) {
         // Assume no filename trimming is necessary
         return filename;
+    }
+
+    default void moveDeploymentPackage(FunctionConf functionConf, File tempFile) {
+        try {
+            Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    default String getArchivePath(FunctionConf functionConf) {
+        return String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
     }
 }

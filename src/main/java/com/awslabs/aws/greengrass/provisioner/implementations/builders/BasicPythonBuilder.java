@@ -42,11 +42,6 @@ public class BasicPythonBuilder implements PythonBuilder {
     }
 
     @Override
-    public String getArchivePath(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
-    }
-
-    @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         // Snapshot the directory before installing dependencies
         List<Path> beforeSnapshot = getDirectorySnapshot(functionConf);

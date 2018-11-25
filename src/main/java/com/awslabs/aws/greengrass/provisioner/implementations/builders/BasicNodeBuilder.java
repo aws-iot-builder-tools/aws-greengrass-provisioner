@@ -33,10 +33,6 @@ public class BasicNodeBuilder implements NodeBuilder {
     public BasicNodeBuilder() {
     }
 
-    public String getArchivePath(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
-    }
-
     @Override
     public String trimFilenameIfNecessary(String filename) {
         return filename.replaceFirst("aws-greengrass-core-sdk-js\\/", "");
