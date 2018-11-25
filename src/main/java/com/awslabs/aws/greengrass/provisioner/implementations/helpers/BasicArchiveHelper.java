@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.VirtualTarEntry;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ArchiveHelper;
-import lombok.val;
 import org.kamranzafar.jtar.TarEntry;
 import org.kamranzafar.jtar.TarHeader;
 import org.kamranzafar.jtar.TarOutputStream;
@@ -20,6 +19,7 @@ public class BasicArchiveHelper implements ArchiveHelper {
     @Override
     public void addVirtualTarEntry(Optional<List<VirtualTarEntry>> virtualTarEntries, String filename, byte[] content, int permissions) {
         if (!virtualTarEntries.isPresent()) {
+            // This makes it safe to attempt to add entries to archives the user hasn't requested without crashing
             return;
         }
 
@@ -46,16 +46,21 @@ public class BasicArchiveHelper implements ArchiveHelper {
     @Override
     public Optional<ByteArrayOutputStream> tar(Optional<List<VirtualTarEntry>> virtualTarEntryList) throws IOException {
         if (!virtualTarEntryList.isPresent()) {
+            // This makes it safe to attempt to build archives the user hasn't requested without crashing
             return Optional.empty();
         }
 
-        val baos = new ByteArrayOutputStream();
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
         // Create a TarOutputStream
         TarOutputStream out = new TarOutputStream(baos);
 
+        // Loop through all of the entries and write them into the byte array output stream
         for (VirtualTarEntry virtualTarEntry : virtualTarEntryList.get()) {
+            // Put the tar entry/header information for this file (does not write the content!)
             out.putNextEntry(virtualTarEntry.getTarEntry());
+
+            // Grab the file and write its actual contents to the stream
             BufferedInputStream origin = new BufferedInputStream(virtualTarEntry.getInputStream());
             int count;
             byte data[] = new byte[2048];

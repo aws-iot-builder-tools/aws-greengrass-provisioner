@@ -36,10 +36,12 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
             return Optional.empty();
         }
 
+        // Determine a unique stack name for this Greengrass group to avoid conflicts
         String stackName = String.join("-", awsIotThingName, functionConf.getFunctionName());
         stackName = stackName.replaceAll("[^-a-zA-Z0-9]", "-");
 
         // NOTE: CloudFormation parameters cannot have underscores in them so we strip them below
+        // Create real CloudFormation parameters for the parameters in the function's environment
         List<Parameter> parameters = environment.entrySet().stream()
                 // NOTE: This key is no longer needed
                 .filter(e -> !e.getKey().equals("AWS_GREENGRASS_GROUP_NAME"))
