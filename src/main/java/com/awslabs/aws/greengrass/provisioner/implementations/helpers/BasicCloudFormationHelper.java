@@ -62,9 +62,25 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
 
             return Optional.of(stackName);
         } catch (AlreadyExistsException e) {
-            log.warn("CloudFormation stack [" + stackName + "] already exists, skipping");
-            return Optional.empty();
+            log.warn("CloudFormation stack [" + stackName + "] already exists, attempting update");
         }
+
+        try {
+            UpdateStackRequest updateStackRequest = new UpdateStackRequest()
+                    .withStackName(stackName)
+                    .withCapabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
+                    .withParameters(parameters)
+                    .withTemplateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()));
+
+            amazonCloudFormationClient.updateStack(updateStackRequest);
+        } catch (AmazonCloudFormationException e) {
+            if (e.getMessage().contains("No updates are to be performed")) {
+                log.info("No updates necessary for CloudFormation stack [" + stackName + "]");
+                return Optional.empty();
+            }
+        }
+
+        return Optional.of(stackName);
     }
 
     @Override
