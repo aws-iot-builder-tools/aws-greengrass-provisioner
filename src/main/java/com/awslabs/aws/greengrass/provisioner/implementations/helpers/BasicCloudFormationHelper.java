@@ -15,7 +15,8 @@ import java.util.stream.Collectors;
 
 @Slf4j
 public class BasicCloudFormationHelper implements CloudFormationHelper {
-    public static final String CREATE_COMPLETE = "CREATE_COMPLETE";
+    public static final String CREATE_IN_PROGRESS = "CREATE_IN_PROGRESS";
+    public static final String UPDATE_IN_PROGRESS = "UPDATE_IN_PROGRESS";
     public static final String ROLLBACK = "ROLLBACK";
     @Inject
     AmazonCloudFormationClient amazonCloudFormationClient;
@@ -91,12 +92,19 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
 
         String stackStatus = describeStacksResult.getStacks().get(0).getStackStatus();
 
-        while (!stackStatus.equals(CREATE_COMPLETE)) {
+        while (stackStatus.equals(CREATE_IN_PROGRESS) ||
+                stackStatus.equals(UPDATE_IN_PROGRESS)) {
             if (stackStatus.contains(ROLLBACK)) {
                 throw new UnsupportedOperationException("CloudFormation stack [" + stackName + "] failed to launch");
             }
 
-            log.info("Waiting for stack to finish launching [" + stackName + ", " + stackStatus + "]...");
+            String action = "creating";
+
+            if (stackStatus.equals(UPDATE_IN_PROGRESS)) {
+                action = "updating";
+            }
+
+            log.info("Waiting for stack to finish " + action + " [" + stackName + ", " + stackStatus + "]...");
 
             try {
                 Thread.sleep(10000);
@@ -108,6 +116,6 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
             stackStatus = describeStacksResult.getStacks().get(0).getStackStatus();
         }
 
-        log.info("CloudFormation stack launched [" + stackName + "]");
+        log.info("CloudFormation stack ready [" + stackName + "]");
     }
 }
