@@ -16,8 +16,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
 import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 public class BasicFunctionHelper implements FunctionHelper {
     public static final String FUNCTIONS = "functions";
     public static final String FUNCTION_DEFAULTS_CONF = "deployments/function.defaults.conf";
-    public static final String KITCHEN_SINK = "KITCHEN-SINK";
     public static final String URI = "uri";
     public static final String ARN = "arn";
     public static final String PATH = "path";
@@ -163,10 +162,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         return function.resolve("function.cf.yaml");
     }
 
-    private boolean kitchenSinkDeployment(DeploymentConf deploymentConf) {
-        return deploymentConf.getName().equals(KITCHEN_SINK);
-    }
-
     public <R> Predicate<R> not(Predicate<R> predicate) {
         return predicate.negate();
     }
@@ -288,38 +283,16 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .collect(Collectors.toList());
 
         if (missingConfigFunctions.size() > 0) {
-            if (kitchenSinkDeployment(deploymentConf)) {
-                log.warn("Missing config files (this may be OK in kitchen sink deployments, these functions will not be deployed): ");
-                missingConfigFunctions.stream()
-                        .forEach(functionName -> log.warn("  " + functionName));
-            } else {
-                log.error("Missing config files (this is NOT OK in normal deployments): ");
-                missingConfigFunctions.stream()
-                        .forEach(functionName -> log.error("  " + functionName));
-                throw new UnsupportedOperationException("Missing configuration files, can not build deployment");
-            }
+            log.error("Missing config files (this is NOT OK in normal deployments): ");
+            missingConfigFunctions.stream()
+                    .forEach(functionName -> log.error("  " + functionName));
+            throw new UnsupportedOperationException("Missing configuration files, can not build deployment");
         }
     }
 
     public List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
         List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream().map(functionName -> getFunctionConfPath(functionName)).collect(Collectors.toList());
-
-        // XXX - Do we need this anymore?
-        if ((enabledFunctionConfigFiles == null) || (enabledFunctionConfigFiles.size() == 0) && (kitchenSinkDeployment(deploymentConf))) {
-            // Did they not specify a deployment config?  Enable every function.
-            File functionsDirectory = new File(pathPrefix + FUNCTIONS);
-
-            if (!functionsDirectory.exists()) {
-                log.error("The functions directory is missing so no functions can be built.  Copy the functions directory and try again.");
-                System.exit(1);
-            }
-
-            log.warn("The deployment configuration specifies no functions, all functions will be built!");
-            File[] functions = functionsDirectory.listFiles(pathname -> pathname.isDirectory());
-
-            enabledFunctionConfigFiles = Arrays.stream(functions).map(function -> getFunctionConfPath(function)).collect(Collectors.toList());
-        }
 
         return enabledFunctionConfigFiles;
     }
