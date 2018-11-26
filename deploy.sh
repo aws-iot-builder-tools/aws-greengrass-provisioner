@@ -16,7 +16,6 @@ PWD=$(pwd)
 docker pull timmattison/aws-greengrass-provisioner
 
 docker run \
-   -v $PWD/dist:/dist \
    -v $PWD/foundation:/foundation \
    -v $PWD/deployments:/deployments \
    -v $PWD/functions:/functions \
