@@ -375,7 +375,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         /////////////////////////////////////////////////////
 
         List<String> cloudFormationStacksLaunched = functionConfs.stream()
-                .map(functionConf -> cloudFormationHelper.deployCloudFormationTemplate(defaultEnvironment, coreThingName, functionConf))
+                .map(functionConf -> cloudFormationHelper.deployCloudFormationTemplate(defaultEnvironment, deploymentArguments.groupName, functionConf))
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(Collectors.toList());

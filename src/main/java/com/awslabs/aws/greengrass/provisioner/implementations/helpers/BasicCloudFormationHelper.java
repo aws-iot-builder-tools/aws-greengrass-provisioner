@@ -31,13 +31,13 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
     }
 
     @Override
-    public Optional<String> deployCloudFormationTemplate(Map<String, String> environment, String awsIotThingName, FunctionConf functionConf) {
+    public Optional<String> deployCloudFormationTemplate(Map<String, String> environment, String groupName, FunctionConf functionConf) {
         if (!hasCloudFormationTemplate(functionConf)) {
             return Optional.empty();
         }
 
         // Determine a unique stack name for this Greengrass group to avoid conflicts
-        String stackName = String.join("-", awsIotThingName, functionConf.getFunctionName());
+        String stackName = String.join("-", groupName, functionConf.getFunctionName());
         stackName = stackName.replaceAll("[^-a-zA-Z0-9]", "-");
 
         // NOTE: CloudFormation parameters cannot have underscores in them so we strip them below
