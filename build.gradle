@@ -160,12 +160,6 @@ shadowJar {
     }
 }
 
-// Add Dagger dependencies
-dependencies {
-    compile "com.google.dagger:dagger:$daggerVersion"
-    annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
-}
-
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
 tasks.withType(JavaCompile) {
