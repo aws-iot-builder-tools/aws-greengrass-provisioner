@@ -2,8 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +12,6 @@ import org.zeroturnaround.zip.ZipUtil;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

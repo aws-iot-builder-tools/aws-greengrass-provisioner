@@ -5,10 +5,10 @@ import com.amazonaws.services.ecr.model.CreateRepositoryRequest;
 import com.amazonaws.services.ecr.model.DescribeRepositoriesRequest;
 import com.amazonaws.services.ecr.model.DescribeRepositoriesResult;
 import com.amazonaws.services.ecr.model.RepositoryNotFoundException;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
-import com.github.dockerjava.api.exception.DockerException;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
+import com.github.dockerjava.api.exception.DockerException;
 import lombok.extern.slf4j.Slf4j;
 import org.newsclub.net.unix.AFUNIXSocketException;
 
