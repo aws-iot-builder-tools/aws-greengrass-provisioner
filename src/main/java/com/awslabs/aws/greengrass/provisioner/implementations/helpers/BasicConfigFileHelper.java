@@ -10,6 +10,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class BasicConfigFileHelper implements ConfigFileHelper {
+    public static final String CERTS_URI = "file://certs/";
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -24,6 +25,11 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         Map coreThingMap = new HashMap();
         Map runtimeMap = new HashMap();
         Map cgroupMap = new HashMap();
+        Map cryptoMap = new HashMap();
+        Map principalsMap = new HashMap();
+        Map SecretsManagerMap = new HashMap();
+        Map IoTCertificateMap = new HashMap();
+        Map MQTTServerCertificate = new HashMap();
 
         coreThingMap.put("caPath", caPath);
         coreThingMap.put("certPath", certPath);
@@ -36,11 +42,28 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
 
         runtimeMap.put("cgroup", cgroupMap);
 
+        cryptoMap.put("principals", principalsMap);
+
+        principalsMap.put("SecretsManager", SecretsManagerMap);
+        principalsMap.put("IoTCertificate", IoTCertificateMap);
+        principalsMap.put("MQTTServerCertificate", MQTTServerCertificate);
+
+        SecretsManagerMap.put("privateKeyPath", CERTS_URI + keyPath);
+
+        IoTCertificateMap.put("privateKeyPath", CERTS_URI + keyPath);
+        IoTCertificateMap.put("certificatePath", CERTS_URI + certPath);
+
+        // Avoids "private key for MqttCertificate is not set" error/warning
+        MQTTServerCertificate.put("privateKeyPath", CERTS_URI + keyPath);
+
+        cryptoMap.put("caPath", CERTS_URI + caPath);
+
         Map config = new HashMap();
 
         config.put("coreThing", coreThingMap);
         config.put("runtime", runtimeMap);
         config.put("managedRespawn", false);
+        config.put("crypto", cryptoMap);
 
         return jsonHelper.toJson(config);
     }
