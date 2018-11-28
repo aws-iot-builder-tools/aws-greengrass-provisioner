@@ -90,7 +90,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     }
 
     @Override
-    public void verifyHandlerExists(FunctionConf functionConf) {
+    public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 }

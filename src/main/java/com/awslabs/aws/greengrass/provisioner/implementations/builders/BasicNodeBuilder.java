@@ -93,7 +93,8 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     @Override
-    public void verifyHandlerExists(FunctionConf functionConf) {
+    public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
         // TODO: Implement me!
+        return Optional.empty();
     }
 }

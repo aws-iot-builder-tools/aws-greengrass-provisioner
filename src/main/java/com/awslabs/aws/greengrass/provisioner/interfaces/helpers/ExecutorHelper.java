@@ -9,13 +9,14 @@ import java.util.stream.Collectors;
 
 public interface ExecutorHelper {
     default <T> List<T> run(Logger log, List<Callable<T>> callables) {
-        try {
-            // Get an executor
-            ExecutorService executorService = getExecutor();
+        // Get an executor
+        ExecutorService executorService = getExecutor();
 
+        List<T> results = null;
+
+        try {
             // Invoke all of the tasks and collect the results
-            // TODO - Make this exit gracefully when something fails
-            List<T> results = executorService.invokeAll(callables)
+            results = executorService.invokeAll(callables)
                     .stream()
                     .map(future -> {
                         try {
@@ -25,15 +26,15 @@ public interface ExecutorHelper {
                         }
                     })
                     .collect(Collectors.toList());
-
-            // Clean up the executor
-            executorService.shutdown();
-
-            return results;
         } catch (InterruptedException e) {
             log.error("Parallel task execution failed [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);
+        } finally {
+            // Clean up the executor
+            executorService.shutdown();
         }
+
+        return results;
     }
 
     ExecutorService getExecutor();

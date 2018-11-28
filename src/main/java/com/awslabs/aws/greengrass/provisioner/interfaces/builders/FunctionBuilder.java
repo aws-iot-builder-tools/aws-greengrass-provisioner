@@ -2,6 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
 
+import java.util.Optional;
+
 public interface FunctionBuilder {
-    void verifyHandlerExists(FunctionConf functionConf);
+    Optional<String> verifyHandlerExists(FunctionConf functionConf);
 }

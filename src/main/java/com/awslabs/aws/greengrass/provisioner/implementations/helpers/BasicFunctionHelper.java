@@ -518,6 +518,23 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<LambdaFunctionArnInfoAndFunctionConf> lambdaFunctionArnInfoAndFunctionConfs = executorHelper.run(log, buildSteps);
 
+        // Were there any errors?
+        List<LambdaFunctionArnInfoAndFunctionConf> errors = lambdaFunctionArnInfoAndFunctionConfs.stream()
+                .filter(lambdaFunctionArnInfoAndFunctionConf -> lambdaFunctionArnInfoAndFunctionConf.getError().isPresent())
+                .collect(Collectors.toList());
+
+        if (errors.size() != 0) {
+            log.error("Errors detected in Lambda functions");
+
+            errors.stream()
+                    .forEach(error -> {
+                        log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
+                        log.error("  Error [" + error.getError().get() + "]");
+                    });
+
+            System.exit(1);
+        }
+
         // Convert the alias ARNs into variables to be put in the environment of each function
         Map<String, String> environmentVariablesForLocalLambdas = lambdaFunctionArnInfoAndFunctionConfs.stream()
                 .map(lambdaFunctionArnInfoAndFunctionConf -> {
@@ -620,6 +637,14 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePythonFunctionIfNecessary(functionConf, lambdaRole);
+
+        if (lambdaFunctionArnInfo.getError().isPresent()) {
+            return LambdaFunctionArnInfoAndFunctionConf.builder()
+                    .functionConf(functionConf)
+                    .error(lambdaFunctionArnInfo.getError())
+                    .build();
+        }
+
         String pythonAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
         lambdaFunctionArnInfo.setAliasArn(pythonAliasArn);
 
@@ -635,6 +660,14 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         log.info("Creating Node function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateNodeFunctionIfNecessary(functionConf, lambdaRole);
+
+        if (lambdaFunctionArnInfo.getError().isPresent()) {
+            return LambdaFunctionArnInfoAndFunctionConf.builder()
+                    .functionConf(functionConf)
+                    .error(lambdaFunctionArnInfo.getError())
+                    .build();
+        }
+
         String nodeAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
         lambdaFunctionArnInfo.setAliasArn(nodeAliasArn);
 

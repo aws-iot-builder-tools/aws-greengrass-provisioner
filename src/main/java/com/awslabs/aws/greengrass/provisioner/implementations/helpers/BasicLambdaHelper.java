@@ -77,7 +77,13 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public LambdaFunctionArnInfo buildAndCreatePythonFunctionIfNecessary(FunctionConf functionConf, Role role) {
-        pythonBuilder.verifyHandlerExists(functionConf);
+        Optional<String> error = pythonBuilder.verifyHandlerExists(functionConf);
+
+        if (error.isPresent()) {
+            return LambdaFunctionArnInfo.builder()
+                    .error(error).build();
+        }
+
         pythonBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = pythonBuilder.getArchivePath(functionConf);
@@ -87,7 +93,13 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public LambdaFunctionArnInfo buildAndCreateNodeFunctionIfNecessary(FunctionConf functionConf, Role role) {
-        nodeBuilder.verifyHandlerExists(functionConf);
+        Optional<String> error = nodeBuilder.verifyHandlerExists(functionConf);
+
+        if (error.isPresent()) {
+            return LambdaFunctionArnInfo.builder()
+                    .error(error).build();
+        }
+
         nodeBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = nodeBuilder.getArchivePath(functionConf);

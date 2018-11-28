@@ -150,18 +150,18 @@ public class BasicPythonBuilder implements PythonBuilder {
     }
 
     @Override
-    public void verifyHandlerExists(FunctionConf functionConf) {
+    public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
         String buildDirectory = functionConf.getBuildDirectory().toString();
         String handlerName = functionConf.getHandlerName();
 
         if (!handlerName.contains(".")) {
-            throw new UnsupportedOperationException("Python handler name [" + handlerName + "] does not contain a dot separator (e.g. LambdaFunction.function_handler)");
+            return Optional.of("Python handler name [" + handlerName + "] does not contain a dot separator (e.g. LambdaFunction.function_handler)");
         }
 
         String[] handlerNameParts = handlerName.split("\\.");
 
         if (handlerNameParts.length != 2) {
-            throw new UnsupportedOperationException("Python handler name [" + handlerName + "] contains too many dot separators or is missing the handler function name (e.g. LambdaFunction.function_handler)");
+            return Optional.of("Python handler name [" + handlerName + "] contains too many dot separators or is missing the handler function name (e.g. LambdaFunction.function_handler)");
         }
 
         String handlerFilename = handlerNameParts[0];
@@ -170,7 +170,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         File handlerFile = new File(String.join("/", buildDirectory, handlerFilename + ".py"));
 
         if (!handlerFile.exists()) {
-            throw new UnsupportedOperationException("Python handler file [" + handlerFile.toPath() + "] does not exist");
+            return Optional.of("Python handler file [" + handlerFile.toPath() + "] does not exist");
         }
 
         try {
@@ -179,10 +179,12 @@ public class BasicPythonBuilder implements PythonBuilder {
 
             if (Files.lines(handlerFile.toPath())
                     .noneMatch(line -> line.matches(pattern))) {
-                throw new UnsupportedOperationException("Python handler function name [" + handlerFunctionName + "] does not appear to exist in [" + handlerFile.toPath() + "].  This function will not work.  Stopping build.");
+                return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has it been saved?  This function will not work.  Stopping build.");
             }
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            return Optional.of(e.getMessage());
         }
+
+        return Optional.empty();
     }
 }
