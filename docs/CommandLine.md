@@ -61,6 +61,14 @@ GGP -g test-group -a ARM32 -d deployments/python-hello-world.conf --script
 
 Redeployments of an existing group will happen without re-running the bootstrap script.
 
+## Create a Docker container for a group deployment
+
+```bash
+GGP -g test-group -a X86_64 -d deployments/python-hello-world.conf -c
+```
+
+This will create a local Docker image with the tag `greengrass:test-group`
+
 ## Query examples
 
 ### List the Lambda functions in a group
