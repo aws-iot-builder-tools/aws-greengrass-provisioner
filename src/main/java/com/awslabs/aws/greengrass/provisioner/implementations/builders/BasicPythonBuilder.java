@@ -179,7 +179,7 @@ public class BasicPythonBuilder implements PythonBuilder {
 
             if (Files.lines(handlerFile.toPath())
                     .noneMatch(line -> line.matches(pattern))) {
-                return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has it been saved?  This function will not work.  Stopping build.");
+                return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build.");
             }
         } catch (IOException e) {
             return Optional.of(e.getMessage());
