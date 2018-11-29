@@ -17,6 +17,8 @@ public interface GGConstants {
 
     String getCorePrivateKeyName();
 
+    String trimGgdPrefix(String thingName);
+
     String getDevicePublicCertificateName(String thingName);
 
     String getDevicePrivateKeyName(String thingName);

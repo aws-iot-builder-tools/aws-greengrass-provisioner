@@ -4,6 +4,7 @@ import com.amazonaws.services.identitymanagement.model.Role;
 import com.amazonaws.services.iot.AWSIotClient;
 import com.amazonaws.services.iot.model.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import lombok.Getter;
@@ -22,6 +23,8 @@ public class BasicIotHelper implements IotHelper {
     private final String endpoint = describeEndpoint();
     @Inject
     IoHelper ioHelper;
+    @Inject
+    GGConstants ggConstants;
 
     @Inject
     public BasicIotHelper() {
@@ -94,7 +97,8 @@ public class BasicIotHelper implements IotHelper {
         }
 
         // Let them know that they'll need to re-run the bootstrap script because the core's keys changed
-        String supplementalMessage = subName.equals(DeploymentHelper.CORE_SUB_NAME) ? "  If you have an existing deployment for this group you'll need to re-run the bootstrap script since the core certificate ARN will change." : "";
+        boolean isCore = subName.equals(DeploymentHelper.CORE_SUB_NAME);
+        String supplementalMessage = isCore ? "  If you have an existing deployment for this group you'll need to re-run the bootstrap script since the core certificate ARN will change." : "";
         log.info("- Keys not found, creating new keys." + supplementalMessage);
         CreateKeysAndCertificateRequest createKeysAndCertificateRequest = new CreateKeysAndCertificateRequest()
                 .withSetAsActive(true);
@@ -102,6 +106,15 @@ public class BasicIotHelper implements IotHelper {
         CreateKeysAndCertificateResult createKeysAndCertificateResult = awsIotClient.createKeysAndCertificate(createKeysAndCertificateRequest);
 
         ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeObject(createKeysAndCertificateResult));
+
+        String deviceName = isCore ? groupId : ggConstants.trimGgdPrefix(subName);
+        String privateKeyFilename = "build/" + String.join(".", deviceName, "pem", "key");
+        String publicSignedCertificateFilename = "build/" + String.join(".", deviceName, "pem", "crt");
+
+        ioHelper.writeFile(privateKeyFilename, createKeysAndCertificateResult.getKeyPair().getPrivateKey().getBytes());
+        log.info("Device private key written to [" + privateKeyFilename + "]");
+        ioHelper.writeFile(publicSignedCertificateFilename, createKeysAndCertificateResult.getCertificatePem().getBytes());
+        log.info("Device public signed certificate key written to [" + publicSignedCertificateFilename + "]");
 
         return createKeysAndCertificateResult;
     }

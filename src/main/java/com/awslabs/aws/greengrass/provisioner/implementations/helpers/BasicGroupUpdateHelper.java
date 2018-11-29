@@ -148,14 +148,6 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(thingArn));
             iotHelper.attachPrincipalPolicy(ggdPolicyName, certificateArn);
             iotHelper.attachThingPrincipal(deviceName, certificateArn);
-
-            String privateKeyFilename = "build/" + String.join(".", deviceName, "pem", "key");
-            String publicSignedCertificateFilename = "build/" + String.join(".", deviceName, "pem", "crt");
-
-            ioHelper.writeFile(privateKeyFilename, deviceKeysAndCertificate.getKeyPair().getPrivateKey().getBytes());
-            log.info("Device private key written to [" + privateKeyFilename + "]");
-            ioHelper.writeFile(publicSignedCertificateFilename, deviceKeysAndCertificate.getCertificatePem().getBytes());
-            log.info("Device public signed certificate key written to [" + publicSignedCertificateFilename + "]");
         } else {
             // Device name looks like a thing ARN
             log.info("[" + deviceName + "] looks like a thing ARN, attempting to use existing device");

@@ -45,6 +45,11 @@ public class BasicGGConstants implements GGConstants {
     }
 
     @Override
+    public String trimGgdPrefix(String thingName) {
+        return thingName.replaceFirst(ggdPrefix + "-", "");
+    }
+
+    @Override
     public String getDevicePublicCertificateName(String thingName) {
         return String.join(".", ggdPrefix, thingName, DEVICE_CRT);
     }
