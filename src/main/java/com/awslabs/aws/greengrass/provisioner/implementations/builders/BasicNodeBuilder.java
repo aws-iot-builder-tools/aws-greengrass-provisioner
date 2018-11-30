@@ -3,8 +3,10 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.zeroturnaround.zip.ZipUtil;
@@ -26,6 +28,8 @@ public class BasicNodeBuilder implements NodeBuilder {
     ProcessHelper processHelper;
     @Inject
     LoggingHelper loggingHelper;
+    @Inject
+    ResourceHelper resourceHelper;
 
     @Inject
     public BasicNodeBuilder() {
@@ -39,7 +43,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf);
+        copySdk(log, functionConf, resourceHelper);
 
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");

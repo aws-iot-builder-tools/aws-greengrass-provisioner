@@ -1,30 +1,30 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClient;
-import com.amazonaws.services.identitymanagement.model.*;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
-import com.amazonaws.services.securitytoken.model.GetCallerIdentityRequest;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IamHelper;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.iam.IamClient;
+import software.amazon.awssdk.services.iam.model.*;
+import software.amazon.awssdk.services.sts.StsClient;
+import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
 
 import javax.inject.Inject;
 
 @Slf4j
 public class BasicIamHelper implements IamHelper {
     @Inject
-    AmazonIdentityManagementClient amazonIdentityManagementClient;
+    IamClient iamClient;
     @Inject
-    AWSSecurityTokenServiceClient awsSecurityTokenServiceClient;
+    StsClient stsClient;
 
     @Inject
     public BasicIamHelper() {
     }
 
     private Role getRole(String name) {
-        GetRoleRequest getRoleRequest = new GetRoleRequest().withRoleName(name);
+        GetRoleRequest getRoleRequest = GetRoleRequest.builder().roleName(name).build();
 
         try {
-            return amazonIdentityManagementClient.getRole(getRoleRequest).getRole();
+            return iamClient.getRole(getRoleRequest).role();
         } catch (NoSuchEntityException e) {
             return null;
         }
@@ -36,36 +36,39 @@ public class BasicIamHelper implements IamHelper {
 
         if (existingRole != null) {
             log.info("Updating assume role policy for existing role [" + name + "]");
-            UpdateAssumeRolePolicyRequest updateAssumeRolePolicyRequest = new UpdateAssumeRolePolicyRequest()
-                    .withRoleName(name)
-                    .withPolicyDocument(assumeRolePolicyDocument);
+            UpdateAssumeRolePolicyRequest updateAssumeRolePolicyRequest = UpdateAssumeRolePolicyRequest.builder()
+                    .roleName(name)
+                    .policyDocument(assumeRolePolicyDocument)
+                    .build();
 
-            amazonIdentityManagementClient.updateAssumeRolePolicy(updateAssumeRolePolicyRequest);
+            iamClient.updateAssumeRolePolicy(updateAssumeRolePolicyRequest);
 
             return existingRole;
         }
 
         log.info("Creating new role [" + name + "]");
-        CreateRoleRequest createRoleRequest = new CreateRoleRequest()
-                .withRoleName(name)
-                .withAssumeRolePolicyDocument(assumeRolePolicyDocument);
+        CreateRoleRequest createRoleRequest = CreateRoleRequest.builder()
+                .roleName(name)
+                .assumeRolePolicyDocument(assumeRolePolicyDocument)
+                .build();
 
-        CreateRoleResult createRoleResult = amazonIdentityManagementClient.createRole(createRoleRequest);
+        CreateRoleResponse createRoleResponse = iamClient.createRole(createRoleRequest);
 
-        return createRoleResult.getRole();
+        return createRoleResponse.role();
     }
 
     @Override
     public void attachRolePolicy(Role role, String policyArn) {
-        AttachRolePolicyRequest attachRolePolicyRequest = new AttachRolePolicyRequest()
-                .withRoleName(role.getRoleName())
-                .withPolicyArn(policyArn);
+        AttachRolePolicyRequest attachRolePolicyRequest = AttachRolePolicyRequest.builder()
+                .roleName(role.roleName())
+                .policyArn(policyArn)
+                .build();
 
-        amazonIdentityManagementClient.attachRolePolicy(attachRolePolicyRequest);
+        iamClient.attachRolePolicy(attachRolePolicyRequest);
     }
 
     @Override
     public String getAccountId() {
-        return awsSecurityTokenServiceClient.getCallerIdentity(new GetCallerIdentityRequest()).getAccount();
+        return stsClient.getCallerIdentity(GetCallerIdentityRequest.builder().build()).account();
     }
 }

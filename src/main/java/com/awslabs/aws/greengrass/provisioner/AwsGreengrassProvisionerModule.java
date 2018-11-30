@@ -1,15 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner;
 
-import com.amazonaws.regions.AwsRegionProviderChain;
-import com.amazonaws.regions.DefaultAwsRegionProviderChain;
-import com.amazonaws.services.cloudformation.AmazonCloudFormationClient;
-import com.amazonaws.services.ecr.AmazonECRClient;
-import com.amazonaws.services.greengrass.AWSGreengrassClient;
-import com.amazonaws.services.identitymanagement.AmazonIdentityManagementClient;
-import com.amazonaws.services.iot.AWSIotClient;
-import com.amazonaws.services.iotdata.AWSIotDataClient;
-import com.amazonaws.services.lambda.AWSLambdaClient;
-import com.amazonaws.services.securitytoken.AWSSecurityTokenServiceClient;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicDockerPushHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.UnixSocketDockerClientProvider;
@@ -30,48 +20,52 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
+import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
+import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
+import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
+import software.amazon.awssdk.services.ecr.EcrClient;
+import software.amazon.awssdk.services.greengrass.GreengrassClient;
+import software.amazon.awssdk.services.iam.IamClient;
+import software.amazon.awssdk.services.iot.IotClient;
+import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.sts.StsClient;
 
 @Module
 public abstract class AwsGreengrassProvisionerModule {
     // Create a bunch of providers for default clients that check for errors
     @Provides
-    public static AWSIotClient awsIotClient(AWSIotClientProvider awsIotClientProvider) {
-        return awsIotClientProvider.get();
+    public static IotClient iotClient(IotClientProvider iotClientProvider) {
+        return iotClientProvider.get();
     }
 
     @Provides
-    public static AWSIotDataClient awsIotDataClient(AWSIotDataClientProvider awsIotDataClientProvider) {
-        return awsIotDataClientProvider.get();
+    public static IamClient iamClient(IamClientProvider iamClientProvider) {
+        return iamClientProvider.get();
     }
 
     @Provides
-    public static AmazonIdentityManagementClient amazonIdentityManagementClient(AmazonIdentityManagementClientProvider amazonIdentityManagementClientProvider) {
-        return amazonIdentityManagementClientProvider.get();
+    public static StsClient stsClient(StsClientProvider stsClientProvider) {
+        return stsClientProvider.get();
     }
 
     @Provides
-    public static AWSSecurityTokenServiceClient awsSecurityTokenServiceClient(AWSSecurityTokenServiceClientProvider awsSecurityTokenServiceClientProvider) {
-        return awsSecurityTokenServiceClientProvider.get();
+    public static GreengrassClient greengrassClient(GreengrassClientProvider greengrassClientProvider) {
+        return greengrassClientProvider.get();
     }
 
     @Provides
-    public static AWSGreengrassClient awsGreengrassClient(AWSGreengrassClientProvider awsGreengrassClientProvider) {
-        return awsGreengrassClientProvider.get();
+    public static LambdaClient lambdaClient(LambdaClientProvider lambdaClientProvider) {
+        return lambdaClientProvider.get();
     }
 
     @Provides
-    public static AWSLambdaClient awsLambdaClient(AWSLambdaClientProvider awsLambdaClientProvider) {
-        return awsLambdaClientProvider.get();
+    public static CloudFormationClient cloudFormationClient(CloudFormationClientProvider cloudFormationClientProvider) {
+        return cloudFormationClientProvider.get();
     }
 
     @Provides
-    public static AmazonCloudFormationClient amazonCloudFormationClient(AmazonCloudFormationClientProvider amazonCloudFormationClientProvider) {
-        return amazonCloudFormationClientProvider.get();
-    }
-
-    @Provides
-    public static AmazonECRClient amazonECRClient(AmazonECRClientProvider amazonECRClientProvider) {
-        return amazonECRClientProvider.get();
+    public static EcrClient ecrClient(EcrClientProvider ecrClientProvider) {
+        return ecrClientProvider.get();
     }
 
     // Docker

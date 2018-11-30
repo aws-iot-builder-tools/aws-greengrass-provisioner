@@ -1,53 +1,54 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.iot.AWSIotClient;
-import com.amazonaws.services.iot.model.*;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
+import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.iot.IotClient;
+import software.amazon.awssdk.services.iot.model.*;
 
 import javax.inject.Inject;
 import java.util.List;
-
 
 @Slf4j
 public class BasicIotHelper implements IotHelper {
     public static final String CREDENTIALS = "credentials/";
     @Inject
-    AWSIotClient awsIotClient;
+    IotClient iotClient;
     @Getter(lazy = true)
     private final String endpoint = describeEndpoint();
     @Inject
     IoHelper ioHelper;
     @Inject
     GGConstants ggConstants;
+    @Inject
+    JsonHelper jsonHelper;
 
     @Inject
     public BasicIotHelper() {
     }
 
     private String describeEndpoint() {
-        return awsIotClient.describeEndpoint(new DescribeEndpointRequest()).getEndpointAddress();
+        return iotClient.describeEndpoint().endpointAddress();
     }
 
     @Override
     public String createThing(String name) {
-        CreateThingRequest createThingRequest = new CreateThingRequest()
-                .withThingName(name);
+        CreateThingRequest createThingRequest = CreateThingRequest.builder()
+                .thingName(name)
+                .build();
 
         try {
-            return awsIotClient.createThing(createThingRequest).getThingArn();
+            return iotClient.createThing(createThingRequest).thingArn();
         } catch (ResourceAlreadyExistsException e) {
             if (e.getMessage().contains("with different tags")) {
                 log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
 
-                DescribeThingRequest describeThingRequest = new DescribeThingRequest()
-                        .withThingName(name);
-                return awsIotClient.describeThing(describeThingRequest).getThingArn();
+                DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
+                        .thingName(name)
+                        .build();
+                return iotClient.describeThing(describeThingRequest).thingArn();
             }
 
             throw new UnsupportedOperationException(e);
@@ -63,11 +64,12 @@ public class BasicIotHelper implements IotHelper {
     }
 
     private boolean certificateExists(String certificateId) {
-        DescribeCertificateRequest describeCertificateRequest = new DescribeCertificateRequest()
-                .withCertificateId(certificateId);
+        DescribeCertificateRequest describeCertificateRequest = DescribeCertificateRequest.builder()
+                .certificateId(certificateId)
+                .build();
 
         try {
-            awsIotClient.describeCertificate(describeCertificateRequest);
+            iotClient.describeCertificate(describeCertificateRequest);
         } catch (ResourceNotFoundException e) {
             return false;
         }
@@ -76,7 +78,7 @@ public class BasicIotHelper implements IotHelper {
     }
 
     @Override
-    public CreateKeysAndCertificateResult createOrLoadKeysAndCertificate(String groupId, String subName) {
+    public KeysAndCertificate createOrLoadKeysAndCertificate(String groupId, String subName) {
         String credentialsDirectory = credentialDirectoryForGroupId(groupId);
 
         ioHelper.createDirectoryIfNecessary(credentialsDirectory);
@@ -86,11 +88,11 @@ public class BasicIotHelper implements IotHelper {
         if (ioHelper.exists(createKeysAndCertificateFilename)) {
             log.info("- Attempting to reuse existing keys.");
 
-            CreateKeysAndCertificateResult createKeysAndCertificateResult = (CreateKeysAndCertificateResult) ioHelper.deserializeObject(ioHelper.readFile(createKeysAndCertificateFilename));
+            KeysAndCertificate keysAndCertificate = ioHelper.deserializeKeys(ioHelper.readFile(createKeysAndCertificateFilename), jsonHelper);
 
-            if (certificateExists(createKeysAndCertificateResult.getCertificateId())) {
+            if (certificateExists(keysAndCertificate.getCertificateId())) {
                 log.info("- Reusing existing keys.");
-                return createKeysAndCertificateResult;
+                return keysAndCertificate;
             } else {
                 log.warn("- Existing certificate is not in AWS IoT.  It may have been deleted.");
             }
@@ -100,31 +102,33 @@ public class BasicIotHelper implements IotHelper {
         boolean isCore = subName.equals(DeploymentHelper.CORE_SUB_NAME);
         String supplementalMessage = isCore ? "  If you have an existing deployment for this group you'll need to re-run the bootstrap script since the core certificate ARN will change." : "";
         log.info("- Keys not found, creating new keys." + supplementalMessage);
-        CreateKeysAndCertificateRequest createKeysAndCertificateRequest = new CreateKeysAndCertificateRequest()
-                .withSetAsActive(true);
+        CreateKeysAndCertificateRequest createKeysAndCertificateRequest = CreateKeysAndCertificateRequest.builder()
+                .setAsActive(true)
+                .build();
 
-        CreateKeysAndCertificateResult createKeysAndCertificateResult = awsIotClient.createKeysAndCertificate(createKeysAndCertificateRequest);
+        CreateKeysAndCertificateResponse createKeysAndCertificateResponse = iotClient.createKeysAndCertificate(createKeysAndCertificateRequest);
 
-        ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeObject(createKeysAndCertificateResult));
+        ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeKeys(createKeysAndCertificateResponse, jsonHelper).getBytes());
 
         String deviceName = isCore ? groupId : ggConstants.trimGgdPrefix(subName);
         String privateKeyFilename = "build/" + String.join(".", deviceName, "pem", "key");
         String publicSignedCertificateFilename = "build/" + String.join(".", deviceName, "pem", "crt");
 
-        ioHelper.writeFile(privateKeyFilename, createKeysAndCertificateResult.getKeyPair().getPrivateKey().getBytes());
+        ioHelper.writeFile(privateKeyFilename, createKeysAndCertificateResponse.keyPair().privateKey().getBytes());
         log.info("Device private key written to [" + privateKeyFilename + "]");
-        ioHelper.writeFile(publicSignedCertificateFilename, createKeysAndCertificateResult.getCertificatePem().getBytes());
+        ioHelper.writeFile(publicSignedCertificateFilename, createKeysAndCertificateResponse.certificatePem().getBytes());
         log.info("Device public signed certificate key written to [" + publicSignedCertificateFilename + "]");
 
-        return createKeysAndCertificateResult;
+        return KeysAndCertificate.from(createKeysAndCertificateResponse);
     }
 
     private boolean policyExists(String name) {
-        GetPolicyRequest getPolicyRequest = new GetPolicyRequest()
-                .withPolicyName(name);
+        GetPolicyRequest getPolicyRequest = GetPolicyRequest.builder()
+                .policyName(name)
+                .build();
 
         try {
-            awsIotClient.getPolicy(getPolicyRequest);
+            iotClient.getPolicy(getPolicyRequest);
             return true;
         } catch (ResourceNotFoundException e) {
             return false;
@@ -137,39 +141,43 @@ public class BasicIotHelper implements IotHelper {
             return;
         }
 
-        CreatePolicyRequest createPolicyRequest = new CreatePolicyRequest()
-                .withPolicyName(name)
-                .withPolicyDocument(document);
+        CreatePolicyRequest createPolicyRequest = CreatePolicyRequest.builder()
+                .policyName(name)
+                .policyDocument(document)
+                .build();
 
-        awsIotClient.createPolicy(createPolicyRequest);
+        iotClient.createPolicy(createPolicyRequest);
     }
 
     @Override
     public void attachPrincipalPolicy(String policyName, String certificateArn) {
-        AttachPolicyRequest attachPolicyRequest = new AttachPolicyRequest()
-                .withPolicyName(policyName)
-                .withTarget(certificateArn);
+        AttachPolicyRequest attachPolicyRequest = AttachPolicyRequest.builder()
+                .policyName(policyName)
+                .target(certificateArn)
+                .build();
 
-        awsIotClient.attachPolicy(attachPolicyRequest);
+        iotClient.attachPolicy(attachPolicyRequest);
     }
 
     @Override
     public void attachThingPrincipal(String thingName, String certificateArn) {
-        AttachThingPrincipalRequest attachThingPrincipalRequest = new AttachThingPrincipalRequest()
-                .withThingName(thingName)
-                .withPrincipal(certificateArn);
+        AttachThingPrincipalRequest attachThingPrincipalRequest = AttachThingPrincipalRequest.builder()
+                .thingName(thingName)
+                .principal(certificateArn)
+                .build();
 
-        awsIotClient.attachThingPrincipal(attachThingPrincipalRequest);
+        iotClient.attachThingPrincipal(attachThingPrincipalRequest);
     }
 
     @Override
     public String getThingPrincipal(String thingName) {
-        ListThingPrincipalsRequest listThingPrincipalsRequest = new ListThingPrincipalsRequest()
-                .withThingName(thingName);
+        ListThingPrincipalsRequest listThingPrincipalsRequest = ListThingPrincipalsRequest.builder()
+                .thingName(thingName)
+                .build();
 
-        ListThingPrincipalsResult listThingPrincipalsResult = awsIotClient.listThingPrincipals(listThingPrincipalsRequest);
+        ListThingPrincipalsResponse listThingPrincipalsResponse = iotClient.listThingPrincipals(listThingPrincipalsRequest);
 
-        List<String> principals = listThingPrincipalsResult.getPrincipals();
+        List<String> principals = listThingPrincipalsResponse.principals();
 
         if ((principals == null) || (principals.size() == 0)) {
             return null;
@@ -180,41 +188,45 @@ public class BasicIotHelper implements IotHelper {
 
     @Override
     public String getThingArn(String thingName) {
-        DescribeThingRequest describeThingRequest = new DescribeThingRequest()
-                .withThingName(thingName);
+        DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
+                .thingName(thingName)
+                .build();
 
-        DescribeThingResult describeThingResult = awsIotClient.describeThing(describeThingRequest);
+        DescribeThingResponse describeThingResponse = iotClient.describeThing(describeThingRequest);
 
-        if (describeThingResult == null) {
+        if (describeThingResponse == null) {
             return null;
         }
 
-        return describeThingResult.getThingArn();
+        return describeThingResponse.thingArn();
     }
 
     @Override
     public String getCredentialProviderUrl() {
-        DescribeEndpointRequest describeEndpointRequest = new DescribeEndpointRequest()
-                .withEndpointType("iot:CredentialProvider");
+        DescribeEndpointRequest describeEndpointRequest = DescribeEndpointRequest.builder()
+                .endpointType("iot:CredentialProvider")
+                .build();
 
-        return awsIotClient.describeEndpoint(describeEndpointRequest).getEndpointAddress();
+        return iotClient.describeEndpoint(describeEndpointRequest).endpointAddress();
     }
 
     @Override
-    public CreateRoleAliasResult createRoleAliasIfNecessary(Role serviceRole, String roleAlias) {
-        CreateRoleAliasRequest createRoleAliasRequest = new CreateRoleAliasRequest()
-                .withRoleArn(serviceRole.getArn())
-                .withRoleAlias(roleAlias);
+    public CreateRoleAliasResponse createRoleAliasIfNecessary(Role serviceRole, String roleAlias) {
+        CreateRoleAliasRequest createRoleAliasRequest = CreateRoleAliasRequest.builder()
+                .roleArn(serviceRole.arn())
+                .roleAlias(roleAlias)
+                .build();
 
         try {
-            return awsIotClient.createRoleAlias(createRoleAliasRequest);
+            return iotClient.createRoleAlias(createRoleAliasRequest);
         } catch (ResourceAlreadyExistsException e) {
             // Already exists, delete so we can try
-            DeleteRoleAliasRequest deleteRoleAliasRequest = new DeleteRoleAliasRequest()
-                    .withRoleAlias(roleAlias);
-            awsIotClient.deleteRoleAlias(deleteRoleAliasRequest);
+            DeleteRoleAliasRequest deleteRoleAliasRequest = DeleteRoleAliasRequest.builder()
+                    .roleAlias(roleAlias)
+                    .build();
+            iotClient.deleteRoleAlias(deleteRoleAliasRequest);
         }
 
-        return awsIotClient.createRoleAlias(createRoleAliasRequest);
+        return iotClient.createRoleAlias(createRoleAliasRequest);
     }
 }

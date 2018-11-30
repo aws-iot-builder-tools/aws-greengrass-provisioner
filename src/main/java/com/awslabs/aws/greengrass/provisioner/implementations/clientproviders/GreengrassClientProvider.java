@@ -1,26 +1,25 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.clientproviders;
 
-import com.amazonaws.services.iot.AWSIotClient;
-import com.amazonaws.services.iot.AWSIotClientBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SafeProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import software.amazon.awssdk.services.greengrass.GreengrassClient;
 
 import javax.inject.Inject;
 
-public class AWSIotClientProvider implements SafeProvider<AWSIotClient> {
+public class GreengrassClientProvider implements SafeProvider<GreengrassClient> {
     @Inject
     SdkErrorHandler sdkErrorHandler;
 
     @Inject
-    public AWSIotClientProvider() {
+    public GreengrassClientProvider() {
     }
 
     @Override
-    public AWSIotClient get() {
+    public GreengrassClient get() {
         return safeGet(sdkErrorHandler);
     }
 
-    public AWSIotClient unsafeGet() {
-        return (AWSIotClient) AWSIotClientBuilder.defaultClient();
+    public GreengrassClient unsafeGet() {
+        return GreengrassClient.create();
     }
 }

@@ -1,13 +1,13 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.model.*;
-import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
-import com.amazonaws.services.lambda.model.GetFunctionResult;
-import com.amazonaws.services.lambda.model.PublishVersionResult;
+import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.greengrass.model.*;
+import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
+import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -92,24 +92,24 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     private void removeDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
         String groupName = updateArguments.groupName;
         String deviceName = updateArguments.removeDevice;
-        String groupId = groupInformation.getId();
+        String groupId = groupInformation.id();
 
         List<Device> devices = greengrassHelper.getDevices(groupInformation);
 
         Device deviceToRemove = greengrassHelper.getDevice(deviceName);
-        String thingArn = deviceToRemove.getThingArn();
+        String thingArn = deviceToRemove.thingArn();
 
-        if (!devices.stream().anyMatch(device -> device.getThingArn().equals(deviceToRemove.getThingArn()))) {
+        if (!devices.stream().anyMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
             log.error("Device with thing ARN [" + thingArn + "] is not part of this Greengrass Group, nothing to do");
             return;
         }
 
         List<Device> devicesToRemove = devices.stream()
-                .filter(device -> device.getThingArn().equals(deviceToRemove.getThingArn()))
+                .filter(device -> device.thingArn().equals(deviceToRemove.thingArn()))
                 .collect(Collectors.toList());
 
         for (Device device : devicesToRemove) {
-            log.warn("Removing device [" + device.getThingArn() + ", " + device.getCertificateArn() + "]");
+            log.warn("Removing device [" + device.thingArn() + ", " + device.certificateArn() + "]");
         }
 
         devices.removeAll(devicesToRemove);
@@ -119,9 +119,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
         String newSubscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
-        GroupVersion newGroupVersion = new GroupVersion()
-                .withDeviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
-                .withSubscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn);
+        GroupVersion newGroupVersion = GroupVersion.builder()
+                .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
+                .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
@@ -131,7 +132,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     private void addDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
         String groupName = updateArguments.groupName;
         String deviceName = updateArguments.addDevice;
-        String groupId = groupInformation.getId();
+        String groupId = groupInformation.id();
         String thingArn = null;
 
         boolean isThingArn = deviceName.contains("/");
@@ -139,7 +140,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         if (!isThingArn) {
             log.info("No thing ARN specified for device [" + deviceName + "], will re-use keys if possible");
 
-            CreateKeysAndCertificateResult deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupName, deviceName);
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupName, deviceName);
 
             String ggdPolicyName = String.join("_", deviceName, "Policy");
             String certificateArn = deviceKeysAndCertificate.getCertificateArn();
@@ -163,7 +164,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String finalThingArn = thingArn;
 
         if (devices.stream()
-                .anyMatch(device -> device.getThingArn().equals(finalThingArn))) {
+                .anyMatch(device -> device.thingArn().equals(finalThingArn))) {
             log.error("Device with thing ARN [" + thingArn + "] is already part of this Greengrass Group.  Nothing to do.");
             return;
         }
@@ -173,18 +174,19 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
 
 
-        GroupVersion newGroupVersion = new GroupVersion()
-                .withDeviceDefinitionVersionArn(newDeviceDefinitionVersionArn);
+        GroupVersion newGroupVersion = GroupVersion.builder()
+                .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
         if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
-            log.info("Device added [" + newDevice.getThingArn() + ", " + newDevice.getCertificateArn() + "]");
+            log.info("Device added [" + newDevice.thingArn() + ", " + newDevice.certificateArn() + "]");
         }
     }
 
     private void addFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupId = groupInformation.getId();
+        String groupId = groupInformation.id();
         String groupName = updateArguments.groupName;
         String coreThingName = ggVariables.getCoreThingName(groupName);
         String functionName = updateArguments.addFunction;
@@ -196,31 +198,31 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             return;
         }
 
-        Optional<GetFunctionResult> optionalGetFunctionResult = lambdaHelper.getFunction(functionName);
+        Optional<GetFunctionResponse> optionalGetFunctionResponse = lambdaHelper.getFunction(functionName);
 
-        if (!optionalGetFunctionResult.isPresent()) {
+        if (!optionalGetFunctionResponse.isPresent()) {
             log.error("Function [" + functionName + "] not found.  Make sure only the function name is specified without an alias or version number.");
             return;
         }
 
-        GetFunctionResult getFunctionResult = optionalGetFunctionResult.get();
+        GetFunctionResponse getFunctionResponse = optionalGetFunctionResponse.get();
 
-        PublishVersionResult publishVersionResult = lambdaHelper.publishFunctionVersion(functionName);
+        PublishVersionResponse publishVersionResponse = lambdaHelper.publishFunctionVersion(functionName);
 
-        String aliasArn = lambdaHelper.createAlias(Optional.empty(), functionName, publishVersionResult.getVersion(), functionAlias);
+        String aliasArn = lambdaHelper.createAlias(Optional.empty(), functionName, publishVersionResponse.version(), functionAlias);
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, groupName);
 
         Function newFunction = greengrassHelper.buildFunctionModel(aliasArn,
-                getFunctionResult.getConfiguration(),
+                getFunctionResponse.configuration(),
                 defaultEnvironment,
-                updateArguments.functionBinary ? EncodingType.Binary : EncodingType.Json,
+                updateArguments.functionBinary ? EncodingType.BINARY : EncodingType.JSON,
                 updateArguments.functionPinned);
 
         List<Function> functions = greengrassHelper.getFunctions(groupInformation);
 
         if (functions.stream()
-                .anyMatch(function -> function.getFunctionArn().equals(aliasArn))) {
+                .anyMatch(function -> function.functionArn().equals(aliasArn))) {
             log.error("Function with ARN [" + aliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
             return;
         }
@@ -229,24 +231,25 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions));
 
-        GroupVersion newGroupVersion = new GroupVersion()
-                .withFunctionDefinitionVersionArn(newFunctionDefinitionVersionArn);
+        GroupVersion newGroupVersion = GroupVersion.builder()
+                .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
         if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
-            log.info("Function added [" + newFunction.getFunctionArn() + "]");
+            log.info("Function added [" + newFunction.functionArn() + "]");
         }
     }
 
     private void removeFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupId = groupInformation.getId();
+        String groupId = groupInformation.id();
         List<Function> functions = greengrassHelper.getFunctions(groupInformation);
 
         String functionArn = String.join(":", updateArguments.removeFunction, updateArguments.functionAlias);
 
         List<Function> functionsToDelete = functions.stream()
-                .filter(function -> function.getFunctionArn().endsWith(functionArn))
+                .filter(function -> function.functionArn().endsWith(functionArn))
                 .collect(Collectors.toList());
 
         if (functionsToDelete.size() == 0) {
@@ -259,7 +262,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         Function functionToDelete = functionsToDelete.get(0);
 
-        String functionToDeleteArn = functionToDelete.getFunctionArn();
+        String functionToDeleteArn = functionToDelete.functionArn();
 
         functions.remove(functionToDelete);
 
@@ -268,14 +271,15 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions));
 
-        GroupVersion newGroupVersion = new GroupVersion()
-                .withSubscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
-                .withFunctionDefinitionVersionArn(newFunctionDefinitionVersionArn);
+        GroupVersion newGroupVersion = GroupVersion.builder()
+                .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
+                .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
         if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
-            log.info("Function removed [" + functionToDelete.getFunctionArn() + "]");
+            log.info("Function removed [" + functionToDelete.functionArn() + "]");
             lambdaHelper.deleteAlias(functionToDeleteArn);
         }
     }
@@ -286,7 +290,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         Set<Subscription> subscriptionsToRemove = getMatchingSubscriptions(subscriptions, thingOrFunctionArn, true, Optional.empty());
 
         for (Subscription subscription : subscriptionsToRemove) {
-            log.warn("Removing subscription [" + subscription.getSource() + ", " + subscription.getTarget() + ", " + subscription.getSubject() + "]");
+            log.warn("Removing subscription [" + subscription.source() + ", " + subscription.target() + ", " + subscription.subject() + "]");
         }
 
         subscriptions.removeAll(subscriptionsToRemove);
@@ -299,7 +303,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String source = updateArguments.subscriptionSource;
         String target = updateArguments.subscriptionTarget;
         String subject = updateArguments.subscriptionSubject;
-        String groupId = groupInformation.getId();
+        String groupId = groupInformation.id();
 
         if (updateArguments.addSubscription) {
             List<Function> functions = greengrassHelper.getFunctions(groupInformation);
@@ -337,7 +341,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             Subscription subscription = subscriptionHelper.createSubscription(source, target, subject);
             subscriptions.add(subscription);
 
-            log.info("Subscription added [" + subscription.getSource() + ", " + subscription.getTarget() + ", " + subscription.getSubject() + "]");
+            log.info("Subscription added [" + subscription.source() + ", " + subscription.target() + ", " + subscription.subject() + "]");
         } else if (updateArguments.removeSubscription) {
             Set<Subscription> existingSubscriptions = getMatchingSubscriptions(subscriptions, source, target, subject);
 
@@ -353,15 +357,16 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             // Exactly one, remove it
             Subscription subscriptionToRemove = existingSubscriptions.iterator().next();
             subscriptions.remove(subscriptionToRemove);
-            log.info("Subscription removed [" + subscriptionToRemove.getSource() + ", " + subscriptionToRemove.getTarget() + ", " + subscriptionToRemove.getSubject() + "]");
+            log.info("Subscription removed [" + subscriptionToRemove.source() + ", " + subscriptionToRemove.target() + ", " + subscriptionToRemove.subject() + "]");
         } else {
             throw new UnsupportedOperationException("This should never happen.  This is a bug.");
         }
 
         String newSubscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
-        GroupVersion newGroupVersion = new GroupVersion()
-                .withSubscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn);
+        GroupVersion newGroupVersion = GroupVersion.builder()
+                .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
@@ -432,10 +437,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         return sourceMatches.stream()
                 .filter(subscription -> {
                     if (exactTarget) {
-                        return subscription.getTarget().equals(target);
+                        return subscription.target().equals(target);
                     }
 
-                    return subscription.getTarget().endsWith(target);
+                    return subscription.target().endsWith(target);
                 })
                 .collect(Collectors.toList());
     }
@@ -444,10 +449,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         return subjectMatches.stream()
                 .filter(subscription -> {
                     if (exactSource) {
-                        return subscription.getSource().equals(source);
+                        return subscription.source().equals(source);
                     }
 
-                    return subscription.getSource().endsWith(source);
+                    return subscription.source().endsWith(source);
                 })
                 .collect(Collectors.toList());
     }
@@ -456,7 +461,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         return subscriptions.stream()
                 .filter(subscription -> {
                     if (optionalSubject.isPresent()) {
-                        return subscription.getSubject().equals(optionalSubject.get());
+                        return subscription.subject().equals(optionalSubject.get());
                     }
 
                     return true;
@@ -472,8 +477,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         // Is it a function?
         List<String> functionArns = functions.stream()
-                .filter(function -> function.getFunctionArn().endsWith(sourceOrTarget))
-                .map(Function::getFunctionArn)
+                .filter(function -> function.functionArn().endsWith(sourceOrTarget))
+                .map(Function::functionArn)
                 .collect(Collectors.toList());
 
         if (functionArns.size() == 1) {
@@ -485,8 +490,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         // Is it a device?
         List<String> thingArns = devices.stream()
-                .filter(device -> device.getThingArn().endsWith(sourceOrTarget))
-                .map(Device::getThingArn)
+                .filter(device -> device.thingArn().endsWith(sourceOrTarget))
+                .map(Device::thingArn)
                 .collect(Collectors.toList());
 
         if (thingArns.size() == 1) {

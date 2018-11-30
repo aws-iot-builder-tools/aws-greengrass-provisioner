@@ -1,11 +1,11 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.model.Function;
-import com.amazonaws.services.greengrass.model.FunctionConfiguration;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import lombok.Getter;
+import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.FunctionConfiguration;
 
 import javax.inject.Inject;
 
@@ -73,15 +73,17 @@ public class BasicGGConstants implements GGConstants {
     }
 
     private Function buildGgIpDetectorFunction() {
-        FunctionConfiguration functionConfiguration = new FunctionConfiguration()
-                .withMemorySize(32768)
-                .withPinned(true)
-                .withTimeout(3);
+        FunctionConfiguration functionConfiguration = FunctionConfiguration.builder()
+                .memorySize(32768)
+                .pinned(true)
+                .timeout(3)
+                .build();
 
-        Function function = new Function()
-                .withFunctionArn(getGgIpDetectorArn())
-                .withId(ioHelper.getUuid())
-                .withFunctionConfiguration(functionConfiguration);
+        Function function = Function.builder()
+                .functionArn(getGgIpDetectorArn())
+                .id(ioHelper.getUuid())
+                .functionConfiguration(functionConfiguration)
+                .build();
 
         return function;
     }

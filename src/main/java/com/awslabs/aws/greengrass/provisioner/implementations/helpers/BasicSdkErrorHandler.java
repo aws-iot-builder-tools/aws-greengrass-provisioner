@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.SdkClientException;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
 import java.util.ArrayList;

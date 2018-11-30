@@ -1,11 +1,11 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.model.Function;
-import com.amazonaws.services.greengrass.model.Subscription;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.Subscription;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
@@ -39,12 +39,12 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
         for (Map.Entry<Function, FunctionConf> entry : functionAliasToConfMap.entrySet()) {
             // Loop through its output topics and put them in the map associated with their function ARN
             for (String outputTopic : entry.getValue().getOutputTopics()) {
-                arnsByOutputTopic.computeIfAbsent(outputTopic, k -> new ArrayList<>()).add(entry.getKey().getFunctionArn());
+                arnsByOutputTopic.computeIfAbsent(outputTopic, k -> new ArrayList<>()).add(entry.getKey().functionArn());
             }
 
             // Loop through its output topics and put them in the map associated with their function ARN
             for (String inputTopic : entry.getValue().getInputTopics()) {
-                arnsByInputTopic.computeIfAbsent(inputTopic, k -> new ArrayList<>()).add(entry.getKey().getFunctionArn());
+                arnsByInputTopic.computeIfAbsent(inputTopic, k -> new ArrayList<>()).add(entry.getKey().functionArn());
             }
         }
 
@@ -98,7 +98,7 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
         List<Subscription> subscriptions = new ArrayList<>();
 
         for (Map.Entry<Function, FunctionConf> entry : functionAliasToConfMap.entrySet()) {
-            String functionArn = entry.getKey().getFunctionArn();
+            String functionArn = entry.getKey().functionArn();
             FunctionConf functionConf = entry.getValue();
 
             for (String deviceName : functionConf.getConnectedShadows()) {
@@ -128,11 +128,12 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
 
     @Override
     public Subscription createSubscription(String source, String target, String topicFilter) {
-        return new Subscription()
-                .withId(ioHelper.getUuid())
-                .withSource(source)
-                .withSubject(topicFilter)
-                .withTarget(target);
+        return Subscription.builder()
+                .id(ioHelper.getUuid())
+                .source(source)
+                .subject(topicFilter)
+                .target(target)
+                .build();
     }
 
     @Override
@@ -149,18 +150,22 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     public List<Subscription> createShadowSubscriptions(String deviceOrFunctionArn, String deviceThingName) {
         List<Subscription> subscriptions = new ArrayList<>();
 
-        Subscription shadowServiceTargetSubscription = new Subscription()
-                .withId(ioHelper.getUuid())
-                .withSource(deviceOrFunctionArn)
-                .withSubject(ggVariables.getDeviceShadowTopicFilterName(deviceThingName))
-                .withTarget(ggConstants.getGgShadowServiceName());
+        Subscription shadowServiceTargetSubscription = Subscription.builder()
+                .id(ioHelper.getUuid())
+                .source(deviceOrFunctionArn)
+                .subject(ggVariables.getDeviceShadowTopicFilterName(deviceThingName))
+                .target(ggConstants.getGgShadowServiceName())
+                .build();
+
         subscriptions.add(shadowServiceTargetSubscription);
 
-        Subscription shadowServiceSourceSubscription = new Subscription()
-                .withId(ioHelper.getUuid())
-                .withSource(ggConstants.getGgShadowServiceName())
-                .withSubject(ggVariables.getDeviceShadowTopicFilterName(deviceThingName))
-                .withTarget(deviceOrFunctionArn);
+        Subscription shadowServiceSourceSubscription = Subscription.builder()
+                .id(ioHelper.getUuid())
+                .source(ggConstants.getGgShadowServiceName())
+                .subject(ggVariables.getDeviceShadowTopicFilterName(deviceThingName))
+                .target(deviceOrFunctionArn)
+                .build();
+
         subscriptions.add(shadowServiceSourceSubscription);
 
         return subscriptions;

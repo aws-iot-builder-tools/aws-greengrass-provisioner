@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.amazonaws.util.ClassLoaderHelper.getResource;
+import static com.google.common.io.Resources.getResource;
 
 public enum Architecture {
     ARM32("greengrass-linux-armv7l-1.7.0.tar.gz", "8ad40c4b982f222f48945829b702cd1a9835bc4d"),
@@ -52,11 +52,6 @@ public enum Architecture {
         File resource = new File(resourcePath);
 
         if (!resource.exists()) {
-            if (!resourcePath.startsWith("/")) {
-                // All resources inside a JAR must be absolute
-                resourcePath = "/" + resourcePath;
-            }
-
             return Optional.ofNullable(getResource(resourcePath));
         }
 

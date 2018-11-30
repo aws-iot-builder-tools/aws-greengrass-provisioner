@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.Function;
 
 public interface GGConstants {
     String getArchitectureNameList();

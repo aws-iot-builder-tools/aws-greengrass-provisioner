@@ -1,9 +1,10 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.greengrass.model.*;
-import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import software.amazon.awssdk.services.greengrass.model.*;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.lambda.model.FunctionConfiguration;
 
 import java.util.List;
 import java.util.Map;
@@ -23,7 +24,7 @@ public interface GreengrassHelper {
 
     Function buildFunctionModel(String functionArn, FunctionConf functionConf);
 
-    Function buildFunctionModel(String functionArn, com.amazonaws.services.lambda.model.FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
+    Function buildFunctionModel(String functionArn, FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
 
     String createFunctionDefinitionVersion(Set<Function> functions);
 
@@ -47,7 +48,7 @@ public interface GreengrassHelper {
 
     void disassociateRoleFromGroup(String groupId);
 
-    GetGroupVersionResult getLatestGroupVersion(GroupInformation groupInformation);
+    GetGroupVersionResponse getLatestGroupVersion(GroupInformation groupInformation);
 
     List<Function> getFunctions(GroupInformation groupInformation);
 
@@ -55,5 +56,5 @@ public interface GreengrassHelper {
 
     List<Subscription> getSubscriptions(GroupInformation groupInformation);
 
-    GetGroupCertificateAuthorityResult getGroupCa(GroupInformation groupInformation);
+    GetGroupCertificateAuthorityResponse getGroupCa(GroupInformation groupInformation);
 }

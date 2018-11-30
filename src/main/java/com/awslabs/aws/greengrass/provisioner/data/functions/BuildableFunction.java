@@ -1,9 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.data.functions;
 
-import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import lombok.Builder;
 import lombok.Data;
+import software.amazon.awssdk.services.iam.model.Role;
 
 @Data
 @Builder

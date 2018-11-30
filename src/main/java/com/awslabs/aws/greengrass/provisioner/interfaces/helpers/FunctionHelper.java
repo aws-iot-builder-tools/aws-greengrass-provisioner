@@ -1,10 +1,10 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.greengrass.model.Function;
-import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
+import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.iam.model.Role;
 
 import java.util.List;
 import java.util.Map;

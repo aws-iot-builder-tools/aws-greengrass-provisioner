@@ -1,6 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
+import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import org.apache.commons.codec.binary.Hex;
+import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 
 import java.io.*;
 import java.net.URL;
@@ -116,20 +119,17 @@ public interface IoHelper {
         return new File(path).exists();
     }
 
-    default byte[] serializeObject(Object object) {
-        try {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            oos.close();
-
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
-        }
+    default String serializeObject(Object object, JsonHelper jsonHelper) {
+        return jsonHelper.toJson(object);
     }
 
-    default Object deserializeObject(byte[] bytes) {
+    default Object deserializeObject(byte[] bytes, JsonHelper jsonHelper) {
+        try {
+            return jsonHelper.fromJson(KeysAndCertificate.class, bytes);
+        } catch (Exception e) {
+            // Do nothing and try again
+        }
+
         try {
             ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
             ObjectInputStream ois = new ObjectInputStream(bais);
@@ -157,5 +157,33 @@ public interface IoHelper {
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
+    }
+
+    default String serializeKeys(CreateKeysAndCertificateResponse createKeysAndCertificateResponse, JsonHelper jsonHelper) {
+        KeysAndCertificate keysAndCertificate = KeysAndCertificate.builder()
+                .certificateArn(createKeysAndCertificateResponse.certificateArn())
+                .certificateId(createKeysAndCertificateResponse.certificateId())
+                .certificatePem(createKeysAndCertificateResponse.certificatePem())
+                .keyPair(createKeysAndCertificateResponse.keyPair()).build();
+
+        return serializeObject(keysAndCertificate, jsonHelper);
+    }
+
+    default KeysAndCertificate deserializeKeys(byte[] readFile, JsonHelper jsonHelper) {
+        Object object = deserializeObject(readFile, jsonHelper);
+
+        if (object instanceof KeysAndCertificate) {
+            return (KeysAndCertificate) object;
+        }
+
+        if (object instanceof CreateKeysAndCertificateResponse) {
+            return KeysAndCertificate.from((CreateKeysAndCertificateResponse) object);
+        }
+
+        if (object instanceof CreateKeysAndCertificateResult) {
+            return KeysAndCertificate.from((CreateKeysAndCertificateResult) object);
+        }
+
+        throw new UnsupportedOperationException("Couldn't deserialize keys.  This is a bug.");
     }
 }

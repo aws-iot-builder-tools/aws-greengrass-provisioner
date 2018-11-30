@@ -1,14 +1,14 @@
 package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 
-import com.amazonaws.services.ecr.AmazonECRClient;
-import com.amazonaws.services.ecr.model.AuthorizationData;
-import com.amazonaws.services.ecr.model.GetAuthorizationTokenRequest;
-import com.amazonaws.services.ecr.model.GetAuthorizationTokenResult;
-import com.amazonaws.util.Base64;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.core.DefaultDockerClientConfig;
 import com.github.dockerjava.core.DockerClientBuilder;
 import com.github.dockerjava.core.DockerClientConfig;
+import org.bouncycastle.util.encoders.Base64;
+import software.amazon.awssdk.services.ecr.EcrClient;
+import software.amazon.awssdk.services.ecr.model.AuthorizationData;
+import software.amazon.awssdk.services.ecr.model.GetAuthorizationTokenRequest;
+import software.amazon.awssdk.services.ecr.model.GetAuthorizationTokenResponse;
 
 import javax.inject.Provider;
 import java.util.List;
@@ -19,7 +19,7 @@ public interface DockerClientProvider extends Provider<DockerClient> {
         // http://stackoverflow.com/questions/40099527/pulling-image-from-amazon-ecr-using-docker-java
         AuthorizationData authorizationData = getAuthorizationData();
 
-        String userPassword = new String(Base64.decode(authorizationData.getAuthorizationToken()));
+        String userPassword = new String(Base64.decode(authorizationData.authorizationToken()));
         String user = userPassword.substring(0, userPassword.indexOf(":"));
         String password = userPassword.substring(userPassword.indexOf(":") + 1);
 
@@ -29,7 +29,7 @@ public interface DockerClientProvider extends Provider<DockerClient> {
                 .withDockerHost(getDockerHost())
                 .withRegistryUsername(user)
                 .withRegistryPassword(password)
-                .withRegistryUrl(authorizationData.getProxyEndpoint())
+                .withRegistryUrl(authorizationData.proxyEndpoint())
                 .build();
 
         return DockerClientBuilder
@@ -38,13 +38,13 @@ public interface DockerClientProvider extends Provider<DockerClient> {
     }
 
     default AuthorizationData getAuthorizationData() {
-        GetAuthorizationTokenRequest getAuthorizationTokenRequest = new GetAuthorizationTokenRequest();
-        GetAuthorizationTokenResult getAuthorizationTokenResult = getAmazonECRClient().getAuthorizationToken(getAuthorizationTokenRequest);
-        List<AuthorizationData> authorizationDataList = getAuthorizationTokenResult.getAuthorizationData();
+        GetAuthorizationTokenRequest getAuthorizationTokenRequest = GetAuthorizationTokenRequest.builder().build();
+        GetAuthorizationTokenResponse getAuthorizationTokenResponse = getEcrClient().getAuthorizationToken(getAuthorizationTokenRequest);
+        List<AuthorizationData> authorizationDataList = getAuthorizationTokenResponse.authorizationData();
         return authorizationDataList.get(0);
     }
 
-    AmazonECRClient getAmazonECRClient();
+    EcrClient getEcrClient();
 
     String getDockerHost();
 }

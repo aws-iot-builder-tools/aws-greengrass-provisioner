@@ -1,9 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.AWSGreengrassClient;
-import com.amazonaws.services.greengrass.model.*;
-import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.iot.model.ResourceNotFoundException;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
@@ -13,6 +9,10 @@ import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.greengrass.GreengrassClient;
+import software.amazon.awssdk.services.greengrass.model.*;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.iot.model.ResourceNotFoundException;
 
 import javax.inject.Inject;
 import java.util.*;
@@ -27,7 +27,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public static final String SUCCESS = "Success";
     public static final String BUILDING = "Building";
     @Inject
-    AWSGreengrassClient awsGreengrassClient;
+    GreengrassClient greengrassClient;
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -45,33 +45,34 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public void associateServiceRoleToAccount(Role role) {
-        AssociateServiceRoleToAccountRequest associateServiceRoleToAccountRequest = new AssociateServiceRoleToAccountRequest()
-                .withRoleArn(role.getArn());
+        AssociateServiceRoleToAccountRequest associateServiceRoleToAccountRequest = AssociateServiceRoleToAccountRequest.builder()
+                .roleArn(role.arn())
+                .build();
 
-        awsGreengrassClient.associateServiceRoleToAccount(associateServiceRoleToAccountRequest);
+        greengrassClient.associateServiceRoleToAccount(associateServiceRoleToAccountRequest);
     }
 
     @Override
     public Optional<GroupInformation> getGroupInformation(String groupNameOrGroupId) {
-        ListGroupsRequest listGroupsRequest = new ListGroupsRequest();
+        ListGroupsRequest listGroupsRequest = ListGroupsRequest.builder().build();
 
-        ListGroupsResult listGroupsResult;
+        ListGroupsResponse listGroupsResponse;
 
         do {
-            listGroupsResult = awsGreengrassClient.listGroups(listGroupsRequest);
+            listGroupsResponse = greengrassClient.listGroups(listGroupsRequest);
 
-            for (GroupInformation groupInformation : listGroupsResult.getGroups()) {
-                if (groupInformation.getName().equals(groupNameOrGroupId)) {
+            for (GroupInformation groupInformation : listGroupsResponse.groups()) {
+                if (groupInformation.name().equals(groupNameOrGroupId)) {
                     return Optional.ofNullable(groupInformation);
                 }
 
-                if (groupInformation.getId().equals(groupNameOrGroupId)) {
+                if (groupInformation.id().equals(groupNameOrGroupId)) {
                     return Optional.ofNullable(groupInformation);
                 }
             }
 
-            listGroupsRequest.setNextToken(listGroupsResult.getNextToken());
-        } while (listGroupsResult.getNextToken() != null);
+            listGroupsRequest = ListGroupsRequest.builder().nextToken(listGroupsResponse.nextToken()).build();
+        } while (listGroupsResponse.nextToken() != null);
 
         log.warn("No group was found with name or ID [" + groupNameOrGroupId + "]");
         return Optional.empty();
@@ -80,53 +81,53 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     private Optional<String> getGroupId(String groupName) {
         Optional<GroupInformation> optionalGroupInformation = getGroupInformation(groupName);
 
-        return optionalGroupInformation.map(GroupInformation::getId);
+        return optionalGroupInformation.map(GroupInformation::id);
     }
 
     private String getCoreDefinitionId(String coreDefinitionName) {
-        ListCoreDefinitionsRequest listCoreDefinitionsRequest = new ListCoreDefinitionsRequest();
+        ListCoreDefinitionsRequest listCoreDefinitionsRequest = ListCoreDefinitionsRequest.builder().build();
 
-        ListCoreDefinitionsResult listCoreDefinitionsResult;
+        ListCoreDefinitionsResponse listCoreDefinitionsResponse;
 
         do {
-            listCoreDefinitionsResult = awsGreengrassClient.listCoreDefinitions(listCoreDefinitionsRequest);
+            listCoreDefinitionsResponse = greengrassClient.listCoreDefinitions(listCoreDefinitionsRequest);
 
-            for (DefinitionInformation definitionInformation : listCoreDefinitionsResult.getDefinitions()) {
-                if (definitionInformation.getName() == null) {
+            for (DefinitionInformation definitionInformation : listCoreDefinitionsResponse.definitions()) {
+                if (definitionInformation.name() == null) {
                     continue;
                 }
 
-                if (definitionInformation.getName().equals(coreDefinitionName)) {
-                    return definitionInformation.getId();
+                if (definitionInformation.name().equals(coreDefinitionName)) {
+                    return definitionInformation.id();
                 }
             }
 
-            listCoreDefinitionsRequest.setNextToken(listCoreDefinitionsResult.getNextToken());
-        } while (listCoreDefinitionsResult.getNextToken() != null);
+            listCoreDefinitionsRequest = ListCoreDefinitionsRequest.builder().nextToken(listCoreDefinitionsResponse.nextToken()).build();
+        } while (listCoreDefinitionsResponse.nextToken() != null);
 
         return null;
     }
 
     private String getDeviceDefinitionId(String deviceDefinitionName) {
-        ListDeviceDefinitionsRequest listDeviceDefinitionsRequest = new ListDeviceDefinitionsRequest();
+        ListDeviceDefinitionsRequest listDeviceDefinitionsRequest = ListDeviceDefinitionsRequest.builder().build();
 
-        ListDeviceDefinitionsResult listDeviceDefinitionsResult;
+        ListDeviceDefinitionsResponse listDeviceDefinitionsResponse;
 
         do {
-            listDeviceDefinitionsResult = awsGreengrassClient.listDeviceDefinitions(listDeviceDefinitionsRequest);
+            listDeviceDefinitionsResponse = greengrassClient.listDeviceDefinitions(listDeviceDefinitionsRequest);
 
-            for (DefinitionInformation definitionInformation : listDeviceDefinitionsResult.getDefinitions()) {
-                if (definitionInformation.getName() == null) {
+            for (DefinitionInformation definitionInformation : listDeviceDefinitionsResponse.definitions()) {
+                if (definitionInformation.name() == null) {
                     continue;
                 }
 
-                if (definitionInformation.getName().equals(deviceDefinitionName)) {
-                    return definitionInformation.getId();
+                if (definitionInformation.name().equals(deviceDefinitionName)) {
+                    return definitionInformation.id();
                 }
             }
 
-            listDeviceDefinitionsRequest.setNextToken(listDeviceDefinitionsResult.getNextToken());
-        } while (listDeviceDefinitionsResult.getNextToken() != null);
+            listDeviceDefinitionsRequest = ListDeviceDefinitionsRequest.builder().nextToken(listDeviceDefinitionsResponse.nextToken()).build();
+        } while (listDeviceDefinitionsResponse.nextToken() != null);
 
         return null;
     }
@@ -141,21 +142,23 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         }
 
         log.info("Group does not exist, creating a new one");
-        CreateGroupRequest createGroupRequest = new CreateGroupRequest()
-                .withName(groupName);
+        CreateGroupRequest createGroupRequest = CreateGroupRequest.builder()
+                .name(groupName)
+                .build();
 
-        CreateGroupResult createGroupResult = awsGreengrassClient.createGroup(createGroupRequest);
+        CreateGroupResponse createGroupResponse = greengrassClient.createGroup(createGroupRequest);
 
-        return createGroupResult.getId();
+        return createGroupResponse.id();
     }
 
     @Override
     public void associateRoleToGroup(String groupId, Role greengrassRole) {
-        AssociateRoleToGroupRequest associateRoleToGroupRequest = new AssociateRoleToGroupRequest()
-                .withGroupId(groupId)
-                .withRoleArn(greengrassRole.getArn());
+        AssociateRoleToGroupRequest associateRoleToGroupRequest = AssociateRoleToGroupRequest.builder()
+                .groupId(groupId)
+                .roleArn(greengrassRole.arn())
+                .build();
 
-        awsGreengrassClient.associateRoleToGroup(associateRoleToGroupRequest);
+        greengrassClient.associateRoleToGroup(associateRoleToGroupRequest);
     }
 
     @Override
@@ -165,25 +168,28 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         String coreDefinitionId = getCoreDefinitionId(coreDefinitionName);
 
         if (coreDefinitionId == null) {
-            CreateCoreDefinitionRequest createCoreDefinitionRequest = new CreateCoreDefinitionRequest()
-                    .withName(coreDefinitionName);
+            CreateCoreDefinitionRequest createCoreDefinitionRequest = CreateCoreDefinitionRequest.builder()
+                    .name(coreDefinitionName)
+                    .build();
 
-            CreateCoreDefinitionResult createCoreDefinitionResult = awsGreengrassClient.createCoreDefinition(createCoreDefinitionRequest);
-            coreDefinitionId = createCoreDefinitionResult.getId();
+            CreateCoreDefinitionResponse createCoreDefinitionResponse = greengrassClient.createCoreDefinition(createCoreDefinitionRequest);
+            coreDefinitionId = createCoreDefinitionResponse.id();
         }
 
-        Core core = new Core()
-                .withCertificateArn(coreCertificateArn)
-                .withId(uuid)
-                .withSyncShadow(false)
-                .withThingArn(coreThingArn);
+        Core core = Core.builder()
+                .certificateArn(coreCertificateArn)
+                .id(uuid)
+                .syncShadow(false)
+                .thingArn(coreThingArn)
+                .build();
 
-        CreateCoreDefinitionVersionRequest createCoreDefinitionVersionRequest = new CreateCoreDefinitionVersionRequest()
-                .withCoreDefinitionId(coreDefinitionId)
-                .withCores(core);
+        CreateCoreDefinitionVersionRequest createCoreDefinitionVersionRequest = CreateCoreDefinitionVersionRequest.builder()
+                .coreDefinitionId(coreDefinitionId)
+                .cores(core)
+                .build();
 
-        CreateCoreDefinitionVersionResult createCoreDefinitionVersionResult = awsGreengrassClient.createCoreDefinitionVersion(createCoreDefinitionVersionRequest);
-        return createCoreDefinitionVersionResult.getArn();
+        CreateCoreDefinitionVersionResponse createCoreDefinitionVersionResponse = greengrassClient.createCoreDefinitionVersion(createCoreDefinitionVersionRequest);
+        return createCoreDefinitionVersionResponse.arn();
     }
 
     @Override
@@ -191,78 +197,88 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         List<ResourceAccessPolicy> resourceAccessPolicies = new ArrayList<>();
 
         for (LocalDeviceResource localDeviceResource : functionConf.getLocalDeviceResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = new ResourceAccessPolicy()
-                    .withResourceId(localDeviceResource.getName())
-                    .withPermission(localDeviceResource.isReadWrite() ? Permission.Rw : Permission.Ro);
+            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
+                    .resourceId(localDeviceResource.getName())
+                    .permission(localDeviceResource.isReadWrite() ? Permission.RW : Permission.RO)
+                    .build();
 
             resourceAccessPolicies.add(resourceAccessPolicy);
         }
 
         for (LocalVolumeResource localVolumeResource : functionConf.getLocalVolumeResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = new ResourceAccessPolicy()
-                    .withResourceId(localVolumeResource.getName())
-                    .withPermission(localVolumeResource.isReadWrite() ? Permission.Rw : Permission.Ro);
+            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
+                    .resourceId(localVolumeResource.getName())
+                    .permission(localVolumeResource.isReadWrite() ? Permission.RW : Permission.RO)
+                    .build();
 
             resourceAccessPolicies.add(resourceAccessPolicy);
         }
 
         for (LocalS3Resource localS3Resource : functionConf.getLocalS3Resources()) {
-            ResourceAccessPolicy resourceAccessPolicy = new ResourceAccessPolicy()
-                    .withResourceId(localS3Resource.getName())
-                    .withPermission(Permission.Rw);
+            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
+                    .resourceId(localS3Resource.getName())
+                    .permission(Permission.RW)
+                    .build();
 
             resourceAccessPolicies.add(resourceAccessPolicy);
         }
 
         for (LocalSageMakerResource localSageMakerResource : functionConf.getLocalSageMakerResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = new ResourceAccessPolicy()
-                    .withResourceId(localSageMakerResource.getName())
-                    .withPermission(Permission.Rw);
+            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
+                    .resourceId(localSageMakerResource.getName())
+                    .permission(Permission.RW)
+                    .build();
 
             resourceAccessPolicies.add(resourceAccessPolicy);
         }
 
-        FunctionConfigurationEnvironment functionConfigurationEnvironment = new FunctionConfigurationEnvironment()
-                .withAccessSysfs(functionConf.isAccessSysFs())
-                .withResourceAccessPolicies(resourceAccessPolicies)
-                .withVariables(functionConf.getEnvironmentVariables());
+        FunctionConfigurationEnvironment functionConfigurationEnvironment = FunctionConfigurationEnvironment.builder()
+                .accessSysfs(functionConf.isAccessSysFs())
+                .resourceAccessPolicies(resourceAccessPolicies)
+                .variables(functionConf.getEnvironmentVariables())
+                .build();
 
-        FunctionConfiguration functionConfiguration = new FunctionConfiguration()
-                .withEncodingType(functionConf.getEncodingType())
-                .withMemorySize(functionConf.getMemorySizeInKb())
-                .withPinned(functionConf.isPinned())
-                .withTimeout(functionConf.getTimeoutInSeconds())
-                .withEnvironment(functionConfigurationEnvironment);
+        FunctionConfiguration functionConfiguration = FunctionConfiguration.builder()
+                .encodingType(functionConf.getEncodingType())
+                .memorySize(functionConf.getMemorySizeInKb())
+                .pinned(functionConf.isPinned())
+                .timeout(functionConf.getTimeoutInSeconds())
+                .environment(functionConfigurationEnvironment)
+                .build();
 
-        Function function = new Function()
-                .withFunctionArn(functionArn)
-                .withId(ioHelper.getUuid())
-                .withFunctionConfiguration(functionConfiguration);
+        Function function = Function.builder()
+                .functionArn(functionArn)
+                .id(ioHelper.getUuid())
+                .functionConfiguration(functionConfiguration)
+                .build();
 
         return function;
     }
 
     @Override
     public Function buildFunctionModel(String functionArn,
-                                       com.amazonaws.services.lambda.model.FunctionConfiguration lambdaFunctionConfiguration,
+                                       software.amazon.awssdk.services.lambda.model.FunctionConfiguration lambdaFunctionConfiguration,
                                        Map<String, String> defaultEnvironment,
                                        EncodingType encodingType,
                                        boolean pinned) {
-        FunctionConfigurationEnvironment functionConfigurationEnvironment = new FunctionConfigurationEnvironment()
-                .withAccessSysfs(true)
-                .withVariables(defaultEnvironment);
+        FunctionConfigurationEnvironment functionConfigurationEnvironment = FunctionConfigurationEnvironment.builder()
+                .accessSysfs(true)
+                .variables(defaultEnvironment)
+                .build();
 
-        FunctionConfiguration functionConfiguration = new FunctionConfiguration()
-                .withEncodingType(encodingType)
-                .withMemorySize(lambdaFunctionConfiguration.getMemorySize() * 1024 * 1024)
-                .withPinned(pinned)
-                .withTimeout(lambdaFunctionConfiguration.getTimeout())
-                .withEnvironment(functionConfigurationEnvironment);
+        FunctionConfiguration functionConfiguration = FunctionConfiguration.builder()
+                .encodingType(encodingType)
+                .memorySize(lambdaFunctionConfiguration.memorySize() * 1024 * 1024)
+                .pinned(pinned)
+                .timeout(lambdaFunctionConfiguration.timeout())
+                .environment(functionConfigurationEnvironment)
+                .build();
 
-        Function function = new Function()
-                .withFunctionArn(functionArn)
-                .withId(ioHelper.getUuid())
-                .withFunctionConfiguration(functionConfiguration);
+        Function function = Function.builder()
+                .functionArn(functionArn)
+                .id(ioHelper.getUuid())
+                .functionConfiguration(functionConfiguration)
+                .build();
 
         return function;
     }
@@ -270,7 +286,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Override
     public String createFunctionDefinitionVersion(Set<Function> functions) {
         functions = functions.stream()
-                .filter(function -> !function.getFunctionArn().equals(ggConstants.getGgIpDetectorArn()))
+                .filter(function -> !function.functionArn().equals(ggConstants.getGgIpDetectorArn()))
                 .collect(Collectors.toSet());
 
         ImmutableSet<Function> allFunctions = ImmutableSet.<Function>builder()
@@ -278,15 +294,17 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .add(ggConstants.getGgIpDetectorFunction())
                 .build();
 
-        FunctionDefinitionVersion functionDefinitionVersion = new FunctionDefinitionVersion()
-                .withFunctions(allFunctions);
+        FunctionDefinitionVersion functionDefinitionVersion = FunctionDefinitionVersion.builder()
+                .functions(allFunctions)
+                .build();
 
-        CreateFunctionDefinitionRequest createFunctionDefinitionRequest = new CreateFunctionDefinitionRequest()
-                .withName(DEFAULT)
-                .withInitialVersion(functionDefinitionVersion);
+        CreateFunctionDefinitionRequest createFunctionDefinitionRequest = CreateFunctionDefinitionRequest.builder()
+                .name(DEFAULT)
+                .initialVersion(functionDefinitionVersion)
+                .build();
 
-        CreateFunctionDefinitionResult createFunctionDefinitionResult = awsGreengrassClient.createFunctionDefinition(createFunctionDefinitionRequest);
-        return createFunctionDefinitionResult.getLatestVersionArn();
+        CreateFunctionDefinitionResponse createFunctionDefinitionResponse = greengrassClient.createFunctionDefinition(createFunctionDefinitionRequest);
+        return createFunctionDefinitionResponse.latestVersionArn();
     }
 
     @Override
@@ -294,75 +312,85 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         String deviceDefinitionId = getDeviceDefinitionId(deviceDefinitionName);
 
         if (deviceDefinitionId == null) {
-            CreateDeviceDefinitionRequest createDeviceDefinitionRequest = new CreateDeviceDefinitionRequest()
-                    .withName(deviceDefinitionName);
+            CreateDeviceDefinitionRequest createDeviceDefinitionRequest = CreateDeviceDefinitionRequest.builder()
+                    .name(deviceDefinitionName)
+                    .build();
 
-            CreateDeviceDefinitionResult createDeviceDefinitionResult = awsGreengrassClient.createDeviceDefinition(createDeviceDefinitionRequest);
-            deviceDefinitionId = createDeviceDefinitionResult.getId();
+            CreateDeviceDefinitionResponse createDeviceDefinitionResponse = greengrassClient.createDeviceDefinition(createDeviceDefinitionRequest);
+            deviceDefinitionId = createDeviceDefinitionResponse.id();
         }
 
-        CreateDeviceDefinitionVersionRequest createDeviceDefinitionVersionRequest = new CreateDeviceDefinitionVersionRequest()
-                .withDeviceDefinitionId(deviceDefinitionId)
-                .withDevices(devices);
+        CreateDeviceDefinitionVersionRequest createDeviceDefinitionVersionRequest = CreateDeviceDefinitionVersionRequest.builder()
+                .deviceDefinitionId(deviceDefinitionId)
+                .devices(devices)
+                .build();
 
-        CreateDeviceDefinitionVersionResult createDeviceDefinitionVersionResult = awsGreengrassClient.createDeviceDefinitionVersion(createDeviceDefinitionVersionRequest);
-        return createDeviceDefinitionVersionResult.getArn();
+        CreateDeviceDefinitionVersionResponse createDeviceDefinitionVersionResponse = greengrassClient.createDeviceDefinitionVersion(createDeviceDefinitionVersionRequest);
+        return createDeviceDefinitionVersionResponse.arn();
     }
 
     @Override
     public String createSubscriptionDefinitionAndVersion(List<Subscription> subscriptions) {
-        SubscriptionDefinitionVersion subscriptionDefinitionVersion = new SubscriptionDefinitionVersion()
-                .withSubscriptions(subscriptions);
+        SubscriptionDefinitionVersion subscriptionDefinitionVersion = SubscriptionDefinitionVersion.builder()
+                .subscriptions(subscriptions)
+                .build();
 
-        CreateSubscriptionDefinitionRequest createSubscriptionDefinitionRequest = new CreateSubscriptionDefinitionRequest()
-                .withName(DEFAULT)
-                .withInitialVersion(subscriptionDefinitionVersion);
+        CreateSubscriptionDefinitionRequest createSubscriptionDefinitionRequest = CreateSubscriptionDefinitionRequest.builder()
+                .name(DEFAULT)
+                .initialVersion(subscriptionDefinitionVersion)
+                .build();
 
-        CreateSubscriptionDefinitionResult createSubscriptionDefinitionResult = awsGreengrassClient.createSubscriptionDefinition(createSubscriptionDefinitionRequest);
-        return createSubscriptionDefinitionResult.getLatestVersionArn();
+        CreateSubscriptionDefinitionResponse createSubscriptionDefinitionResponse = greengrassClient.createSubscriptionDefinition(createSubscriptionDefinitionRequest);
+        return createSubscriptionDefinitionResponse.latestVersionArn();
     }
 
     @Override
     public String createDefaultLoggerDefinitionAndVersion() {
-        Logger lambdaLogger = new Logger()
-                .withId(ioHelper.getUuid())
-                .withComponent(LoggerComponent.Lambda)
-                .withLevel(LoggerLevel.INFO)
-                .withType(LoggerType.FileSystem)
-                .withSpace(DEFAULT_LOGGER_SPACE_IN_KB);
+        Logger lambdaLogger = Logger.builder()
+                .id(ioHelper.getUuid())
+                .component(LoggerComponent.LAMBDA)
+                .level(LoggerLevel.INFO)
+                .type(LoggerType.FILE_SYSTEM)
+                .space(DEFAULT_LOGGER_SPACE_IN_KB)
+                .build();
 
-        Logger systemLogger = new Logger()
-                .withId(ioHelper.getUuid())
-                .withComponent(LoggerComponent.GreengrassSystem)
-                .withLevel(LoggerLevel.INFO)
-                .withType(LoggerType.FileSystem)
-                .withSpace(DEFAULT_LOGGER_SPACE_IN_KB);
+        Logger systemLogger = Logger.builder()
+                .id(ioHelper.getUuid())
+                .component(LoggerComponent.GREENGRASS_SYSTEM)
+                .level(LoggerLevel.INFO)
+                .type(LoggerType.FILE_SYSTEM)
+                .space(DEFAULT_LOGGER_SPACE_IN_KB)
+                .build();
 
-        Logger cloudwatchLambdaLogger = new Logger()
-                .withId(ioHelper.getUuid())
-                .withComponent(LoggerComponent.Lambda)
-                .withLevel(LoggerLevel.INFO)
-                .withType(LoggerType.AWSCloudWatch);
+        Logger cloudwatchLambdaLogger = Logger.builder()
+                .id(ioHelper.getUuid())
+                .component(LoggerComponent.LAMBDA)
+                .level(LoggerLevel.INFO)
+                .type(LoggerType.AWS_CLOUD_WATCH)
+                .build();
 
-        Logger cloudwatchSystemLogger = new Logger()
-                .withId(ioHelper.getUuid())
-                .withComponent(LoggerComponent.GreengrassSystem)
-                .withLevel(LoggerLevel.INFO)
-                .withType(LoggerType.AWSCloudWatch);
+        Logger cloudwatchSystemLogger = Logger.builder()
+                .id(ioHelper.getUuid())
+                .component(LoggerComponent.GREENGRASS_SYSTEM)
+                .level(LoggerLevel.INFO)
+                .type(LoggerType.AWS_CLOUD_WATCH)
+                .build();
 
-        LoggerDefinitionVersion loggerDefinitionVersion = new LoggerDefinitionVersion()
-                .withLoggers(lambdaLogger,
+        LoggerDefinitionVersion loggerDefinitionVersion = LoggerDefinitionVersion.builder()
+                .loggers(lambdaLogger,
                         systemLogger,
                         cloudwatchLambdaLogger,
-                        cloudwatchSystemLogger);
+                        cloudwatchSystemLogger)
+                .build();
 
-        CreateLoggerDefinitionRequest createLoggerDefinitionRequest = new CreateLoggerDefinitionRequest()
-                .withName(DEFAULT)
-                .withInitialVersion(loggerDefinitionVersion);
+        CreateLoggerDefinitionRequest createLoggerDefinitionRequest = CreateLoggerDefinitionRequest.builder()
+                .name(DEFAULT)
+                .initialVersion(loggerDefinitionVersion)
+                .build();
 
-        CreateLoggerDefinitionResult createLoggerDefinitionResult = awsGreengrassClient.createLoggerDefinition(createLoggerDefinitionRequest);
+        CreateLoggerDefinitionResponse createLoggerDefinitionResponse = greengrassClient.createLoggerDefinition(createLoggerDefinitionRequest);
 
-        return createLoggerDefinitionResult.getLatestVersionArn();
+        return createLoggerDefinitionResponse.latestVersionArn();
     }
 
     @Override
@@ -371,13 +399,14 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GroupVersion currentGroupVersion = null;
         GroupInformation groupInformation = null;
 
-        CreateGroupVersionRequest createGroupVersionRequest = new CreateGroupVersionRequest()
-                .withGroupId(groupId);
+        CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
+                .groupId(groupId)
+                .build();
 
         if (optionalGroupInformation.isPresent()) {
             groupInformation = optionalGroupInformation.get();
 
-            if (groupInformation.getLatestVersion() == null) {
+            if (groupInformation.latestVersion() == null) {
                 // Group exists but has no versions yet, don't use the group information
                 groupInformation = null;
             }
@@ -389,83 +418,87 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
         } else {
-            GetGroupVersionResult latestGroupVersion = getLatestGroupVersion(groupInformation);
+            GetGroupVersionResponse latestGroupVersion = getLatestGroupVersion(groupInformation);
 
-            currentGroupVersion = latestGroupVersion.getDefinition();
+            currentGroupVersion = latestGroupVersion.definition();
         }
 
         // When an ARN in the new version is NULL we take it from the current version.  This allows us to do updates more easily.
-        mergeCurrentAndNewVersion(newGroupVersion, currentGroupVersion, createGroupVersionRequest);
+        createGroupVersionRequest = mergeCurrentAndNewVersion(newGroupVersion, currentGroupVersion, createGroupVersionRequest.toBuilder());
 
-        CreateGroupVersionResult createGroupVersionResult = awsGreengrassClient.createGroupVersion(createGroupVersionRequest);
+        CreateGroupVersionResponse createGroupVersionResponse = greengrassClient.createGroupVersion(createGroupVersionRequest);
 
-        return createGroupVersionResult.getVersion();
+        return createGroupVersionResponse.version();
     }
 
-    private void mergeCurrentAndNewVersion(GroupVersion newGroupVersion, GroupVersion currentGroupVersion, CreateGroupVersionRequest createGroupVersionRequest) {
-        if (newGroupVersion.getCoreDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setCoreDefinitionVersionArn(currentGroupVersion.getCoreDefinitionVersionArn());
+    private CreateGroupVersionRequest mergeCurrentAndNewVersion(GroupVersion newGroupVersion, GroupVersion currentGroupVersion, CreateGroupVersionRequest.Builder createGroupVersionRequestBuilder) {
+        if (newGroupVersion.coreDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.coreDefinitionVersionArn(currentGroupVersion.coreDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setCoreDefinitionVersionArn(newGroupVersion.getCoreDefinitionVersionArn());
+            createGroupVersionRequestBuilder.coreDefinitionVersionArn(newGroupVersion.coreDefinitionVersionArn());
         }
 
-        if (newGroupVersion.getFunctionDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setFunctionDefinitionVersionArn(currentGroupVersion.getFunctionDefinitionVersionArn());
+        if (newGroupVersion.functionDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.functionDefinitionVersionArn(currentGroupVersion.functionDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setFunctionDefinitionVersionArn(newGroupVersion.getFunctionDefinitionVersionArn());
+            createGroupVersionRequestBuilder.functionDefinitionVersionArn(newGroupVersion.functionDefinitionVersionArn());
         }
 
-        if (newGroupVersion.getSubscriptionDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setSubscriptionDefinitionVersionArn(currentGroupVersion.getSubscriptionDefinitionVersionArn());
+        if (newGroupVersion.subscriptionDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.subscriptionDefinitionVersionArn(currentGroupVersion.subscriptionDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setSubscriptionDefinitionVersionArn(newGroupVersion.getSubscriptionDefinitionVersionArn());
+            createGroupVersionRequestBuilder.subscriptionDefinitionVersionArn(newGroupVersion.subscriptionDefinitionVersionArn());
         }
 
-        if (newGroupVersion.getDeviceDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setDeviceDefinitionVersionArn(currentGroupVersion.getDeviceDefinitionVersionArn());
+        if (newGroupVersion.deviceDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.deviceDefinitionVersionArn(currentGroupVersion.deviceDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setDeviceDefinitionVersionArn(newGroupVersion.getDeviceDefinitionVersionArn());
+            createGroupVersionRequestBuilder.deviceDefinitionVersionArn(newGroupVersion.deviceDefinitionVersionArn());
         }
 
-        if (newGroupVersion.getLoggerDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setLoggerDefinitionVersionArn(currentGroupVersion.getLoggerDefinitionVersionArn());
+        if (newGroupVersion.loggerDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.loggerDefinitionVersionArn(currentGroupVersion.loggerDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setLoggerDefinitionVersionArn(newGroupVersion.getLoggerDefinitionVersionArn());
+            createGroupVersionRequestBuilder.loggerDefinitionVersionArn(newGroupVersion.loggerDefinitionVersionArn());
         }
 
-        if (newGroupVersion.getResourceDefinitionVersionArn() == null) {
-            createGroupVersionRequest.setResourceDefinitionVersionArn(currentGroupVersion.getResourceDefinitionVersionArn());
+        if (newGroupVersion.resourceDefinitionVersionArn() == null) {
+            createGroupVersionRequestBuilder.resourceDefinitionVersionArn(currentGroupVersion.resourceDefinitionVersionArn());
         } else {
-            createGroupVersionRequest.setResourceDefinitionVersionArn(newGroupVersion.getResourceDefinitionVersionArn());
+            createGroupVersionRequestBuilder.resourceDefinitionVersionArn(newGroupVersion.resourceDefinitionVersionArn());
         }
+
+        return createGroupVersionRequestBuilder.build();
     }
 
     @Override
     public String createDeployment(String groupId, String groupVersionId) {
-        CreateDeploymentRequest createDeploymentRequest = new CreateDeploymentRequest()
-                .withGroupId(groupId)
-                .withGroupVersionId(groupVersionId)
-                .withDeploymentType(DeploymentType.NewDeployment);
+        CreateDeploymentRequest createDeploymentRequest = CreateDeploymentRequest.builder()
+                .groupId(groupId)
+                .groupVersionId(groupVersionId)
+                .deploymentType(DeploymentType.NEW_DEPLOYMENT)
+                .build();
 
-        CreateDeploymentResult createDeploymentResult = awsGreengrassClient.createDeployment(createDeploymentRequest);
-        return createDeploymentResult.getDeploymentId();
+        CreateDeploymentResponse createDeploymentResponse = greengrassClient.createDeployment(createDeploymentRequest);
+        return createDeploymentResponse.deploymentId();
     }
 
     @Override
     public DeploymentStatus waitForDeploymentStatusToChange(String groupId, String deploymentId) {
-        GetDeploymentStatusRequest getDeploymentStatusRequest = new GetDeploymentStatusRequest()
-                .withGroupId(groupId)
-                .withDeploymentId(deploymentId);
+        GetDeploymentStatusRequest getDeploymentStatusRequest = GetDeploymentStatusRequest.builder()
+                .groupId(groupId)
+                .deploymentId(deploymentId)
+                .build();
 
         log.info("Checking deployment status...");
 
-        GetDeploymentStatusResult getDeploymentStatusResult = awsGreengrassClient.getDeploymentStatus(getDeploymentStatusRequest);
-        String deploymentStatus = getDeploymentStatusResult.getDeploymentStatus();
+        GetDeploymentStatusResponse getDeploymentStatusResponse = greengrassClient.getDeploymentStatus(getDeploymentStatusRequest);
+        String deploymentStatus = getDeploymentStatusResponse.deploymentStatus();
 
         if (deploymentStatus.equals(IN_PROGRESS) || deploymentStatus.equals(SUCCESS)) {
             return DeploymentStatus.SUCCESSFUL;
         } else if (deploymentStatus.equals(FAILURE)) {
-            String errorMessage = getDeploymentStatusResult.getErrorMessage();
+            String errorMessage = getDeploymentStatusResponse.errorMessage();
 
             log.error("Greengrass service reported an error [" + errorMessage + "]");
 
@@ -516,97 +549,109 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         for (FunctionConf functionConf : functionConfs) {
             for (LocalDeviceResource localDeviceResource : functionConf.getLocalDeviceResources()) {
-                GroupOwnerSetting groupOwnerSetting = new GroupOwnerSetting()
-                        .withAutoAddGroupOwner(true);
+                GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
+                        .autoAddGroupOwner(true)
+                        .build();
 
-                LocalDeviceResourceData localDeviceResourceData = new LocalDeviceResourceData()
-                        .withGroupOwnerSetting(groupOwnerSetting)
-                        .withSourcePath(localDeviceResource.getPath());
+                LocalDeviceResourceData localDeviceResourceData = LocalDeviceResourceData.builder()
+                        .groupOwnerSetting(groupOwnerSetting)
+                        .sourcePath(localDeviceResource.getPath())
+                        .build();
 
-                ResourceDataContainer resourceDataContainer = new ResourceDataContainer()
-                        .withLocalDeviceResourceData(localDeviceResourceData);
+                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                        .localDeviceResourceData(localDeviceResourceData)
+                        .build();
 
                 resources.add(createResource(resourceDataContainer, localDeviceResource.getName(), localDeviceResource.getName()));
             }
 
             for (LocalVolumeResource localVolumeResource : functionConf.getLocalVolumeResources()) {
-                GroupOwnerSetting groupOwnerSetting = new GroupOwnerSetting()
-                        .withAutoAddGroupOwner(true);
+                GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
+                        .autoAddGroupOwner(true)
+                        .build();
 
-                LocalVolumeResourceData localVolumeResourceData = new LocalVolumeResourceData()
-                        .withGroupOwnerSetting(groupOwnerSetting)
-                        .withSourcePath(localVolumeResource.getSourcePath())
-                        .withDestinationPath(localVolumeResource.getDestinationPath());
+                LocalVolumeResourceData localVolumeResourceData = LocalVolumeResourceData.builder()
+                        .groupOwnerSetting(groupOwnerSetting)
+                        .sourcePath(localVolumeResource.getSourcePath())
+                        .destinationPath(localVolumeResource.getDestinationPath())
+                        .build();
 
-                ResourceDataContainer resourceDataContainer = new ResourceDataContainer()
-                        .withLocalVolumeResourceData(localVolumeResourceData);
+                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                        .localVolumeResourceData(localVolumeResourceData)
+                        .build();
 
                 resources.add(createResource(resourceDataContainer, localVolumeResource.getName(), localVolumeResource.getName()));
             }
 
             for (LocalS3Resource localS3Resource : functionConf.getLocalS3Resources()) {
-                S3MachineLearningModelResourceData s3MachineLearningModelResourceData = new S3MachineLearningModelResourceData()
-                        .withS3Uri(localS3Resource.getUri())
-                        .withDestinationPath(localS3Resource.getPath());
+                S3MachineLearningModelResourceData s3MachineLearningModelResourceData = S3MachineLearningModelResourceData.builder()
+                        .s3Uri(localS3Resource.getUri())
+                        .destinationPath(localS3Resource.getPath())
+                        .build();
 
-                ResourceDataContainer resourceDataContainer = new ResourceDataContainer()
-                        .withS3MachineLearningModelResourceData(s3MachineLearningModelResourceData);
+                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                        .s3MachineLearningModelResourceData(s3MachineLearningModelResourceData)
+                        .build();
 
                 resources.add(createResource(resourceDataContainer, localS3Resource.getName(), localS3Resource.getName()));
             }
 
             for (LocalSageMakerResource localSageMakerResource : functionConf.getLocalSageMakerResources()) {
-                SageMakerMachineLearningModelResourceData sageMakerMachineLearningModelResourceData = new SageMakerMachineLearningModelResourceData()
-                        .withSageMakerJobArn(localSageMakerResource.getArn())
-                        .withDestinationPath(localSageMakerResource.getPath());
+                SageMakerMachineLearningModelResourceData sageMakerMachineLearningModelResourceData = SageMakerMachineLearningModelResourceData.builder()
+                        .sageMakerJobArn(localSageMakerResource.getArn())
+                        .destinationPath(localSageMakerResource.getPath())
+                        .build();
 
-                ResourceDataContainer resourceDataContainer = new ResourceDataContainer()
-                        .withSageMakerMachineLearningModelResourceData(sageMakerMachineLearningModelResourceData);
+                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                        .sageMakerMachineLearningModelResourceData(sageMakerMachineLearningModelResourceData)
+                        .build();
 
                 resources.add(createResource(resourceDataContainer, localSageMakerResource.getName(), localSageMakerResource.getName()));
             }
         }
 
-        ResourceDefinitionVersion resourceDefinitionVersion = new ResourceDefinitionVersion()
-                .withResources(resources);
+        ResourceDefinitionVersion resourceDefinitionVersion = ResourceDefinitionVersion.builder()
+                .resources(resources)
+                .build();
 
         validateResourceDefinitionVersion(resourceDefinitionVersion);
 
-        CreateResourceDefinitionRequest createResourceDefinitionRequest = new CreateResourceDefinitionRequest()
-                .withInitialVersion(resourceDefinitionVersion)
-                .withName(ioHelper.getUuid());
+        CreateResourceDefinitionRequest createResourceDefinitionRequest = CreateResourceDefinitionRequest.builder()
+                .initialVersion(resourceDefinitionVersion)
+                .name(ioHelper.getUuid())
+                .build();
 
-        CreateResourceDefinitionResult createResourceDefinitionResult = awsGreengrassClient.createResourceDefinition(createResourceDefinitionRequest);
+        CreateResourceDefinitionResponse createResourceDefinitionResponse = greengrassClient.createResourceDefinition(createResourceDefinitionRequest);
 
-        return createResourceDefinitionResult.getLatestVersionArn();
+        return createResourceDefinitionResponse.latestVersionArn();
     }
 
     private void validateResourceDefinitionVersion(ResourceDefinitionVersion resourceDefinitionVersion) {
-        List<Resource> resource = resourceDefinitionVersion.getResources();
+        List<Resource> resource = resourceDefinitionVersion.resources();
 
         List<LocalDeviceResourceData> localDeviceResources = resource.stream()
-                .map(res -> res.getResourceDataContainer().getLocalDeviceResourceData())
+                .map(res -> res.resourceDataContainer().localDeviceResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         disallowDuplicateLocalDeviceSourcePaths(localDeviceResources);
 
         List<LocalVolumeResourceData> localVolumeResources = resource.stream()
-                .map(res -> res.getResourceDataContainer().getLocalVolumeResourceData())
+                .map(res -> res.resourceDataContainer().localVolumeResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         disallowDuplicateLocalVolumeSourcePaths(localVolumeResources);
 
         List<S3MachineLearningModelResourceData> localS3Resources = resource.stream()
-                .map(res -> res.getResourceDataContainer().getS3MachineLearningModelResourceData())
+                .map(res -> res.resourceDataContainer().s3MachineLearningModelResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         disallowDuplicateS3DestinationPaths(localS3Resources);
 
         List<SageMakerMachineLearningModelResourceData> localSageMakerResources = resource.stream()
-                .map(res -> res.getResourceDataContainer().getSageMakerMachineLearningModelResourceData())
+                .map(res -> res.resourceDataContainer().sageMakerMachineLearningModelResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
@@ -615,7 +660,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateLocalDeviceSourcePaths(List<LocalDeviceResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.getSourcePath())
+                .map(res -> res.sourcePath())
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -632,7 +677,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateLocalVolumeSourcePaths(List<LocalVolumeResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.getSourcePath())
+                .map(res -> res.sourcePath())
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -642,14 +687,14 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     .map(string -> "\"" + string + "\"")
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local device resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            log.error("Duplicate local volume resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
             throw new UnsupportedOperationException("Invalid resource configuration");
         }
     }
 
     private void disallowDuplicateSageMakerDestinationPaths(List<SageMakerMachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.getDestinationPath())
+                .map(res -> res.destinationPath())
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -666,7 +711,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateS3DestinationPaths(List<S3MachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.getDestinationPath())
+                .map(res -> res.destinationPath())
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -696,10 +741,11 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private Resource createResource(ResourceDataContainer resourceDataContainer, String name, String id) {
-        Resource resource = new Resource()
-                .withResourceDataContainer(resourceDataContainer)
-                .withName(name)
-                .withId(id);
+        Resource resource = Resource.builder()
+                .resourceDataContainer(resourceDataContainer)
+                .name(name)
+                .id(id)
+                .build();
 
         return resource;
     }
@@ -718,39 +764,42 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             throw new UnsupportedOperationException("Thing [" + thingName + "] does not have a certificate attached");
         }
 
-        return new Device()
-                .withCertificateArn(certificateArn)
-                .withId(ioHelper.getUuid())
-                .withSyncShadow(true)
-                .withThingArn(iotHelper.getThingArn(thingName));
+        return Device.builder()
+                .certificateArn(certificateArn)
+                .id(ioHelper.getUuid())
+                .syncShadow(true)
+                .thingArn(iotHelper.getThingArn(thingName))
+                .build();
     }
 
     @Override
     public void disassociateServiceRoleFromAccount() {
-        awsGreengrassClient.disassociateServiceRoleFromAccount(new DisassociateServiceRoleFromAccountRequest());
+        greengrassClient.disassociateServiceRoleFromAccount(DisassociateServiceRoleFromAccountRequest.builder().build());
     }
 
     @Override
     public void disassociateRoleFromGroup(String groupId) {
-        awsGreengrassClient.disassociateRoleFromGroup(new DisassociateRoleFromGroupRequest()
-                .withGroupId(groupId));
+        greengrassClient.disassociateRoleFromGroup(DisassociateRoleFromGroupRequest.builder()
+                .groupId(groupId)
+                .build());
     }
 
     @Override
-    public GetGroupVersionResult getLatestGroupVersion(GroupInformation groupInformation) {
-        GetGroupVersionRequest getGroupVersionRequest = new GetGroupVersionRequest()
-                .withGroupId(groupInformation.getId())
-                .withGroupVersionId(groupInformation.getLatestVersion());
+    public GetGroupVersionResponse getLatestGroupVersion(GroupInformation groupInformation) {
+        GetGroupVersionRequest getGroupVersionRequest = GetGroupVersionRequest.builder()
+                .groupId(groupInformation.id())
+                .groupVersionId(groupInformation.latestVersion())
+                .build();
 
-        GetGroupVersionResult groupVersionResult = awsGreengrassClient.getGroupVersion(getGroupVersionRequest);
+        GetGroupVersionResponse groupVersionResponse = greengrassClient.getGroupVersion(getGroupVersionRequest);
 
-        return groupVersionResult;
+        return groupVersionResponse;
     }
 
     private GroupVersion getGroupVersion(GroupInformation groupInformation) {
-        GetGroupVersionResult latestGroupVersion = getLatestGroupVersion(groupInformation);
+        GetGroupVersionResponse latestGroupVersion = getLatestGroupVersion(groupInformation);
 
-        GroupVersion groupVersion = latestGroupVersion.getDefinition();
+        GroupVersion groupVersion = latestGroupVersion.definition();
 
         return groupVersion;
     }
@@ -759,15 +808,17 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public List<Function> getFunctions(GroupInformation groupInformation) {
         GroupVersion groupVersion = getGroupVersion(groupInformation);
 
-        String functionDefinitionVersionArn = groupVersion.getFunctionDefinitionVersionArn();
+        String functionDefinitionVersionArn = groupVersion.functionDefinitionVersionArn();
 
-        GetFunctionDefinitionVersionRequest getFunctionDefinitionVersionRequest = new GetFunctionDefinitionVersionRequest()
-                .withFunctionDefinitionId(idExtractor.extractId(functionDefinitionVersionArn))
-                .withFunctionDefinitionVersionId(idExtractor.extractVersionId(functionDefinitionVersionArn));
-        GetFunctionDefinitionVersionResult getFunctionDefinitionVersionResult = awsGreengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
+        GetFunctionDefinitionVersionRequest getFunctionDefinitionVersionRequest = GetFunctionDefinitionVersionRequest.builder()
+                .functionDefinitionId(idExtractor.extractId(functionDefinitionVersionArn))
+                .functionDefinitionVersionId(idExtractor.extractVersionId(functionDefinitionVersionArn))
+                .build();
 
-        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersionResult.getDefinition();
-        List<Function> functions = functionDefinition.getFunctions();
+        GetFunctionDefinitionVersionResponse getFunctionDefinitionVersionResponse = greengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
+
+        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersionResponse.definition();
+        List<Function> functions = functionDefinition.functions();
 
         return functions;
     }
@@ -776,15 +827,17 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public List<Device> getDevices(GroupInformation groupInformation) {
         GroupVersion groupVersion = getGroupVersion(groupInformation);
 
-        String deviceDefinitionVersionArn = groupVersion.getDeviceDefinitionVersionArn();
+        String deviceDefinitionVersionArn = groupVersion.deviceDefinitionVersionArn();
 
-        GetDeviceDefinitionVersionRequest getDeviceDefinitionVersionRequest = new GetDeviceDefinitionVersionRequest()
-                .withDeviceDefinitionId(idExtractor.extractId(deviceDefinitionVersionArn))
-                .withDeviceDefinitionVersionId(idExtractor.extractVersionId(deviceDefinitionVersionArn));
-        GetDeviceDefinitionVersionResult getDeviceDefinitionVersionResult = awsGreengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
+        GetDeviceDefinitionVersionRequest getDeviceDefinitionVersionRequest = GetDeviceDefinitionVersionRequest.builder()
+                .deviceDefinitionId(idExtractor.extractId(deviceDefinitionVersionArn))
+                .deviceDefinitionVersionId(idExtractor.extractVersionId(deviceDefinitionVersionArn))
+                .build();
 
-        DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResult.getDefinition();
-        List<Device> devices = deviceDefinition.getDevices();
+        GetDeviceDefinitionVersionResponse getDeviceDefinitionVersionResponse = greengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
+
+        DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResponse.definition();
+        List<Device> devices = deviceDefinition.devices();
 
         return devices;
     }
@@ -793,37 +846,41 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public List<Subscription> getSubscriptions(GroupInformation groupInformation) {
         GroupVersion groupVersion = getGroupVersion(groupInformation);
 
-        String subscriptionDefinitionVersionArn = groupVersion.getSubscriptionDefinitionVersionArn();
+        String subscriptionDefinitionVersionArn = groupVersion.subscriptionDefinitionVersionArn();
 
-        GetSubscriptionDefinitionVersionRequest getSubscriptionDefinitionVersionRequest = new GetSubscriptionDefinitionVersionRequest()
-                .withSubscriptionDefinitionId(idExtractor.extractId(subscriptionDefinitionVersionArn))
-                .withSubscriptionDefinitionVersionId(idExtractor.extractVersionId(subscriptionDefinitionVersionArn));
-        GetSubscriptionDefinitionVersionResult getSubscriptionDefinitionVersionResult = awsGreengrassClient.getSubscriptionDefinitionVersion(getSubscriptionDefinitionVersionRequest);
+        GetSubscriptionDefinitionVersionRequest getSubscriptionDefinitionVersionRequest = GetSubscriptionDefinitionVersionRequest.builder()
+                .subscriptionDefinitionId(idExtractor.extractId(subscriptionDefinitionVersionArn))
+                .subscriptionDefinitionVersionId(idExtractor.extractVersionId(subscriptionDefinitionVersionArn))
+                .build();
 
-        SubscriptionDefinitionVersion subscriptionDefinition = getSubscriptionDefinitionVersionResult.getDefinition();
-        List<Subscription> subscriptions = subscriptionDefinition.getSubscriptions();
+        GetSubscriptionDefinitionVersionResponse getSubscriptionDefinitionVersionResponse = greengrassClient.getSubscriptionDefinitionVersion(getSubscriptionDefinitionVersionRequest);
+
+        SubscriptionDefinitionVersion subscriptionDefinition = getSubscriptionDefinitionVersionResponse.definition();
+        List<Subscription> subscriptions = subscriptionDefinition.subscriptions();
 
         return subscriptions;
     }
 
     @Override
-    public GetGroupCertificateAuthorityResult getGroupCa(GroupInformation groupInformation) {
-        ListGroupCertificateAuthoritiesRequest listGroupCertificateAuthoritiesRequest = new ListGroupCertificateAuthoritiesRequest()
-                .withGroupId(groupInformation.getId());
+    public GetGroupCertificateAuthorityResponse getGroupCa(GroupInformation groupInformation) {
+        ListGroupCertificateAuthoritiesRequest listGroupCertificateAuthoritiesRequest = ListGroupCertificateAuthoritiesRequest.builder()
+                .groupId(groupInformation.id())
+                .build();
 
-        ListGroupCertificateAuthoritiesResult listGroupCertificateAuthoritiesResult = awsGreengrassClient.listGroupCertificateAuthorities(listGroupCertificateAuthoritiesRequest);
+        ListGroupCertificateAuthoritiesResponse listGroupCertificateAuthoritiesResponse = greengrassClient.listGroupCertificateAuthorities(listGroupCertificateAuthoritiesRequest);
 
-        if (listGroupCertificateAuthoritiesResult.getGroupCertificateAuthorities().size() != 1) {
+        if (listGroupCertificateAuthoritiesResponse.groupCertificateAuthorities().size() != 1) {
             log.error("Currently we do not support multiple group CAs");
             return null;
         }
 
-        GetGroupCertificateAuthorityRequest getGroupCertificateAuthorityRequest = new GetGroupCertificateAuthorityRequest()
-                .withGroupId(groupInformation.getId())
-                .withCertificateAuthorityId(listGroupCertificateAuthoritiesResult.getGroupCertificateAuthorities().get(0).getGroupCertificateAuthorityId());
+        GetGroupCertificateAuthorityRequest getGroupCertificateAuthorityRequest = GetGroupCertificateAuthorityRequest.builder()
+                .groupId(groupInformation.id())
+                .certificateAuthorityId(listGroupCertificateAuthoritiesResponse.groupCertificateAuthorities().get(0).groupCertificateAuthorityId())
+                .build();
 
-        GetGroupCertificateAuthorityResult getGroupCertificateAuthorityResult = awsGreengrassClient.getGroupCertificateAuthority(getGroupCertificateAuthorityRequest);
+        GetGroupCertificateAuthorityResponse getGroupCertificateAuthorityResponse = greengrassClient.getGroupCertificateAuthority(getGroupCertificateAuthorityRequest);
 
-        return getGroupCertificateAuthorityResult;
+        return getGroupCertificateAuthorityResponse;
     }
 }
