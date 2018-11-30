@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.regions.Region;
+import software.amazon.awssdk.regions.Region;
 
 public interface GGVariables {
     String getCoreThingName(String groupName);

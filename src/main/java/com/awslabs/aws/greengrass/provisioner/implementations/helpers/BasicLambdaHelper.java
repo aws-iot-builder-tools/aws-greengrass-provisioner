@@ -1,9 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.lambda.AWSLambdaClient;
-import com.amazonaws.services.lambda.model.Runtime;
-import com.amazonaws.services.lambda.model.*;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
@@ -14,16 +10,20 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.core.SdkBytes;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.lambda.model.Runtime;
+import software.amazon.awssdk.services.lambda.model.*;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 
 @Slf4j
-
 public class BasicLambdaHelper implements LambdaHelper {
     @Inject
-    AWSLambdaClient awsLambdaClient;
+    LambdaClient lambdaClient;
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -42,11 +42,12 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     private boolean functionExists(String functionName) {
-        GetFunctionRequest getFunctionRequest = new GetFunctionRequest()
-                .withFunctionName(functionName);
+        GetFunctionRequest getFunctionRequest = GetFunctionRequest.builder()
+                .functionName(functionName)
+                .build();
 
         try {
-            awsLambdaClient.getFunction(getFunctionRequest);
+            lambdaClient.getFunction(getFunctionRequest);
             return true;
         } catch (ResourceNotFoundException e) {
             return false;
@@ -72,7 +73,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             throw new UnsupportedOperationException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
         }
 
-        return createFunctionIfNecessary(functionConf, Runtime.Java8, role, zipFilePath);
+        return createFunctionIfNecessary(functionConf, Runtime.JAVA8, role, zipFilePath);
     }
 
     @Override
@@ -87,7 +88,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         pythonBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = pythonBuilder.getArchivePath(functionConf);
-        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.Python27, role, zipFilePath);
+        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.PYTHON2_7, role, zipFilePath);
         return result;
     }
 
@@ -103,7 +104,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         nodeBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = nodeBuilder.getArchivePath(functionConf);
-        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.Nodejs610, role, zipFilePath);
+        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.NODEJS6_10, role, zipFilePath);
         return result;
     }
 
@@ -114,22 +115,25 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (functionExists(groupFunctionName)) {
             loggingHelper.logInfoWithName(log, baseFunctionName, "Deleting existing Lambda function");
-            DeleteFunctionRequest deleteFunctionRequest = new DeleteFunctionRequest()
-                    .withFunctionName(groupFunctionName);
+            DeleteFunctionRequest deleteFunctionRequest = DeleteFunctionRequest.builder()
+                    .functionName(groupFunctionName)
+                    .build();
 
-            awsLambdaClient.deleteFunction(deleteFunctionRequest);
+            lambdaClient.deleteFunction(deleteFunctionRequest);
         }
 
-        FunctionCode functionCode = new FunctionCode()
-                .withZipFile(ByteBuffer.wrap(ioHelper.readFile(zipFilePath)));
+        FunctionCode functionCode = FunctionCode.builder()
+                .zipFile(SdkBytes.fromByteBuffer(ByteBuffer.wrap(ioHelper.readFile(zipFilePath))))
+                .build();
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
-        CreateFunctionRequest createFunctionRequest = new CreateFunctionRequest()
-                .withFunctionName(groupFunctionName)
-                .withRuntime(runtime)
-                .withRole(role.getArn())
-                .withHandler(functionConf.getHandlerName())
-                .withCode(functionCode);
+        CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
+                .functionName(groupFunctionName)
+                .runtime(runtime)
+                .role(role.arn())
+                .handler(functionConf.getHandlerName())
+                .code(functionCode)
+                .build();
 
         boolean created = false;
         int counter = 0;
@@ -138,7 +142,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         synchronized (this) {
             while (!created) {
                 try {
-                    awsLambdaClient.createFunction(createFunctionRequest);
+                    lambdaClient.createFunction(createFunctionRequest);
                     created = true;
                 } catch (InvalidParameterValueException e) {
                     if (!e.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda.")) {
@@ -163,10 +167,10 @@ public class BasicLambdaHelper implements LambdaHelper {
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");
-        PublishVersionResult publishVersionResult = publishFunctionVersion(groupFunctionName);
+        PublishVersionResponse publishVersionResponse = publishFunctionVersion(groupFunctionName);
 
-        String qualifier = publishVersionResult.getVersion();
-        String qualifiedArn = publishVersionResult.getFunctionArn();
+        String qualifier = publishVersionResponse.version();
+        String qualifiedArn = publishVersionResponse.functionArn();
         String baseArn = qualifiedArn.replaceAll(":" + qualifier + "$", "");
 
         LambdaFunctionArnInfo lambdaFunctionArnInfo = LambdaFunctionArnInfo.builder()
@@ -179,11 +183,12 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public PublishVersionResult publishFunctionVersion(String groupFunctionName) {
-        PublishVersionRequest publishVersionRequest = new PublishVersionRequest()
-                .withFunctionName(groupFunctionName);
+    public PublishVersionResponse publishFunctionVersion(String groupFunctionName) {
+        PublishVersionRequest publishVersionRequest = PublishVersionRequest.builder()
+                .functionName(groupFunctionName)
+                .build();
 
-        return awsLambdaClient.publishVersion(publishVersionRequest);
+        return lambdaClient.publishVersion(publishVersionRequest);
     }
 
     private boolean aliasExists(FunctionConf functionConf) {
@@ -192,12 +197,13 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public boolean aliasExists(String functionName, String aliasName) {
-        GetAliasRequest getAliasRequest = new GetAliasRequest()
-                .withFunctionName(functionName)
-                .withName(aliasName);
+        GetAliasRequest getAliasRequest = GetAliasRequest.builder()
+                .functionName(functionName)
+                .name(aliasName)
+                .build();
 
         try {
-            awsLambdaClient.getAlias(getAliasRequest);
+            lambdaClient.getAlias(getAliasRequest);
             return true;
         } catch (ResourceNotFoundException e) {
             return false;
@@ -222,22 +228,26 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (aliasExists(groupFunctionName, aliasName)) {
             loggingHelper.logInfoWithName(log, baseFunctionName, "Deleting existing alias");
-            DeleteAliasRequest deleteAliasRequest = new DeleteAliasRequest()
-                    .withFunctionName(groupFunctionName)
-                    .withName(aliasName);
-            awsLambdaClient.deleteAlias(deleteAliasRequest);
+
+            DeleteAliasRequest deleteAliasRequest = DeleteAliasRequest.builder()
+                    .functionName(groupFunctionName)
+                    .name(aliasName)
+                    .build();
+
+            lambdaClient.deleteAlias(deleteAliasRequest);
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new alias");
 
-        CreateAliasRequest createAliasRequest = new CreateAliasRequest()
-                .withFunctionName(groupFunctionName)
-                .withName(aliasName)
-                .withFunctionVersion(functionVersion);
+        CreateAliasRequest createAliasRequest = CreateAliasRequest.builder()
+                .functionName(groupFunctionName)
+                .name(aliasName)
+                .functionVersion(functionVersion)
+                .build();
 
-        CreateAliasResult createAliasResult = awsLambdaClient.createAlias(createAliasRequest);
+        CreateAliasResponse createAliasResponse = lambdaClient.createAlias(createAliasRequest);
 
-        return createAliasResult.getAliasArn();
+        return createAliasResponse.aliasArn();
     }
 
     @Override
@@ -246,14 +256,15 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public Optional<GetFunctionResult> getFunction(String functionName) {
-        GetFunctionRequest getFunctionRequest = new GetFunctionRequest()
-                .withFunctionName(functionName);
+    public Optional<GetFunctionResponse> getFunction(String functionName) {
+        GetFunctionRequest getFunctionRequest = GetFunctionRequest.builder()
+                .functionName(functionName)
+                .build();
 
         try {
-            GetFunctionResult getFunctionResult = awsLambdaClient.getFunction(getFunctionRequest);
+            GetFunctionResponse getFunctionResponse = lambdaClient.getFunction(getFunctionRequest);
 
-            return Optional.of(getFunctionResult);
+            return Optional.of(getFunctionResponse);
         } catch (ResourceNotFoundException e) {
             return Optional.empty();
         }
@@ -265,10 +276,11 @@ public class BasicLambdaHelper implements LambdaHelper {
         String aliasName = functionArn.substring(functionArn.lastIndexOf(":") + 1);
         String functionName = temp.substring(temp.lastIndexOf(":") + 1);
 
-        DeleteAliasRequest deleteAliasRequest = new DeleteAliasRequest()
-                .withFunctionName(functionName)
-                .withName(aliasName);
+        DeleteAliasRequest deleteAliasRequest = DeleteAliasRequest.builder()
+                .functionName(functionName)
+                .name(aliasName)
+                .build();
 
-        awsLambdaClient.deleteAlias(deleteAliasRequest);
+        lambdaClient.deleteAlias(deleteAliasRequest);
     }
 }

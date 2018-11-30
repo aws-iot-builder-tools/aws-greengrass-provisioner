@@ -1,12 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.model.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GroupQueryHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.services.greengrass.model.*;
 
 import javax.inject.Inject;
 import java.util.List;
@@ -45,14 +45,14 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         GroupInformation groupInformation = optionalGroupInformation.get();
 
         if (queryArguments.getGroupCa) {
-            GetGroupCertificateAuthorityResult getGroupCertificateAuthorityResult = greengrassHelper.getGroupCa(groupInformation);
+            GetGroupCertificateAuthorityResponse getGroupCertificateAuthorityResponse = greengrassHelper.getGroupCa(groupInformation);
 
-            if (getGroupCertificateAuthorityResult == null) {
+            if (getGroupCertificateAuthorityResponse == null) {
                 log.error("Couldn't get the group CA");
                 return;
             }
 
-            String pem = getGroupCertificateAuthorityResult.getPemEncodedCertificate();
+            String pem = getGroupCertificateAuthorityResponse.pemEncodedCertificate();
             log.info("Group CA for group [" + queryArguments.groupName + "]\n" + pem);
 
             String outputFilename = "build/" + queryArguments.groupName + "_Core_CA.pem";

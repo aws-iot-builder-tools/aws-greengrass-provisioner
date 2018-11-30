@@ -1,16 +1,16 @@
 package com.awslabs.aws.greengrass.provisioner.docker;
 
-import com.amazonaws.services.ecr.AmazonECRClient;
-import com.amazonaws.services.ecr.model.CreateRepositoryRequest;
-import com.amazonaws.services.ecr.model.DescribeRepositoriesRequest;
-import com.amazonaws.services.ecr.model.DescribeRepositoriesResult;
-import com.amazonaws.services.ecr.model.RepositoryNotFoundException;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
 import com.github.dockerjava.api.exception.DockerException;
 import lombok.extern.slf4j.Slf4j;
 import org.newsclub.net.unix.AFUNIXSocketException;
+import software.amazon.awssdk.services.ecr.EcrClient;
+import software.amazon.awssdk.services.ecr.model.CreateRepositoryRequest;
+import software.amazon.awssdk.services.ecr.model.DescribeRepositoriesRequest;
+import software.amazon.awssdk.services.ecr.model.DescribeRepositoriesResponse;
+import software.amazon.awssdk.services.ecr.model.RepositoryNotFoundException;
 
 import javax.inject.Inject;
 import javax.ws.rs.ProcessingException;
@@ -25,7 +25,7 @@ public class BasicDockerHelper implements DockerHelper {
     @Inject
     DockerClientProvider dockerClientProvider;
     @Inject
-    AmazonECRClient amazonECRClient;
+    EcrClient ecrClient;
     private Optional<String> ecrRepositoryName;
     private Optional<String> ecrImageName;
 
@@ -75,9 +75,12 @@ public class BasicDockerHelper implements DockerHelper {
     @Override
     public void createEcrRepositoryIfNecessary() {
         try {
-            DescribeRepositoriesResult describeRepositoriesResult = amazonECRClient.describeRepositories(new DescribeRepositoriesRequest().withRepositoryNames(ecrRepositoryName.get()));
+            DescribeRepositoriesResponse describeRepositoriesResponse = ecrClient.describeRepositories(
+                    DescribeRepositoriesRequest.builder()
+                            .repositoryNames(ecrRepositoryName.get())
+                            .build());
 
-            if (describeRepositoriesResult.getRepositories().size() == 1) {
+            if (describeRepositoriesResponse.repositories().size() == 1) {
                 log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
                 return;
             }
@@ -86,7 +89,9 @@ public class BasicDockerHelper implements DockerHelper {
             throw new UnsupportedOperationException("More than one matching ECR repository");
         } catch (RepositoryNotFoundException e) {
             log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
-            amazonECRClient.createRepository(new CreateRepositoryRequest().withRepositoryName(ecrRepositoryName.get()));
+            ecrClient.createRepository(CreateRepositoryRequest.builder()
+                    .repositoryName(ecrRepositoryName.get())
+                    .build());
         }
     }
 
@@ -102,6 +107,6 @@ public class BasicDockerHelper implements DockerHelper {
 
     @Override
     public String getEcrProxyEndpoint() {
-        return dockerClientProvider.getAuthorizationData().getProxyEndpoint();
+        return dockerClientProvider.getAuthorizationData().proxyEndpoint();
     }
 }

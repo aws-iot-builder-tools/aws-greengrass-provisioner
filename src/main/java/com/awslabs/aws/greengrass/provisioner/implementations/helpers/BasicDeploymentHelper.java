@@ -1,15 +1,8 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.regions.Region;
-import com.amazonaws.services.greengrass.model.Device;
-import com.amazonaws.services.greengrass.model.Function;
-import com.amazonaws.services.greengrass.model.GroupVersion;
-import com.amazonaws.services.greengrass.model.Subscription;
-import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
-import com.amazonaws.services.iot.model.CreateRoleAliasResult;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
+import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.VirtualTarEntry;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
@@ -27,6 +20,13 @@ import com.github.dockerjava.api.exception.DockerClientException;
 import com.google.common.collect.ImmutableSet;
 import com.typesafe.config.*;
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.greengrass.model.Device;
+import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.GroupVersion;
+import software.amazon.awssdk.services.greengrass.model.Subscription;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -302,7 +302,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create the role alias //
         ///////////////////////////
 
-        CreateRoleAliasResult createRoleAliasResult = iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, serviceRoleName);
+        CreateRoleAliasResponse createRoleAliasResponse = iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, serviceRoleName);
 
         ///////////////////////////////////////////////////
         // Create an AWS Greengrass Group and get its ID //
@@ -324,7 +324,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         //////////////////////////////////
 
         log.info("Getting keys and certificate for core thing");
-        CreateKeysAndCertificateResult coreKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, CORE_SUB_NAME);
+        KeysAndCertificate coreKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, CORE_SUB_NAME);
 
         String coreCertificateArn = coreKeysAndCertificate.getCertificateArn();
 
@@ -446,7 +446,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             String ggdPolicyName = String.join("_", ggdThingName, "Policy");
 
             log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
-            CreateKeysAndCertificateResult deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, ggdThingName);
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, ggdThingName);
 
             String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
 
@@ -464,7 +464,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .flatMap(entry -> subscriptionHelper.createCloudSubscriptionsForArn(
                         entry.getValue().getFromCloudSubscriptions(),
                         entry.getValue().getToCloudSubscriptions(),
-                        entry.getKey().getFunctionArn()).stream())
+                        entry.getKey().functionArn()).stream())
                 .collect(Collectors.toList()));
 
         subscriptions.addAll(subscriptionHelper.connectFunctionsAndDevices(functionToConfMap, ggdConfs));
@@ -538,13 +538,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Creating group version");
 
-        GroupVersion groupVersion = new GroupVersion()
-                .withCoreDefinitionVersionArn(coreDefinitionVersionArn)
-                .withFunctionDefinitionVersionArn(functionDefinitionVersionArn)
-                .withSubscriptionDefinitionVersionArn(subscriptionDefinitionVersionArn)
-                .withDeviceDefinitionVersionArn(deviceDefinitionVersionArn)
-                .withLoggerDefinitionVersionArn(loggerDefinitionVersionArn)
-                .withResourceDefinitionVersionArn(resourceDefinitionVersionArn);
+        GroupVersion groupVersion = GroupVersion.builder()
+                .coreDefinitionVersionArn(coreDefinitionVersionArn)
+                .functionDefinitionVersionArn(functionDefinitionVersionArn)
+                .subscriptionDefinitionVersionArn(subscriptionDefinitionVersionArn)
+                .deviceDefinitionVersionArn(deviceDefinitionVersionArn)
+                .loggerDefinitionVersionArn(loggerDefinitionVersionArn)
+                .resourceDefinitionVersionArn(resourceDefinitionVersionArn)
+                .build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, groupVersion);
 
@@ -552,7 +553,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Do all of the output file related stuff //
         /////////////////////////////////////////////
 
-        buildOutputFiles(deploymentArguments, createRoleAliasResult, groupId, coreThingName, coreThingArn, coreKeysAndCertificate, ggdConfs, thingNames, ggdPipDependencies);
+        buildOutputFiles(deploymentArguments, createRoleAliasResponse, groupId, coreThingName, coreThingArn, coreKeysAndCertificate, ggdConfs, thingNames, ggdPipDependencies);
 
         ///////////////////////////////////////////////////
         // Start the Docker container build if necessary //
@@ -637,7 +638,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return greengrassServiceRole;
     }
 
-    public void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResult createRoleAliasResult, String groupId, String awsIotThingName, String awsIotThingArn, CreateKeysAndCertificateResult coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies) {
+    public void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies) {
         if (deploymentArguments.scriptOutput == true) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
@@ -658,17 +659,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         log.info("Adding keys and certificate files to archive");
-        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().getPrivateKey().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().getPrivateKey().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
 
         for (String thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
-            CreateKeysAndCertificateResult deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, getGgdThingName(thingName));
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().getPrivateKey().getBytes(), normalFilePermissions);
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, getGgdThingName(thingName));
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
-            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().getPrivateKey().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
         }
 
@@ -707,8 +708,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "group-id.txt"), groupId.getBytes(), normalFilePermissions));
         oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
         oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "role-alias-name.txt"), createRoleAliasResult.getRoleAlias().getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "region.txt"), currentRegion.getName().getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
 
         ///////////////////////
         // Build the scripts //

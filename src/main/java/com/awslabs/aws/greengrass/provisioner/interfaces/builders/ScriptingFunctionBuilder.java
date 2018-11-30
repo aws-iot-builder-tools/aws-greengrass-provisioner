@@ -2,6 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;
@@ -13,8 +15,6 @@ import java.util.zip.GZIPInputStream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import static com.amazonaws.util.ClassLoaderHelper.getResourceAsStream;
-
 public interface ScriptingFunctionBuilder extends FunctionBuilder {
     void buildFunctionIfNecessary(FunctionConf functionConf);
 
@@ -22,7 +22,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
     String getSdkDestinationPath();
 
-    default void copySdk(Logger log, FunctionConf functionConf) {
+    default void copySdk(Logger log, FunctionConf functionConf, ResourceHelper resourceHelper) {
         String buildDirectory = functionConf.getBuildDirectory().toString();
 
         String sdkFullPath = getSdk().getFullSdkPath();
@@ -31,7 +31,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
         try {
             // Try to get the SDK from inside the JAR
-            InputStream inputStream = getResource(sdkInnerZipPath);
+            InputStream inputStream = resourceHelper.getFileOrResourceAsStream(sdkInnerZipPath);
 
             if (inputStream == null) {
                 // Couldn't find the SDK inside the JAR.  Try to get it on the local file system.
@@ -115,25 +115,6 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
         }
 
         return null;
-    }
-
-    default InputStream getResource(String sourcePath) {
-        File resource = new File(sourcePath);
-
-        if (!resource.exists()) {
-            if (!sourcePath.startsWith("/")) {
-                // All resources inside a JAR must be absolute
-                sourcePath = "/" + sourcePath;
-            }
-
-            return getResourceAsStream(sourcePath);
-        }
-
-        try {
-            return new FileInputStream(resource);
-        } catch (FileNotFoundException e) {
-            return null;
-        }
     }
 
     default String trimFilenameIfNecessary(String filename) {

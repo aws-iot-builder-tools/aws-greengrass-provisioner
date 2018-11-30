@@ -5,6 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.zeroturnaround.zip.ZipUtil;
@@ -36,6 +37,8 @@ public class BasicPythonBuilder implements PythonBuilder {
     ProcessHelper processHelper;
     @Inject
     LoggingHelper loggingHelper;
+    @Inject
+    ResourceHelper resourceHelper;
 
     @Inject
     public BasicPythonBuilder() {
@@ -47,7 +50,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         List<Path> beforeSnapshot = getDirectorySnapshot(functionConf);
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf);
+        copySdk(log, functionConf, resourceHelper);
 
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");

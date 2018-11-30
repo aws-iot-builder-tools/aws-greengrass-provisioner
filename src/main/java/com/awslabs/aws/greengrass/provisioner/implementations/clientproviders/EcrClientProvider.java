@@ -1,26 +1,25 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.clientproviders;
 
-import com.amazonaws.services.lambda.AWSLambdaClient;
-import com.amazonaws.services.lambda.AWSLambdaClientBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SafeProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import software.amazon.awssdk.services.ecr.EcrClient;
 
 import javax.inject.Inject;
 
-public class AWSLambdaClientProvider implements SafeProvider<AWSLambdaClient> {
+public class EcrClientProvider implements SafeProvider<EcrClient> {
     @Inject
     SdkErrorHandler sdkErrorHandler;
 
     @Inject
-    public AWSLambdaClientProvider() {
+    public EcrClientProvider() {
     }
 
     @Override
-    public AWSLambdaClient get() {
+    public EcrClient get() {
         return safeGet(sdkErrorHandler);
     }
 
-    public AWSLambdaClient unsafeGet() {
-        return (AWSLambdaClient) AWSLambdaClientBuilder.defaultClient();
+    public EcrClient unsafeGet() {
+        return EcrClient.create();
     }
 }
