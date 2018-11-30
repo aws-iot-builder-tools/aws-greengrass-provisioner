@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.QueryArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.QueryArgumentHelper;
 import com.beust.jcommander.JCommander;
 import lombok.extern.slf4j.Slf4j;

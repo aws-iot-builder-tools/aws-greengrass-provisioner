@@ -1,4 +1,4 @@
-package com.awslabs.aws.greengrass.provisioner.data;
+package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import lombok.Builder;
 import lombok.Data;

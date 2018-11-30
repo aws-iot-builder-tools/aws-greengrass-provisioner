@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.amazonaws.services.greengrass.model.*;
-import com.awslabs.aws.greengrass.provisioner.data.QueryArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GroupQueryHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;

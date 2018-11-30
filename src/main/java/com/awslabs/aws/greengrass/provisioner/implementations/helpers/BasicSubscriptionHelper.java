@@ -2,8 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.amazonaws.services.greengrass.model.Function;
 import com.amazonaws.services.greengrass.model.Subscription;
-import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import lombok.extern.slf4j.Slf4j;
 

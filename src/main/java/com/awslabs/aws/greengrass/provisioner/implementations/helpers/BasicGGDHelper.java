@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGDHelper;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;

@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.builders;
 
-import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 
 import java.util.Optional;
 

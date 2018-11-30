@@ -1,8 +1,8 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.amazonaws.services.identitymanagement.model.Role;
-import com.awslabs.aws.greengrass.provisioner.data.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.data.DeploymentConf;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 
 import java.util.Optional;
 

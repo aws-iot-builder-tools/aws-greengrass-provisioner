@@ -1,6 +1,11 @@
-package com.awslabs.aws.greengrass.provisioner.data;
+package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import com.amazonaws.services.greengrass.model.EncodingType;
+import com.awslabs.aws.greengrass.provisioner.data.Language;
+import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
 import lombok.Builder;
 import lombok.Data;
 import lombok.Singular;

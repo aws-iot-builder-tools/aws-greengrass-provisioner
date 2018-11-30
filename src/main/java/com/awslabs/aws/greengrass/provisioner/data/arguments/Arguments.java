@@ -1,4 +1,4 @@
-package com.awslabs.aws.greengrass.provisioner.data;
+package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 public abstract class Arguments {
     final String LONG_GROUP_NAME_OPTION = "--group-name";

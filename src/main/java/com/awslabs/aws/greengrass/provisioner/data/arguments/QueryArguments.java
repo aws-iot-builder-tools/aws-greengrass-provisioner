@@ -1,4 +1,4 @@
-package com.awslabs.aws.greengrass.provisioner.data;
+package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.beust.jcommander.Parameter;
 import lombok.Getter;

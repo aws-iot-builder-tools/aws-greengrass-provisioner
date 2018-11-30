@@ -4,7 +4,7 @@ import com.amazonaws.services.greengrass.model.*;
 import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
 import com.amazonaws.services.lambda.model.GetFunctionResult;
 import com.amazonaws.services.lambda.model.PublishVersionResult;
-import com.awslabs.aws.greengrass.provisioner.data.UpdateArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import lombok.extern.slf4j.Slf4j;

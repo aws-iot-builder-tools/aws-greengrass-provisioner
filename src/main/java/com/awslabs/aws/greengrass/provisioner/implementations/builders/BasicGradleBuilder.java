@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
-import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ExecutorHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;

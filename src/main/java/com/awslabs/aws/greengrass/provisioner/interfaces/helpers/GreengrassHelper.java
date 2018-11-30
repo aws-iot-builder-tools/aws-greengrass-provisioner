@@ -3,7 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.amazonaws.services.greengrass.model.*;
 import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
-import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 
 import java.util.List;
 import java.util.Map;

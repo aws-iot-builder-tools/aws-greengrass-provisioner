@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
-import com.awslabs.aws.greengrass.provisioner.data.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;

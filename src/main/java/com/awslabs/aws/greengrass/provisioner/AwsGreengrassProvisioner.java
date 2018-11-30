@@ -1,9 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner;
 
 import com.amazonaws.SdkClientException;
-import com.awslabs.aws.greengrass.provisioner.data.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.data.QueryArguments;
-import com.awslabs.aws.greengrass.provisioner.data.UpdateArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.beust.jcommander.ParameterException;
 import lombok.extern.slf4j.Slf4j;

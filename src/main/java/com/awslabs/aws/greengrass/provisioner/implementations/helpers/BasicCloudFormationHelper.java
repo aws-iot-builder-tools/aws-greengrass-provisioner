@@ -2,7 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.amazonaws.services.cloudformation.AmazonCloudFormationClient;
 import com.amazonaws.services.cloudformation.model.*;
-import com.awslabs.aws.greengrass.provisioner.data.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.CloudFormationHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import lombok.extern.slf4j.Slf4j;
