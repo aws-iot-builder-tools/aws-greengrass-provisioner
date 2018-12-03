@@ -11,5 +11,6 @@ import java.util.Optional;
 public class LambdaFunctionArnInfoAndFunctionConf {
     private final LambdaFunctionArnInfo lambdaFunctionArnInfo;
     private final FunctionConf functionConf;
-    @Builder.Default private final Optional<String> error = Optional.empty();
+    @Builder.Default
+    private final Optional<String> error = Optional.empty();
 }

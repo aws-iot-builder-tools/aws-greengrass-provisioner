@@ -8,10 +8,10 @@ import java.util.Optional;
 @Data
 @Builder
 public class LambdaFunctionArnInfo {
+    @Builder.Default
+    private final Optional<String> error = Optional.empty();
     private String qualifier;
     private String baseArn;
     private String qualifiedArn;
     private String aliasArn;
-
-    @Builder.Default private final Optional<String> error = Optional.empty();
 }

@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.builders;
 
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;

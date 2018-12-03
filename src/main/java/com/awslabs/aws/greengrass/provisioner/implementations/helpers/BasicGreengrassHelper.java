@@ -4,7 +4,7 @@ import com.amazonaws.services.greengrass.AWSGreengrassClient;
 import com.amazonaws.services.greengrass.model.*;
 import com.amazonaws.services.identitymanagement.model.Role;
 import com.amazonaws.services.iot.model.ResourceNotFoundException;
-import com.awslabs.aws.greengrass.provisioner.data.*;
+import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;

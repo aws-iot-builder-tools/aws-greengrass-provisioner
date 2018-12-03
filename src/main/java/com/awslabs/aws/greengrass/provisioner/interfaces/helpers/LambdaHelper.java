@@ -4,8 +4,8 @@ import com.amazonaws.services.identitymanagement.model.Role;
 import com.amazonaws.services.lambda.model.GetFunctionResult;
 import com.amazonaws.services.lambda.model.PublishVersionResult;
 import com.amazonaws.services.lambda.model.Runtime;
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 
 import java.util.Optional;
 
