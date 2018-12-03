@@ -13,7 +13,7 @@ fi
 
 PWD=$(pwd)
 
-docker pull timmattison/aws-greengrass-provisioner
+docker pull timmattison/aws-greengrass-provisioner:master
 
 docker run \
    -v $PWD/foundation:/foundation \
@@ -26,4 +26,4 @@ docker run \
    -e AWS_REGION=$REGION \
    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-   timmattison/aws-greengrass-provisioner $@
+   timmattison/aws-greengrass-provisioner:master $@
