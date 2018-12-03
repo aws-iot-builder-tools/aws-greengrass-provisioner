@@ -13,7 +13,9 @@ fi
 
 PWD=$(pwd)
 
-docker pull timmattison/aws-greengrass-provisioner:master
+TAG=`git symbolic-ref --short HEAD`
+
+docker pull timmattison/aws-greengrass-provisioner:$TAG
 
 docker run \
    -v $PWD/foundation:/foundation \
@@ -26,4 +28,4 @@ docker run \
    -e AWS_REGION=$REGION \
    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
    -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY \
-   timmattison/aws-greengrass-provisioner:master $@
+   timmattison/aws-greengrass-provisioner:$TAG $@
