@@ -684,7 +684,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ggConstants.getCorePrivateKeyName(),
                 awsIotThingArn,
                 iotHelper.getEndpoint(),
-                currentRegion);
+                currentRegion,
+                deploymentArguments);
 
         log.info("Adding config.json to archive");
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getConfigFileName(), configJson.getBytes(), normalFilePermissions));
