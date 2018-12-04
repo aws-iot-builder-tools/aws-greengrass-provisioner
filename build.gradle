@@ -53,17 +53,16 @@ def buildDirFoundation = "$buildDir/foundation"
 task downloadGreengrassBinaries(type: Download) {
     // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR
     src(
-            ['https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.6.0/greengrass-linux-armv7l-1.6.0.tar.gz',
-             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.6.0/greengrass-linux-x86-64-1.6.0.tar.gz',
-             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.6.0/greengrass-linux-aarch64-1.6.0.tar.gz',
-             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.6.0/greengrass-ubuntu-x86-64-1.6.0.tar.gz']
+            ['https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.7.0/greengrass-linux-aarch64-1.7.0.tar.gz',
+             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.7.0/greengrass-linux-armv7l-1.7.0.tar.gz',
+             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.7.0/greengrass-linux-x86-64-1.7.0.tar.gz']
     )
     dest "$buildDirDist"
     overwrite false
 }
 
-def pythonSdkTarGz = 'greengrass-core-python-sdk-1.2.0.tar.gz'
-def pythonSdkZip = 'python_sdk_1_2_0.zip'
+def pythonSdkTarGz = 'greengrass-core-python-sdk-1.3.0.tar.gz'
+def pythonSdkZip = 'python_sdk_1_3_0.zip'
 
 task fetchGreengrassPythonSdk(type: Download) {
     src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/python/2.7/$pythonSdkTarGz"
@@ -81,7 +80,7 @@ task downloadPythonSdk(type: Copy, dependsOn: extractPythonSdk) {
     into "$buildDirFoundation"
 }
 
-def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.2.0.tar.gz'
+def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.3.0.tar.gz'
 def nodeSdkZip = 'aws-greengrass-core-sdk-js.zip'
 
 task fetchGreengrassNodeSdk(type: Download) {
@@ -100,8 +99,8 @@ task downloadNodeSdk(type: Copy, dependsOn: extractNodeSdk) {
     into "$buildDirFoundation"
 }
 
-def javaSdkTarGz = 'aws-greengrass-core-sdk-java-1.2.0.tar.gz'
-def javaSdkJar = 'GreengrassJavaSDK-1.2.jar'
+def javaSdkTarGz = 'aws-greengrass-core-sdk-java-1.3.0.tar.gz'
+def javaSdkJar = 'GreengrassJavaSDK-1.3.jar'
 
 task fetchGreengrassJavaSdk(type: Download) {
     src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/java/8/$javaSdkTarGz"

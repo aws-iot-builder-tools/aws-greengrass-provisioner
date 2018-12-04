@@ -12,10 +12,9 @@ import java.util.stream.Collectors;
 import static com.amazonaws.util.ClassLoaderHelper.getResource;
 
 public enum Architecture {
-    ARM32("greengrass-linux-armv7l-1.6.0.tar.gz", "735bae7e87dff157ef7122028fa89c8dc7138e81"),
-    X86_64("greengrass-linux-x86-64-1.6.0.tar.gz", "ed7cd42b2559f141da9dc16342b658ce908f7348"),
-    ARM64("greengrass-linux-aarch64-1.6.0.tar.gz", "2112f37931cf5b35c24ac0b900fe212057a3c02c"),
-    UBUNTU_X86("greengrass-ubuntu-x86-64-1.6.0.tar.gz", "f26a74219d37659683490f416781cbfd964db425");
+    ARM32("greengrass-linux-armv7l-1.7.0.tar.gz", "8ad40c4b982f222f48945829b702cd1a9835bc4d"),
+    X86_64("greengrass-linux-x86-64-1.7.0.tar.gz", "3ead1528fa23320418d6ffb25ca4f6feed70779e"),
+    ARM64("greengrass-linux-aarch64-1.7.0.tar.gz", "30ac94957f9adbd628ce1ae2aa53fe15b1f29d66");
 
     @Getter
     private final String DIST = "dist";

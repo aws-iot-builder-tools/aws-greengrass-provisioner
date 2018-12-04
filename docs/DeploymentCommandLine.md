@@ -10,7 +10,6 @@ Possible values:
 - `ARM32`
 - `X86_64`
 - `ARM64`
-- `UBUNTU_X86`
 
 This is only useful when using the `--script` option.  This tells GGP which Greengrass Core bits to include in the
 bootstrap script.
