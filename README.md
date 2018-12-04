@@ -1,5 +1,7 @@
 # AWS Greengrass Provisioner (AWS GGP or GGP)
 
+**Note: GGP expects to be used with Greengrass Core 1.7.0 only!**
+
 Simplifies provisioning Greengrass Cores and building Greengrass Lambda functions.  GGP configures Greengrass so you don't have to.
 
 GGP creates the device for the core, Greengrass devices, subscriptions, functions, logger configurations, local resource
