@@ -8,8 +8,8 @@ import java.util.Optional;
 import static com.amazonaws.util.ClassLoaderHelper.getResource;
 
 public enum SDK {
-    NODEJS("aws-greengrass-core-sdk-js-1.2.0.tar.gz", "7702b921d8f1e1d3635157fee11044db1bc53dfd", "aws_greengrass_core_sdk_js/sdk", "aws-greengrass-core-sdk-js.zip"),
-    PYTHON("greengrass-core-python-sdk-1.2.0.tar.gz", "47e5198fe3bc731219e44ea2636c8718ac6510c3", "aws_greengrass_core_sdk/sdk", "python_sdk_1_2_0.zip");
+    NODEJS("aws-greengrass-core-sdk-js-1.3.0.tar.gz", "aa1b617ea506b20c527b437a588e1fa7e1eb1d44", "aws_greengrass_core_sdk_js/sdk", "aws-greengrass-core-sdk-js.zip"),
+    PYTHON("greengrass-core-python-sdk-1.3.0.tar.gz", "b4c3208ea6ea7c90bc3bb4f0aa4063c1c9685b7a", "aws_greengrass_core_sdk/sdk", "python_sdk_1_3_0.zip");
 
     @Getter
     private final String FOUNDATION = "foundation";
