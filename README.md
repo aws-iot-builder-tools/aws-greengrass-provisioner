@@ -1,5 +1,7 @@
 # AWS Greengrass Provisioner (AWS GGP or GGP)
 
+![TravisCI status of master branch](https://travis-ci.org/awslabs/aws-greengrass-provisioner.svg?branch=master)
+
 **Note: GGP expects to be used with Greengrass Core 1.7.0 only!**
 
 Simplifies provisioning Greengrass Cores and building Greengrass Lambda functions.  GGP configures Greengrass so you don't have to.
