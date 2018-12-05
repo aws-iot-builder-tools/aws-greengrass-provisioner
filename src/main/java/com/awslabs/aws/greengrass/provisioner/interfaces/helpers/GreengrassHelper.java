@@ -18,6 +18,8 @@ public interface GreengrassHelper {
 
     String createGroupIfNecessary(String groupName);
 
+    boolean groupExists(String groupName);
+
     void associateRoleToGroup(String groupId, Role greengrassRole);
 
     String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn);

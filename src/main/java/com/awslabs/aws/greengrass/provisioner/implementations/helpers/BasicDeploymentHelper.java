@@ -317,6 +317,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create an AWS Greengrass Group and get its ID //
         ///////////////////////////////////////////////////
 
+        if (greengrassHelper.groupExists(deploymentArguments.groupName) &&
+                deploymentArguments.ec2Launch) {
+            log.error("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
+            return;
+        }
+
         log.info("Creating a Greengrass group, if necessary");
         String groupId = greengrassHelper.createGroupIfNecessary(deploymentArguments.groupName);
 
