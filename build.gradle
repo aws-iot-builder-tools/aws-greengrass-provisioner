@@ -184,10 +184,16 @@ dependencies {
     compile "org.kamranzafar:jtar:$jtarVersion"
     compile "com.google.code.gson:gson:$gsonVersion"
     compile "com.github.docker-java:docker-java:$dockerJavaVersion"
-   
+
+    // For Docker-style names
+    compile 'com.oblac:nomen-est-omen:1.2.3'
+
     // For legacy key file support
     compile "com.amazonaws:aws-java-sdk-iot:$awsSdk1Version"
-    
+
+    // For scp/ssh support
+    compile 'com.jcraft:jsch:0.1.55'
+
     compile "software.amazon.awssdk:greengrass:$awsSdk2Version"
     compile "software.amazon.awssdk:iam:$awsSdk2Version"
     compile "software.amazon.awssdk:iot:$awsSdk2Version"

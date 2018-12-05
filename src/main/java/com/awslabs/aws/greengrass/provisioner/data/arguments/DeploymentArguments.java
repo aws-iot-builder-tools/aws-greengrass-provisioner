@@ -24,6 +24,7 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_OEM_OUTPUT_OPTION = "--oem";
     private final String LONG_GGD_OUTPUT_OPTION = "--ggd";
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
+    private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
 
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
@@ -49,6 +50,8 @@ public class DeploymentArguments extends Arguments {
     public boolean ggdOutput;
     @Parameter(names = {LONG_NO_SYSTEMD_OPTION}, description = "Disable systemd support in config.json")
     public boolean noSystemD;
+    @Parameter(names = {LONG_EC2_LAUNCH_OPTION}, description = "Launch an EC2 instance for this deployment")
+    public boolean ec2Launch;
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
     @Parameter(names = "--help", help = true)
