@@ -7,6 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgum
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
 import com.beust.jcommander.JCommander;
+import com.oblac.nomen.Nomen;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import lombok.extern.slf4j.Slf4j;
@@ -84,11 +85,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 .build()
                 .parse(args);
 
-        if (deploymentArguments.groupName == null) {
-            deploymentArguments.setError("Group name is required for all operations");
-            return deploymentArguments;
-        }
-
         Optional<Config> defaults = globalDefaultHelper.getGlobalDefaults(DEFAULTS_CONF);
 
         deploymentArguments.architectureString = getValueOrDefault(deploymentArguments.architectureString, getStringDefault(defaults, "conf.architecture"));
@@ -101,8 +97,32 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ggdOutput = getValueOrDefault(deploymentArguments.ggdOutput, getBooleanDefault(defaults, "conf.ggdBuild"));
         // deploymentArguments.dockerScriptOutput = getValueOrDefault(deploymentArguments.dockerScriptOutput, getBooleanDefault(defaults, "conf.dockerScriptBuild"));
         deploymentArguments.ecrRepositoryNameString = getValueOrDefault(deploymentArguments.ecrRepositoryNameString, getStringDefault(defaults, "conf.ecrRepositoryName"));
-        deploymentArguments.ecrImageNameString = getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
         deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
+        deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
+
+        if (deploymentArguments.ec2Launch) {
+            // If we are launching an EC2 instance we need to build the scripts
+            deploymentArguments.architectureString = Architecture.X86_64.toString();
+            deploymentArguments.scriptOutput = true;
+
+            if (deploymentArguments.buildContainer) {
+                deploymentArguments.setError("Can't build a container for an EC2 launch");
+                return deploymentArguments;
+            }
+        }
+
+        if (deploymentArguments.groupName == null) {
+            if (!deploymentArguments.ec2Launch) {
+                deploymentArguments.setError("Group name is required for all operations");
+                return deploymentArguments;
+            }
+
+            deploymentArguments.groupName = Nomen.est().separator("-").space("-").adjective().pokemon().get();
+            log.info("No group name specified, group name auto-generated [" + deploymentArguments.groupName + "]");
+        }
+
+        // Depends on group name being set
+        deploymentArguments.ecrImageNameString = getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
 
         if (deploymentArguments.architectureString != null) {
             try {

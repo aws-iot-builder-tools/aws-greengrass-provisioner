@@ -152,6 +152,13 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
+    public boolean groupExists(String groupName) {
+        Optional<String> optionalGroupId = getGroupId(groupName);
+
+        return optionalGroupId.isPresent();
+    }
+
+    @Override
     public void associateRoleToGroup(String groupId, Role greengrassRole) {
         AssociateRoleToGroupRequest associateRoleToGroupRequest = AssociateRoleToGroupRequest.builder()
                 .groupId(groupId)

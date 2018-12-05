@@ -6,4 +6,6 @@ import java.util.Optional;
 
 public interface GlobalDefaultHelper {
     Optional<Config> getGlobalDefaults(String path);
+
+    Optional<String> getHomeDirectory();
 }

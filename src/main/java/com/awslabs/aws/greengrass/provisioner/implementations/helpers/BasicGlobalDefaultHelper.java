@@ -34,7 +34,8 @@ public class BasicGlobalDefaultHelper implements GlobalDefaultHelper {
         return Optional.of(defaults);
     }
 
-    private Optional<String> getHomeDirectory() {
+    @Override
+    public Optional<String> getHomeDirectory() {
         return Optional.ofNullable(System.getProperty(USER_HOME));
     }
 }

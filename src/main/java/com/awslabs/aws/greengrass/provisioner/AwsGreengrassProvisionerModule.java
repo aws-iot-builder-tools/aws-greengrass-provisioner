@@ -23,6 +23,7 @@ import dagger.Provides;
 import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
+import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.iam.IamClient;
@@ -36,6 +37,11 @@ public abstract class AwsGreengrassProvisionerModule {
     @Provides
     public static IotClient iotClient(IotClientProvider iotClientProvider) {
         return iotClientProvider.get();
+    }
+
+    @Provides
+    public static Ec2Client ec2Client(Ec2ClientProvider ec2ClientProvider) {
+        return ec2ClientProvider.get();
     }
 
     @Provides
@@ -189,4 +195,7 @@ public abstract class AwsGreengrassProvisionerModule {
 
     @Binds
     public abstract GroupUpdateHelper groupUpdateProcessor(BasicGroupUpdateHelper basicGroupUpdateProcessor);
+
+    @Binds
+    public abstract ThreadHelper threadHelper(BasicThreadHelper basicThreadHelper);
 }
