@@ -5,7 +5,7 @@ import lombok.Getter;
 import java.net.URL;
 import java.util.Optional;
 
-import static com.amazonaws.util.ClassLoaderHelper.getResource;
+import static com.google.common.io.Resources.getResource;
 
 public enum SDK {
     NODEJS("aws-greengrass-core-sdk-js-1.3.0.tar.gz", "aa1b617ea506b20c527b437a588e1fa7e1eb1d44", "aws_greengrass_core_sdk_js/sdk", "aws-greengrass-core-sdk-js.zip"),

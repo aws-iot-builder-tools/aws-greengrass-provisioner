@@ -1,16 +1,18 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 
 import javax.inject.Inject;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
+import java.io.*;
 import java.util.Scanner;
 
-import static com.amazonaws.util.ClassLoaderHelper.getResourceAsStream;
+import static com.google.common.io.Resources.getResource;
 
 public class BasicResourceHelper implements ResourceHelper {
+    @Inject
+    IoHelper ioHelper;
+
     @Inject
     public BasicResourceHelper() {
     }
@@ -22,6 +24,30 @@ public class BasicResourceHelper implements ResourceHelper {
     }
 
     @Override
+    public InputStream getResourceAsStream(String resourcePath) {
+        try {
+            return getResource(resourcePath).openStream();
+        } catch (IOException e) {
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    @Override
+    public InputStream getFileOrResourceAsStream(String sourcePath) {
+        File resource = new File(sourcePath);
+
+        if (!resource.exists()) {
+            return getResourceAsStream(sourcePath);
+        }
+
+        try {
+            return new FileInputStream(resource);
+        } catch (FileNotFoundException e) {
+            return null;
+        }
+    }
+
+    @Override
     public String resourceToString(String filename) {
         return inputStreamToString(getResourceAsStream(filename));
     }
@@ -29,7 +55,8 @@ public class BasicResourceHelper implements ResourceHelper {
     @Override
     public String resourceToTempFile(String filename) {
         try {
-            InputStream inputStream = getResourceAsStream(filename);//note that each / is a directory down in the "jar tree" been the jar the root of the tree
+            InputStream inputStream = getResourceAsStream(filename);
+
             if (inputStream == null) {
                 throw new Exception("Cannot get resource [" + filename + "] from JAR file.");
             }

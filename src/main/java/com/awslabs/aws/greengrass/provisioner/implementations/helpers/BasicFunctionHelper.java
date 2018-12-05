@@ -1,8 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.services.greengrass.model.EncodingType;
-import com.amazonaws.services.greengrass.model.Function;
-import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfoAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.Language;
@@ -19,6 +16,9 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.typesafe.config.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import software.amazon.awssdk.services.greengrass.model.EncodingType;
+import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.iam.model.Role;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -222,7 +222,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
                 functionConfBuilder.buildDirectory(functionPath);
                 functionConfBuilder.language(Language.valueOf(config.getString("conf.language")));
-                functionConfBuilder.encodingType(EncodingType.valueOf(config.getString("conf.encodingType")));
+                functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
                 functionConfBuilder.functionName(config.getString("conf.functionName"));
                 functionConfBuilder.groupName(deploymentConf.getGroupName());
                 functionConfBuilder.handlerName(config.getString("conf.handlerName"));

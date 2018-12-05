@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.regions.Region;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
+import software.amazon.awssdk.regions.Region;
 
 import javax.inject.Inject;
 
@@ -32,7 +32,7 @@ public class BasicGGVariables implements GGVariables {
 
     @Override
     public String getGgHost(Region region) {
-        return "greengrass.iot." + region.getName() + ".amazonaws.com";
+        return "greengrass.iot." + region.toString() + ".amazonaws.com";
     }
 
     @Override

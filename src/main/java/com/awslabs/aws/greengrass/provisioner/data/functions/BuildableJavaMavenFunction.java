@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data.functions;
 
-import com.amazonaws.services.identitymanagement.model.Role;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import software.amazon.awssdk.services.iam.model.Role;
 
 public class BuildableJavaMavenFunction extends BuildableFunction {
     public BuildableJavaMavenFunction(FunctionConf functionConf, Role lambdaRole) {

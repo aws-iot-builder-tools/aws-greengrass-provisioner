@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.identitymanagement.model.Role;
+import software.amazon.awssdk.services.iam.model.Role;
 
 public interface IamHelper {
     /**

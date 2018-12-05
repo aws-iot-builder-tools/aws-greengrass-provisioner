@@ -1,10 +1,10 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.amazonaws.regions.Region;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ConfigFileHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import software.amazon.awssdk.regions.Region;
 
 import javax.inject.Inject;
 import java.util.HashMap;

@@ -1,11 +1,11 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.identitymanagement.model.Role;
-import com.amazonaws.services.lambda.model.GetFunctionResult;
-import com.amazonaws.services.lambda.model.PublishVersionResult;
-import com.amazonaws.services.lambda.model.Runtime;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
+import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
+import software.amazon.awssdk.services.lambda.model.Runtime;
 
 import java.util.Optional;
 
@@ -18,7 +18,7 @@ public interface LambdaHelper {
 
     LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Runtime runtime, Role role, String zipFilePath);
 
-    PublishVersionResult publishFunctionVersion(String groupFunctionName);
+    PublishVersionResponse publishFunctionVersion(String groupFunctionName);
 
     boolean aliasExists(String functionName, String aliasName);
 
@@ -26,7 +26,7 @@ public interface LambdaHelper {
 
     String createAlias(FunctionConf functionConf, String functionVersion);
 
-    Optional<GetFunctionResult> getFunction(String functionName);
+    Optional<GetFunctionResponse> getFunction(String functionName);
 
     void deleteAlias(String functionArn);
 }

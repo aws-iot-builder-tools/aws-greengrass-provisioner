@@ -1,26 +1,28 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.clientproviders;
 
-import com.amazonaws.services.iotdata.AWSIotDataClient;
-import com.amazonaws.services.iotdata.AWSIotDataClientBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SafeProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.iam.IamClient;
 
 import javax.inject.Inject;
 
-public class AWSIotDataClientProvider implements SafeProvider<AWSIotDataClient> {
+public class IamClientProvider implements SafeProvider<IamClient> {
     @Inject
     SdkErrorHandler sdkErrorHandler;
 
     @Inject
-    public AWSIotDataClientProvider() {
+    public IamClientProvider() {
     }
 
     @Override
-    public AWSIotDataClient get() {
+    public IamClient get() {
         return safeGet(sdkErrorHandler);
     }
 
-    public AWSIotDataClient unsafeGet() {
-        return (AWSIotDataClient) AWSIotDataClientBuilder.defaultClient();
+    public IamClient unsafeGet() {
+        return IamClient.builder()
+                .region(Region.AWS_GLOBAL)
+                .build();
     }
 }

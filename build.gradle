@@ -39,7 +39,8 @@ def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerJavaVersion = '3.0.14'
-def awsSdkVersion = '1.11.458'
+def awsSdk1Version = '1.11.463'
+def awsSdk2Version = '2.1.3'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.8.1'
 def junitVersion = '4.12'
@@ -183,14 +184,18 @@ dependencies {
     compile "org.kamranzafar:jtar:$jtarVersion"
     compile "com.google.code.gson:gson:$gsonVersion"
     compile "com.github.docker-java:docker-java:$dockerJavaVersion"
-    compile "com.amazonaws:aws-java-sdk-greengrass:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-iam:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-iot:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-lambda:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-cloudformation:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-sts:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-ecr:$awsSdkVersion"
-    compile "com.amazonaws:aws-java-sdk-ec2:$awsSdkVersion"
+   
+    // For legacy key file support
+    compile "com.amazonaws:aws-java-sdk-iot:$awsSdk1Version"
+    
+    compile "software.amazon.awssdk:greengrass:$awsSdk2Version"
+    compile "software.amazon.awssdk:iam:$awsSdk2Version"
+    compile "software.amazon.awssdk:iot:$awsSdk2Version"
+    compile "software.amazon.awssdk:lambda:$awsSdk2Version"
+    compile "software.amazon.awssdk:cloudformation:$awsSdk2Version"
+    compile "software.amazon.awssdk:sts:$awsSdk2Version"
+    compile "software.amazon.awssdk:ecr:$awsSdk2Version"
+    compile "software.amazon.awssdk:ec2:$awsSdk2Version"
     compile "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
