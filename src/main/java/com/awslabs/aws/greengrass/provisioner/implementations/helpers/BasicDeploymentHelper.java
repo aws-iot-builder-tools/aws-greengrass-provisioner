@@ -393,6 +393,18 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf);
 
+        ////////////////////////////////////////////////////
+        // Determine if any functions need to run as root //
+        ////////////////////////////////////////////////////
+
+        boolean functionsRunningAsRoot = functionConfs.stream()
+                .filter(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0))
+                .anyMatch(functionConf -> !functionConf.isGreengrassContainer());
+
+        if (functionsRunningAsRoot) {
+            log.warn("At least one function was detected that is configured to run outside of the Greengrass container as root");
+        }
+
         /////////////////////////////////////////////////////
         // Launch any CloudFormation templates we've found //
         /////////////////////////////////////////////////////
@@ -568,7 +580,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Do all of the output file related stuff //
         /////////////////////////////////////////////
 
-        buildOutputFiles(deploymentArguments, createRoleAliasResponse, groupId, coreThingName, coreThingArn, coreKeysAndCertificate, ggdConfs, thingNames, ggdPipDependencies);
+        buildOutputFiles(deploymentArguments,
+                createRoleAliasResponse,
+                groupId,
+                coreThingName,
+                coreThingArn,
+                coreKeysAndCertificate,
+                ggdConfs,
+                thingNames,
+                ggdPipDependencies,
+                functionsRunningAsRoot);
 
         //////////////////////////////////////////////////
         // Start building the EC2 instance if necessary //
@@ -1054,7 +1075,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return greengrassServiceRole;
     }
 
-    public void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies) {
+    public void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
         if (deploymentArguments.scriptOutput == true) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
@@ -1102,7 +1123,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 awsIotThingArn,
                 iotHelper.getEndpoint(),
                 currentRegion,
-                deploymentArguments);
+                deploymentArguments,
+                functionsRunningAsRoot);
 
         log.info("Adding config.json to archive");
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getConfigFileName(), configJson.getBytes(), normalFilePermissions));

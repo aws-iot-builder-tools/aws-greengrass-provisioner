@@ -22,7 +22,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
     }
 
     @Override
-    public String generateConfigJson(String caPath, String certPath, String keyPath, String coreThingArn, String iotHost, Region region, DeploymentArguments deploymentArguments) {
+    public String generateConfigJson(String caPath, String certPath, String keyPath, String coreThingArn, String iotHost, Region region, DeploymentArguments deploymentArguments, boolean functionsRunningAsRoot) {
         Map coreThingMap = new HashMap();
         Map runtimeMap = new HashMap();
         Map cgroupMap = new HashMap();
@@ -46,6 +46,10 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         }
 
         runtimeMap.put("cgroup", cgroupMap);
+
+        if (functionsRunningAsRoot) {
+            runtimeMap.put("allowFunctionsToRunAsRoot", "yes");
+        }
 
         cryptoMap.put("principals", principalsMap);
 

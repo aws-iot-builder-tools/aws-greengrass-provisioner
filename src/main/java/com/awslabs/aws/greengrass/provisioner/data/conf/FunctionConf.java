@@ -52,6 +52,12 @@ public class FunctionConf {
 
     private boolean accessSysFs;
 
+    private boolean greengrassContainer;
+
+    private int uid;
+
+    private int gid;
+
     @Singular
     private Map<String, String> environmentVariables;
 
