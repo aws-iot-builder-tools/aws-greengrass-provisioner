@@ -24,6 +24,7 @@ docker run \
    -v $PWD/credentials:/credentials \
    -v $PWD/ggds:/ggds \
    -v $PWD/build:/build \
+   -v $HOME/.ssh:/root/.ssh \
    -it --rm \
    -e AWS_REGION=$REGION \
    -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID \
