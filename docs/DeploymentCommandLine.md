@@ -16,7 +16,7 @@ bootstrap script.
 
 ## Group name
 
-Required: Always
+Required: Always (except for EC2 launches)
 
 Long form: `--group-name`
 
@@ -34,6 +34,31 @@ Long form: `--deployment-config`
 Short form: `-d`
 
 Specifies the file to read the deployment configuration from.
+
+## Launch EC2 instance
+
+Long form: `--ec2-launch`
+
+Launches an EC2 instance, sends the bootstrap script to it, and starts Greengrass Core on that instance.
+
+If no group name is specified with this option one will be randomly generated.  This option will only work on a new
+group and will refuse to run if the group already exists.  This is to prevent Greengrass Cores from running on multiple
+instances at the same time.  To update an EC2 instance that has been built with this option simply omit the
+`--ec2-launch` option on subsequent runs and make sure the group name is specified.
+
+Example (initial launch):
+
+```bash
+GGP -d deployments/python-hello-world.conf -g newgroup --ec2-launch
+```
+
+Example (subsequent runs):
+
+```bash
+GGP -d deployments/python-hello-world.conf -g newgroup
+```
+
+**Note: This option forces the architecture to `X86_64` and enables script output `--script`.**
 
 ## Build container
 
