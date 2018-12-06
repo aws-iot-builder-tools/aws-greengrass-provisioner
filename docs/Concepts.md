@@ -30,7 +30,7 @@ an alias for the version that was published is created.  This makes the subscrip
 - Local resource information
 - Machine learning resource information (Files in S3 or SageMaker training job ARNs)
 
-Function configuration defaults are stored in `functions/deployment.defaults.conf`.
+Function configuration defaults are stored in `deployments/function.defaults.conf`.
 
 ## Per function CloudFormation templates
 
