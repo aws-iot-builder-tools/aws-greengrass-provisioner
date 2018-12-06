@@ -24,8 +24,25 @@ public interface GreengrassHelper {
 
     String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn);
 
+    /**
+     * Build a Function object for a new function
+     *
+     * @param functionArn
+     * @param functionConf
+     * @return
+     */
     Function buildFunctionModel(String functionArn, FunctionConf functionConf);
 
+    /**
+     * Build a Function object for a function that exists in AWS Lambda already
+     *
+     * @param functionArn
+     * @param lambdaFunctionConfiguration
+     * @param defaultEnvironment
+     * @param encodingType
+     * @param pinned
+     * @return
+     */
     Function buildFunctionModel(String functionArn, FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
 
     String createFunctionDefinitionVersion(Set<Function> functions);

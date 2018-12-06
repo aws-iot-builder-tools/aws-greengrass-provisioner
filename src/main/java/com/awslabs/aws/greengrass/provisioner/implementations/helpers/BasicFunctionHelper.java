@@ -236,6 +236,9 @@ public class BasicFunctionHelper implements FunctionHelper {
                 functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
                 functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
                 functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
+                functionConfBuilder.greengrassContainer(config.getBoolean("conf.greengrassContainer"));
+                functionConfBuilder.uid(config.getInt("conf.uid"));
+                functionConfBuilder.gid(config.getInt("conf.gid"));
 
                 setLocalDeviceResourcesConfig(functionConfBuilder, config);
                 setLocalVolumeResourcesConfig(functionConfBuilder, config);

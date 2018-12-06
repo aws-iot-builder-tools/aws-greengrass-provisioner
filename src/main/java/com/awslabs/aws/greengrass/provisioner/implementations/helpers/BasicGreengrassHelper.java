@@ -239,24 +239,35 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             resourceAccessPolicies.add(resourceAccessPolicy);
         }
 
-        FunctionConfigurationEnvironment functionConfigurationEnvironment = FunctionConfigurationEnvironment.builder()
-                .accessSysfs(functionConf.isAccessSysFs())
-                .resourceAccessPolicies(resourceAccessPolicies)
-                .variables(functionConf.getEnvironmentVariables())
-                .build();
+        FunctionConfigurationEnvironment.Builder functionConfigurationEnvironmentBuilder = FunctionConfigurationEnvironment.builder()
+                .variables(functionConf.getEnvironmentVariables());
 
-        FunctionConfiguration functionConfiguration = FunctionConfiguration.builder()
+        FunctionConfiguration.Builder functionConfigurationBuilder = FunctionConfiguration.builder()
                 .encodingType(functionConf.getEncodingType())
-                .memorySize(functionConf.getMemorySizeInKb())
                 .pinned(functionConf.isPinned())
-                .timeout(functionConf.getTimeoutInSeconds())
-                .environment(functionConfigurationEnvironment)
-                .build();
+                .timeout(functionConf.getTimeoutInSeconds());
+
+        FunctionExecutionConfig.Builder functionExecutionConfigBuilder = FunctionExecutionConfig.builder();
+
+        if (functionConf.isGreengrassContainer()) {
+            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.GREENGRASS_CONTAINER);
+            functionConfigurationEnvironmentBuilder.accessSysfs(functionConf.isAccessSysFs())
+                    .resourceAccessPolicies(resourceAccessPolicies);
+
+            functionConfigurationBuilder = functionConfigurationBuilder.memorySize(functionConf.getMemorySizeInKb());
+        } else {
+            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER)
+                    .runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+        }
+
+        functionConfigurationEnvironmentBuilder = functionConfigurationEnvironmentBuilder.execution(functionExecutionConfigBuilder.build());
+
+        functionConfigurationBuilder = functionConfigurationBuilder.environment(functionConfigurationEnvironmentBuilder.build());
 
         Function function = Function.builder()
                 .functionArn(functionArn)
                 .id(ioHelper.getUuid())
-                .functionConfiguration(functionConfiguration)
+                .functionConfiguration(functionConfigurationBuilder.build())
                 .build();
 
         return function;
