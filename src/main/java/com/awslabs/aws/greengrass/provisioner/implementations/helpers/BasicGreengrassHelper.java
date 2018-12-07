@@ -392,7 +392,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             functionConfigurationBuilder.memorySize(null);
             functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
 
-            log.info("Scrubbing memory size from function [" + function.functionArn() + "]");
+            log.warn("Scrubbing memory size from function [" + function.functionArn() + "] since it is running without Greengrass container isolation");
 
             return functionBuilder.build();
         };
