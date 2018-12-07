@@ -177,9 +177,6 @@ else
     INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre libsm6 iproute2"
 fi
 
-$ADD_USER --system ggc_user
-$ADD_GROUP --system ggc_group
-
 if [ "$UPDATE_DEPENDENCIES" = true ]; then
     UNAME=`uname -a`
 
@@ -187,22 +184,24 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     OS_RELEASE=`cat /etc/os-release | grep ^ID=`
 
     if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+      if [ -f /tmp/REBOOT_REQUIRED ] ; then
+        cat /tmp/REBOOT_REQUIRED
+        exit 1
+      fi
+
       CMDLINE=`cat /boot/cmdline.txt`
 
       echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
-
-      if [ -f /tmp/REBOOT_REQUIRED ] ; then
-        echo "You must reboot and re-run this installer"
-        exit 1
-      fi
 
       if [ $? -eq 0 ] ; then
         echo "cgroups already configured"
       else
         sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
-        touch /tmp/REBOOT_REQUIRED
+        REBOOT_REASON="Enabled cgroup_memory in /boot/cmdline.txt.  You must reboot and re-run this installer."
+        echo $REBOOT_REASON > /tmp/REBOOT_REQUIRED
 
-        echo "You must reboot and re-run this installer"
+        cat /tmp/REBOOT_REQUIRED
+
         exit 1
       fi
     fi
@@ -287,6 +286,9 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     #    fi
     #fi
 fi
+
+$ADD_USER --system ggc_user
+$ADD_GROUP --system ggc_group
 
 EXPECTED_JAVA_LOCATION="/usr/local/bin/java8"
 JAVA_8=`which java8`
