@@ -314,7 +314,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .functions(allFunctions);
 
         if (FunctionHelper.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
-            log.info("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
+            log.warn("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
 
             functionDefinitionVersionBuilder.defaultConfig(
                     FunctionDefaultConfig.builder()
