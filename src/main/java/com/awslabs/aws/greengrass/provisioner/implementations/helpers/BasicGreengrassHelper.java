@@ -36,8 +36,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     GGConstants ggConstants;
     @Inject
     IdExtractor idExtractor;
-    @Inject
-    FunctionHelper functionHelper;
 
     @Inject
     public BasicGreengrassHelper() {
@@ -315,7 +313,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         FunctionDefinitionVersion.Builder functionDefinitionVersionBuilder = FunctionDefinitionVersion.builder()
                 .functions(allFunctions);
 
-        if (functionHelper.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
+        if (FunctionHelper.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
             log.info("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
 
             functionDefinitionVersionBuilder.defaultConfig(
