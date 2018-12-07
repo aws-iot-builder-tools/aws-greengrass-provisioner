@@ -265,26 +265,6 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
             popd
         fi
     fi
-
-    #if [[ $UNAME =~ "aws" ]]; then
-    #    if [[ $UNAME =~ "Ubuntu" ]]; then
-    #        echo "Running on Ubuntu on EC2, installing Docker"
-    #
-    #        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-    #        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-    #        apt-get update
-    #        apt-cache policy docker-ce
-    #        apt-get install -y docker-ce
-    #        # Accept connections via TCP
-    #        sed -i 's/ExecStart=\/usr\/bin\/dockerd -H unix:\/\/$/ExecStart=\/usr\/bin\/dockerd -H fd:\/\/ -H tcp:\/\/127.0.0.1:2375/' /lib/systemd/system/docker.service
-    #        # Use device mapper instead of overlay so Greengrass containers work
-    #        sh -c 'echo {\"storage-driver\":\"devicemapper\"} > /etc/docker/daemon.json'
-    #        # Let the Ubuntu user access Docker without sudo
-    #        usermod -aG docker ubuntu
-    #        systemctl daemon-reload
-    #        systemctl restart docker
-    #    fi
-    #fi
 fi
 
 $ADD_USER --system ggc_user
