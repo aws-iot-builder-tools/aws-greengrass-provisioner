@@ -312,13 +312,34 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .add(ggConstants.getGgIpDetectorFunction())
                 .build();
 
-        FunctionDefinitionVersion functionDefinitionVersion = FunctionDefinitionVersion.builder()
-                .functions(allFunctions)
-                .build();
+        FunctionDefinitionVersion.Builder functionDefinitionVersionBuilder = FunctionDefinitionVersion.builder()
+                .functions(allFunctions);
+
+        /**
+         * This is a risky check of whether or not we should default to no container because if only one function
+         * requires no container and all of the other functions use the default values (particularly the GGIPDetector)
+         * then we'll switch to everything running outside of a container.
+         */
+        boolean allNoContainer = allFunctions.stream()
+                .map(Function::functionConfiguration)
+                .map(FunctionConfiguration::environment)
+                .map(FunctionConfigurationEnvironment::execution)
+                .map(FunctionExecutionConfig::isolationMode)
+                .allMatch(functionIsolationMode -> functionIsolationMode.equals(FunctionIsolationMode.NO_CONTAINER));
+
+        if (allNoContainer) {
+            log.info("All functions require NoContainer mode, setting default container mode for deployment to NoContainer");
+
+            functionDefinitionVersionBuilder.defaultConfig(
+                    FunctionDefaultConfig.builder()
+                            .execution(FunctionDefaultExecutionConfig.builder()
+                                    .isolationMode(FunctionIsolationMode.NO_CONTAINER).build())
+                            .build());
+        }
 
         CreateFunctionDefinitionRequest createFunctionDefinitionRequest = CreateFunctionDefinitionRequest.builder()
                 .name(DEFAULT)
-                .initialVersion(functionDefinitionVersion)
+                .initialVersion(functionDefinitionVersionBuilder.build())
                 .build();
 
         CreateFunctionDefinitionResponse createFunctionDefinitionResponse = greengrassClient.createFunctionDefinition(createFunctionDefinitionRequest);
