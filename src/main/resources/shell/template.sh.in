@@ -187,22 +187,24 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     OS_RELEASE=`cat /etc/os-release | grep ^ID=`
 
     if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+      if [ -f /tmp/REBOOT_REQUIRED ] ; then
+        cat /tmp/REBOOT_REQUIRED
+        exit 1
+      fi
+
       CMDLINE=`cat /boot/cmdline.txt`
 
       echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
-
-      if [ -f /tmp/REBOOT_REQUIRED ] ; then
-        echo "You must reboot and re-run this installer"
-        exit 1
-      fi
 
       if [ $? -eq 0 ] ; then
         echo "cgroups already configured"
       else
         sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
-        touch /tmp/REBOOT_REQUIRED
+        REBOOT_REASON="Enabled cgroup_memory in /boot/cmdline.txt.  You must reboot and re-run this installer."
+        echo $REBOOT_REASON > /tmp/REBOOT_REQUIRED
 
-        echo "You must reboot and re-run this installer"
+        cat /tmp/REBOOT_REQUIRED
+
         exit 1
       fi
     fi
