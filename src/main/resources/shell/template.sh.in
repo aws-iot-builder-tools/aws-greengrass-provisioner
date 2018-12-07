@@ -177,9 +177,6 @@ else
     INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre libsm6 iproute2"
 fi
 
-$ADD_USER --system ggc_user
-$ADD_GROUP --system ggc_group
-
 if [ "$UPDATE_DEPENDENCIES" = true ]; then
     UNAME=`uname -a`
 
@@ -289,6 +286,9 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     #    fi
     #fi
 fi
+
+$ADD_USER --system ggc_user
+$ADD_GROUP --system ggc_group
 
 EXPECTED_JAVA_LOCATION="/usr/local/bin/java8"
 JAVA_8=`which java8`
