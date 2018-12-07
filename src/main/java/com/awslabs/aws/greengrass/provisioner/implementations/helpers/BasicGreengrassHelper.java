@@ -37,7 +37,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Inject
     IdExtractor idExtractor;
     @Inject
-    JsonHelper jsonHelper;
+    FunctionHelper functionHelper;
 
     @Inject
     public BasicGreengrassHelper() {
@@ -312,16 +312,27 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .add(ggConstants.getGgIpDetectorFunction())
                 .build();
 
-        FunctionDefinitionVersion functionDefinitionVersion = FunctionDefinitionVersion.builder()
-                .functions(allFunctions)
-                .build();
+        FunctionDefinitionVersion.Builder functionDefinitionVersionBuilder = FunctionDefinitionVersion.builder()
+                .functions(allFunctions);
+
+        if (functionHelper.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
+            log.info("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
+
+            functionDefinitionVersionBuilder.defaultConfig(
+                    FunctionDefaultConfig.builder()
+                            .execution(FunctionDefaultExecutionConfig.builder()
+                                    .isolationMode(FunctionIsolationMode.NO_CONTAINER)
+                                    .build())
+                            .build());
+        }
 
         CreateFunctionDefinitionRequest createFunctionDefinitionRequest = CreateFunctionDefinitionRequest.builder()
                 .name(DEFAULT)
-                .initialVersion(functionDefinitionVersion)
+                .initialVersion(functionDefinitionVersionBuilder.build())
                 .build();
 
         CreateFunctionDefinitionResponse createFunctionDefinitionResponse = greengrassClient.createFunctionDefinition(createFunctionDefinitionRequest);
+
         return createFunctionDefinitionResponse.latestVersionArn();
     }
 
