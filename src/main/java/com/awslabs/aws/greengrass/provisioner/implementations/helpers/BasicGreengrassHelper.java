@@ -310,8 +310,35 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .add(ggConstants.getGgIpDetectorFunction())
                 .build();
 
-        FunctionDefinitionVersion.Builder functionDefinitionVersionBuilder = FunctionDefinitionVersion.builder()
-                .functions(allFunctions);
+        FunctionDefinitionVersion.Builder functionDefinitionVersionBuilder = FunctionDefinitionVersion.builder();
+
+        // Separate out the functions:
+        //   - Functions that specify an isolation mode
+        //   - Functions that don't specify an isolation mode
+        //   - Functions that specify an isolation mode of NoContainer
+        //   - Functions that specify an isolation mode of GreengrassContainer
+
+        Set<Function> functionsWithIsolationModeSpecified = allFunctions.stream()
+                .filter(function -> function.functionConfiguration().environment() != null)
+                .filter(function -> function.functionConfiguration().environment().execution() != null)
+                .filter(function -> function.functionConfiguration().environment().execution().isolationMode() != null)
+                .collect(Collectors.toSet());
+
+        Set<Function> functionsWithoutIsolationModeSpecified = allFunctions.stream()
+                .filter(function -> !functionsWithIsolationModeSpecified.contains(function))
+                .collect(Collectors.toSet());
+
+        Set<Function> functionsWithNoContainer = functionsWithIsolationModeSpecified.stream()
+                .filter(function -> function.functionConfiguration().environment().execution().isolationMode().equals(FunctionIsolationMode.NO_CONTAINER))
+                .collect(Collectors.toSet());
+
+        Set<Function> functionsWithGreengrassContainer = functionsWithIsolationModeSpecified.stream()
+                .filter(function -> function.functionConfiguration().environment().execution().isolationMode().equals(FunctionIsolationMode.GREENGRASS_CONTAINER))
+                .collect(Collectors.toSet());
+
+        // Always scrub functions with the NoContainer isolation mode
+        ImmutableSet.Builder<Function> functionsToScrubBuilder = ImmutableSet.builder();
+        functionsToScrubBuilder.addAll(functionsWithNoContainer);
 
         if (FunctionHelper.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
             log.warn("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
@@ -322,7 +349,31 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                                     .isolationMode(FunctionIsolationMode.NO_CONTAINER)
                                     .build())
                             .build());
+
+            // Scrub all functions without an isolation mode specified
+            functionsToScrubBuilder.addAll(functionsWithoutIsolationModeSpecified);
         }
+
+        // Get the list of functions we need to scrub
+        Set<Function> functionsToScrub = functionsToScrubBuilder.build();
+
+        // Get the list of functions we don't need to scrub
+        Set<Function> nonScrubbedFunctions = allFunctions.stream()
+                .filter(function -> !functionsToScrub.contains(function))
+                .collect(Collectors.toSet());
+
+        // Scrub the necessary functions
+        Set<Function> scrubbedFunctions = functionsToScrubBuilder.build().stream()
+                .map(scrubFunctionForNoContainer())
+                .collect(Collectors.toSet());
+
+        // Merge the functions back together (scrubbed functions and the functions we don't need to scrub)
+        allFunctions = ImmutableSet.<Function>builder()
+                .addAll(scrubbedFunctions)
+                .addAll(nonScrubbedFunctions)
+                .build();
+
+        functionDefinitionVersionBuilder.functions(allFunctions);
 
         CreateFunctionDefinitionRequest createFunctionDefinitionRequest = CreateFunctionDefinitionRequest.builder()
                 .name(DEFAULT)
@@ -333,6 +384,20 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         return createFunctionDefinitionResponse.latestVersionArn();
     }
+
+    private java.util.function.Function<Function, Function> scrubFunctionForNoContainer() {
+        return function -> {
+            Function.Builder functionBuilder = function.toBuilder();
+            FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
+            functionConfigurationBuilder.memorySize(null);
+            functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
+
+            log.info("Scrubbing memory size from function [" + function.functionArn() + "]");
+
+            return functionBuilder.build();
+        };
+    }
+
 
     @Override
     public String createDeviceDefinitionAndVersion(String deviceDefinitionName, List<Device> devices) {
