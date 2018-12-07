@@ -18,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
 
 import javax.inject.Inject;
@@ -44,6 +45,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     public static final String LOCAL_LAMBDA = "LOCAL_LAMBDA_";
     public static final String HTTPS = "https://";
     public static final String FUNCTION_CONF = "function.conf";
+    public static final String CONF_GREENGRASS_CONTAINER = "conf.greengrassContainer";
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
@@ -195,9 +197,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
-        File functionDefaultsConfFile = new File(FUNCTION_DEFAULTS_CONF);
-
-        if (!functionDefaultsConfFile.exists()) {
+        if (!getFunctionDefaultsFile().exists()) {
             log.warn(FUNCTION_DEFAULTS_CONF + " does not exist.  All function configurations MUST contain all required values.");
         }
 
@@ -209,7 +209,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             try {
                 // Load function config file and use function.defaults.conf as the fallback for missing values
                 Config config = ConfigFactory.parseFile(enabledFunctionConf);
-                Config functionDefaults = ConfigFactory.parseFile(functionDefaultsConfFile);
+                Config functionDefaults = getFunctionDefaults();
                 config = config.withFallback(functionDefaults);
 
                 // Add the default environment values to the config so they can be used for resolution
@@ -236,7 +236,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
                 functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
                 functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
-                functionConfBuilder.greengrassContainer(config.getBoolean("conf.greengrassContainer"));
+                functionConfBuilder.greengrassContainer(config.getBoolean(CONF_GREENGRASS_CONTAINER));
                 functionConfBuilder.uid(config.getInt("conf.uid"));
                 functionConfBuilder.gid(config.getInt("conf.gid"));
 
@@ -277,6 +277,21 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
 
         return enabledFunctionConfObjects;
+    }
+
+    private File getFunctionDefaultsFile() {
+        return new File(FUNCTION_DEFAULTS_CONF);
+    }
+
+    private Config getFunctionDefaults() {
+        return ConfigFactory.parseFile(getFunctionDefaultsFile());
+    }
+
+    @Override
+    public FunctionIsolationMode getDefaultFunctionIsolationMode() {
+        boolean greengrassContainer = getFunctionDefaults().getBoolean(CONF_GREENGRASS_CONTAINER);
+
+        return (greengrassContainer ? FunctionIsolationMode.GREENGRASS_CONTAINER : FunctionIsolationMode.NO_CONTAINER);
     }
 
     private void addConnectedShadowsToEnvironment(FunctionConf.FunctionConfBuilder functionConfBuilder, List<String> connectedShadows) {

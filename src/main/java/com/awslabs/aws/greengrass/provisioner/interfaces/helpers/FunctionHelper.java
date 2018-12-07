@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
 
 import java.util.List;
@@ -13,6 +14,8 @@ public interface FunctionHelper {
     void setPathPrefix(String pathPrefix);
 
     List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf);
+
+    FunctionIsolationMode getDefaultFunctionIsolationMode();
 
     List<BuildableFunction> getBuildableFunctions(List<FunctionConf> functionConfs, Role lambdaRole);
 
