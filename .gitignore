@@ -1,5 +1,5 @@
 Config
-root-ca.pem
+root.ca.pem
 *.tar.gz
 .idea/
 *.key

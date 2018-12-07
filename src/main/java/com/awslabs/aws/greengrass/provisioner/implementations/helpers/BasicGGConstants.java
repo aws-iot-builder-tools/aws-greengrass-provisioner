@@ -18,7 +18,7 @@ public class BasicGGConstants implements GGConstants {
     @Getter
     private final String rootCaUrl = "https://www.symantec.com/content/en/us/enterprise/verisign/roots/VeriSign-Class%203-Public-Primary-Certification-Authority-G5.pem";
     @Getter
-    private final String rootCaName = "root-ca.pem";
+    private final String rootCaName = "root.ca.pem";
     @Getter
     private final String configFileName = "config.json";
     @Getter
