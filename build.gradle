@@ -40,7 +40,7 @@ def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerJavaVersion = '3.0.14'
 def awsSdk1Version = '1.11.463'
-def awsSdk2Version = '2.1.3'
+def awsSdk2Version = '2.1.4'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.8.1'
 def junitVersion = '4.12'
@@ -141,10 +141,6 @@ version = '1.0-SNAPSHOT'
 
 description = """"""
 
-wrapper {
-    gradleVersion = gradleDependencyVersion
-}
-
 shadowJar {
     // Create a shadow JAR with all of the necessary dependencies
     archiveName = 'AwsGreengrassProvisioner.jar'
@@ -162,6 +158,7 @@ shadowJar {
 
 sourceCompatibility = 1.8
 targetCompatibility = 1.8
+
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
