@@ -316,7 +316,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         //   - Functions that specify an isolation mode
         //   - Functions that don't specify an isolation mode
         //   - Functions that specify an isolation mode of NoContainer
-        //   - Functions that specify an isolation mode of GreengrassContainer
 
         Set<Function> functionsWithIsolationModeSpecified = allFunctions.stream()
                 .filter(function -> function.functionConfiguration().environment() != null)
@@ -330,10 +329,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         Set<Function> functionsWithNoContainer = functionsWithIsolationModeSpecified.stream()
                 .filter(function -> function.functionConfiguration().environment().execution().isolationMode().equals(FunctionIsolationMode.NO_CONTAINER))
-                .collect(Collectors.toSet());
-
-        Set<Function> functionsWithGreengrassContainer = functionsWithIsolationModeSpecified.stream()
-                .filter(function -> function.functionConfiguration().environment().execution().isolationMode().equals(FunctionIsolationMode.GREENGRASS_CONTAINER))
                 .collect(Collectors.toSet());
 
         // Always scrub functions with the NoContainer isolation mode
