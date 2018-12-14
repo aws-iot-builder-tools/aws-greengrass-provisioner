@@ -34,16 +34,6 @@ import java.util.stream.Collectors;
 @Slf4j
 
 public class BasicFunctionHelper implements FunctionHelper {
-    public static final String FUNCTIONS = "functions";
-    public static final String FUNCTION_DEFAULTS_CONF = "deployments/function.defaults.conf";
-    public static final String URI = "uri";
-    public static final String ARN = "arn";
-    public static final String PATH = "path";
-    public static final String READ_WRITE = "readWrite";
-    public static final String TRAINING_JOB = "training-job";
-    public static final String LOCAL_LAMBDA = "LOCAL_LAMBDA_";
-    public static final String HTTPS = "https://";
-    public static final String FUNCTION_CONF = "function.conf";
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
@@ -56,14 +46,9 @@ public class BasicFunctionHelper implements FunctionHelper {
     ProcessHelper processHelper;
     @Inject
     ExecutorHelper executorHelper;
-    private String pathPrefix = "";
 
     @Inject
     public BasicFunctionHelper() {
-    }
-
-    private File getFunctionConfPath(File function) {
-        return getFunctionConfPath(function.getName());
     }
 
     private Path getFunctionPath(File functionConf) {
@@ -176,11 +161,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public void setPathPrefix(String pathPrefix) {
-        this.pathPrefix = pathPrefix;
-    }
-
-    @Override
     public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf) {
         List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
 
@@ -195,9 +175,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
-        File functionDefaultsConfFile = new File(FUNCTION_DEFAULTS_CONF);
-
-        if (!functionDefaultsConfFile.exists()) {
+        if (!FunctionHelper.getFunctionDefaultsFile().exists()) {
             log.warn(FUNCTION_DEFAULTS_CONF + " does not exist.  All function configurations MUST contain all required values.");
         }
 
@@ -209,7 +187,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             try {
                 // Load function config file and use function.defaults.conf as the fallback for missing values
                 Config config = ConfigFactory.parseFile(enabledFunctionConf);
-                Config functionDefaults = ConfigFactory.parseFile(functionDefaultsConfFile);
+                Config functionDefaults = FunctionHelper.getFunctionDefaults();
                 config = config.withFallback(functionDefaults);
 
                 // Add the default environment values to the config so they can be used for resolution
@@ -236,7 +214,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
                 functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
                 functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
-                functionConfBuilder.greengrassContainer(config.getBoolean("conf.greengrassContainer"));
+                functionConfBuilder.greengrassContainer(config.getBoolean(CONF_GREENGRASS_CONTAINER));
                 functionConfBuilder.uid(config.getInt("conf.uid"));
                 functionConfBuilder.gid(config.getInt("conf.gid"));
 
