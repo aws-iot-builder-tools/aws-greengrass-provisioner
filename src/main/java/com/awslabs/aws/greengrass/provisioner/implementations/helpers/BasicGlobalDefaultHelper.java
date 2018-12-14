@@ -10,6 +10,7 @@ import java.util.Optional;
 
 public class BasicGlobalDefaultHelper implements GlobalDefaultHelper {
     public static final String USER_HOME = "user.home";
+    public static final String GLOBAL_DEFAULTS_DIRECTORY = ".ggprovisioner";
 
     @Inject
     public BasicGlobalDefaultHelper() {
@@ -23,7 +24,7 @@ public class BasicGlobalDefaultHelper implements GlobalDefaultHelper {
             return Optional.empty();
         }
 
-        File file = new File(String.join("/", homeDirectory.get(), ".ggprovisioner", filename));
+        File file = new File(String.join("/", homeDirectory.get(), GLOBAL_DEFAULTS_DIRECTORY, filename));
 
         if (!file.exists()) {
             return Optional.empty();

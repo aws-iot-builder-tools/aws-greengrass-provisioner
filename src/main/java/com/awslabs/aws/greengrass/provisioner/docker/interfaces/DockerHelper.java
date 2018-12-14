@@ -1,6 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
+import com.spotify.docker.client.messages.Container;
+import com.spotify.docker.client.messages.ContainerCreation;
+import com.spotify.docker.client.messages.Image;
 
 import java.io.File;
 import java.util.Optional;
@@ -19,4 +22,18 @@ public interface DockerHelper {
     String getImageName();
 
     String getEcrProxyEndpoint();
+
+    Optional<Image> getImageFromTag(String tag);
+
+    Optional<ContainerCreation> createContainer(String tag, String groupName);
+
+    Optional<Container> getContainerFromImage(String imageId);
+
+    void dumpImagesInfo();
+
+    void dumpContainersInfo();
+
+    void stopContainer(String name);
+
+    void pullImage(String name);
 }

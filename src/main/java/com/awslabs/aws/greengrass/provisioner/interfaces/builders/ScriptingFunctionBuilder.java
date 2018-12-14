@@ -4,14 +4,15 @@ import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
-import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.zip.GZIPInputStream;
+import java.util.Optional;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -22,7 +23,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
     String getSdkDestinationPath();
 
-    default void copySdk(Logger log, FunctionConf functionConf, ResourceHelper resourceHelper) {
+    default void copySdk(Logger log, FunctionConf functionConf, ResourceHelper resourceHelper, IoHelper ioHelper) {
         String buildDirectory = functionConf.getBuildDirectory().toString();
 
         String sdkFullPath = getSdk().getFullSdkPath();
@@ -31,9 +32,9 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
         try {
             // Try to get the SDK from inside the JAR
-            InputStream inputStream = resourceHelper.getFileOrResourceAsStream(sdkInnerZipPath);
+            Optional<InputStream> optionalInputStream = Optional.ofNullable(resourceHelper.getFileOrResourceAsStream(sdkInnerZipPath));
 
-            if (inputStream == null) {
+            if (!optionalInputStream.isPresent()) {
                 // Couldn't find the SDK inside the JAR.  Try to get it on the local file system.
                 if (!new File(sdkFullPath).exists()) {
                     // Couldn't find it on the local file system, give up
@@ -42,17 +43,17 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
                 }
 
                 // Get the inner SDK ZIP file from the full SDK
-                inputStream = extract();
+                optionalInputStream = ioHelper.extractTarGz(getSdk().getFullSdkPath(), getSdk().getInnerSdkZipFilename());
             }
 
-            if (inputStream == null) {
+            if (!optionalInputStream.isPresent()) {
                 log.error("The SDK ZIP file [" + sdkInnerZipPath + "] is missing in the SDK.  This should never happen.  Please report this bug.");
                 System.exit(1);
             }
 
             File destinationPath = new File(String.join("/", buildDirectory, getSdkDestinationPath()));
 
-            ZipInputStream zis = new ZipInputStream(inputStream);
+            ZipInputStream zis = new ZipInputStream(optionalInputStream.get());
             ZipEntry entry;
 
             // Create the base path if necessary
@@ -82,39 +83,6 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
         } catch (Exception e) {
             throw new UnsupportedOperationException(e);
         }
-    }
-
-    default InputStream extract() {
-        try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(new File(getSdk().getFullSdkPath()))))) {
-            TarArchiveEntry tarEntry = tarIn.getNextTarEntry();
-
-            while (tarEntry != null) {
-                String currentFileName = tarEntry.getName();
-
-                if (!currentFileName.endsWith(getSdk().getInnerSdkZipFilename())) {
-                    tarEntry = tarIn.getNextTarEntry();
-                    continue;
-                }
-
-                ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-                int length = 0;
-
-                byte[] buffer = new byte[16384];
-
-                while ((length = tarIn.read(buffer)) != -1) {
-                    baos.write(buffer, 0, length);
-                }
-
-                return new ByteArrayInputStream(baos.toByteArray());
-            }
-        } catch (FileNotFoundException e) {
-            throw new UnsupportedOperationException(e);
-        } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
-        }
-
-        return null;
     }
 
     default String trimFilenameIfNecessary(String filename) {

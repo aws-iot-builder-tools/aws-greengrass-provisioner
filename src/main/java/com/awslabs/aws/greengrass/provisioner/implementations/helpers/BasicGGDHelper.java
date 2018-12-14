@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGDHelper;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -18,7 +19,9 @@ import java.util.stream.Collectors;
 public class BasicGGDHelper implements GGDHelper {
     public static final String GGDS = "ggds/";
     public static final String GGD_CONF = "ggd.conf";
-    public static final String GGD_DEFAULTS_CONF = "ggds/ggd.defaults.conf";
+
+    @Inject
+    GGConstants ggConstants;
 
     @Inject
     public BasicGGDHelper() {
@@ -34,7 +37,7 @@ public class BasicGGDHelper implements GGDHelper {
         try {
             Config config = ConfigFactory.parseFile(ggdConfigFile);
             config = config.withValue("GROUP_NAME", ConfigValueFactory.fromAnyRef(groupName));
-            Config fallback = ConfigFactory.parseFile(new File(GGD_DEFAULTS_CONF));
+            Config fallback = ConfigFactory.parseFile(new File(ggConstants.getGgdDefaultsConf()));
             config = config.withFallback(fallback);
             config = config.resolve();
 

@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
@@ -16,7 +17,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -39,6 +39,8 @@ public class BasicPythonBuilder implements PythonBuilder {
     LoggingHelper loggingHelper;
     @Inject
     ResourceHelper resourceHelper;
+    @Inject
+    IoHelper ioHelper;
 
     @Inject
     public BasicPythonBuilder() {
@@ -50,7 +52,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         List<Path> beforeSnapshot = getDirectorySnapshot(functionConf);
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf, resourceHelper);
+        copySdk(log, functionConf, resourceHelper, ioHelper);
 
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");
@@ -98,12 +100,7 @@ public class BasicPythonBuilder implements PythonBuilder {
 
         ZipUtil.pack(functionConf.getBuildDirectory().toFile(), tempFile);
 
-        try {
-            Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new UnsupportedOperationException(e);
-        }
+        moveDeploymentPackage(functionConf, tempFile);
     }
 
     private void installDependencies(FunctionConf functionConf) {

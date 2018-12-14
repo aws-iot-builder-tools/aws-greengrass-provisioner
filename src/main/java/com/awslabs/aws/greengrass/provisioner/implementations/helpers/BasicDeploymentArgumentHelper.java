@@ -2,7 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.NormalDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
@@ -18,11 +18,11 @@ import java.util.Optional;
 @Slf4j
 public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     @Inject
-    GGConstants ggConstants;
-    @Inject
     GlobalDefaultHelper globalDefaultHelper;
     @Inject
-    DockerHelper dockerHelper;
+    NormalDockerHelper normalDockerHelper;
+    @Inject
+    GGConstants ggConstants;
 
     @Inject
     public BasicDeploymentArgumentHelper() {
@@ -85,7 +85,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 .build()
                 .parse(args);
 
-        Optional<Config> defaults = globalDefaultHelper.getGlobalDefaults(DEFAULTS_CONF);
+        Optional<Config> defaults = globalDefaultHelper.getGlobalDefaults(ggConstants.getDefaultsConf());
 
         deploymentArguments.architectureString = getValueOrDefault(deploymentArguments.architectureString, getStringDefault(defaults, "conf.architecture"));
         deploymentArguments.groupName = getValueOrDefault(deploymentArguments.groupName, getStringDefault(defaults, "conf.groupName"));
@@ -99,6 +99,12 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ecrRepositoryNameString = getValueOrDefault(deploymentArguments.ecrRepositoryNameString, getStringDefault(defaults, "conf.ecrRepositoryName"));
         deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
         deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
+        deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
+
+        if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch) {
+            deploymentArguments.setError("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
+            return deploymentArguments;
+        }
 
         if (deploymentArguments.ec2Launch) {
             // If we are launching an EC2 instance we need to build the scripts
@@ -109,6 +115,11 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 deploymentArguments.setError("Can't build a container for an EC2 launch");
                 return deploymentArguments;
             }
+        }
+
+        if (deploymentArguments.dockerLaunch) {
+            // Force OEM file output with Docker launch
+            deploymentArguments.oemOutput = true;
         }
 
         if (deploymentArguments.groupName == null) {
@@ -165,12 +176,12 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.buildContainer) {
-            if (!dockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
+            if (!normalDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
                 deploymentArguments.setError("No dockerfile exists for architecture [" + deploymentArguments.architecture.toString() + "]");
                 return deploymentArguments;
             }
 
-            if (!dockerHelper.isDockerAvailable()) {
+            if (!normalDockerHelper.isDockerAvailable()) {
                 deploymentArguments.setError("Docker is not available, cannot build a container");
                 return deploymentArguments;
             }

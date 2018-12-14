@@ -7,13 +7,9 @@ import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.RegistryAuth;
 import com.spotify.docker.client.messages.RegistryConfigs;
 import org.bouncycastle.util.encoders.Base64;
-import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.ecr.model.AuthorizationData;
-import software.amazon.awssdk.services.ecr.model.GetAuthorizationTokenRequest;
-import software.amazon.awssdk.services.ecr.model.GetAuthorizationTokenResponse;
 
 import javax.inject.Provider;
-import java.util.List;
 
 public interface DockerClientProvider extends Provider<DockerClient> {
     default RegistryAuthSupplier getRegistryAuthSupplier() {
@@ -61,14 +57,11 @@ public interface DockerClientProvider extends Provider<DockerClient> {
                 .build();
     }
 
-    default AuthorizationData getAuthorizationData() {
-        GetAuthorizationTokenRequest getAuthorizationTokenRequest = GetAuthorizationTokenRequest.builder().build();
-        GetAuthorizationTokenResponse getAuthorizationTokenResponse = getEcrClient().getAuthorizationToken(getAuthorizationTokenRequest);
-        List<AuthorizationData> authorizationDataList = getAuthorizationTokenResponse.authorizationData();
-        return authorizationDataList.get(0);
+    String getRegistryUrl();
+
+    AuthorizationData getAuthorizationData();
+
+    default String getDockerHost() {
+        return "unix:///var/run/docker.sock";
     }
-
-    EcrClient getEcrClient();
-
-    String getDockerHost();
 }

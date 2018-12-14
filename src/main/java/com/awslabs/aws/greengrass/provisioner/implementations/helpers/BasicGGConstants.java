@@ -8,7 +8,7 @@ import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionConfiguration;
 
 import javax.inject.Inject;
-
+import java.io.File;
 
 public class BasicGGConstants implements GGConstants {
     public static final String DEVICE_KEY = "device.key";
@@ -33,6 +33,24 @@ public class BasicGGConstants implements GGConstants {
     private final String ggShadowServiceName = "GGShadowService";
     @Getter
     private final String ggdPrefix = "ggd";
+    @Getter
+    private final String buildDirectory = "build";
+    @Getter
+    private final String certsDirectoryPrefix = "certs";
+    @Getter
+    private final String configDirectoryPrefix = "config";
+    @Getter
+    private final String officialGreengrassDockerImage = "216483018798.dkr.ecr.us-west-2.amazonaws.com/aws-greengrass-docker/amazonlinux:latest";
+    @Getter
+    private final String defaultsConf = "defaults.conf";
+    @Getter
+    private final File functionDefaultsConf = new File("deployments/function.defaults.conf");
+    @Getter
+    private final String confGreengrassContainer = "conf.greengrassContainer";
+    @Getter
+    private final File deploymentDefaultsConf = new File("deployments/deployment.defaults.conf");
+    @Getter
+    private final String ggdDefaultsConf = "ggds/ggd.defaults.conf";
     @Inject
     IoHelper ioHelper;
     @Getter(lazy = true)

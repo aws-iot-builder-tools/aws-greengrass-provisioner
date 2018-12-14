@@ -46,6 +46,10 @@ public class BasicFunctionHelper implements FunctionHelper {
     ProcessHelper processHelper;
     @Inject
     ExecutorHelper executorHelper;
+    @Inject
+    GGConstants ggConstants;
+    @Inject
+    GGVariables ggVariables;
 
     @Inject
     public BasicFunctionHelper() {
@@ -156,7 +160,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return function.resolve("function.cf.yaml");
     }
 
-    public <R> Predicate<R> not(Predicate<R> predicate) {
+    private <R> Predicate<R> not(Predicate<R> predicate) {
         return predicate.negate();
     }
 
@@ -175,8 +179,8 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
-        if (!FunctionHelper.getFunctionDefaultsFile().exists()) {
-            log.warn(FUNCTION_DEFAULTS_CONF + " does not exist.  All function configurations MUST contain all required values.");
+        if (!ggConstants.getFunctionDefaultsConf().exists()) {
+            log.warn(ggConstants.getFunctionDefaultsConf().toString() + " does not exist.  All function configurations MUST contain all required values.");
         }
 
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
@@ -187,7 +191,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             try {
                 // Load function config file and use function.defaults.conf as the fallback for missing values
                 Config config = ConfigFactory.parseFile(enabledFunctionConf);
-                Config functionDefaults = FunctionHelper.getFunctionDefaults();
+                Config functionDefaults = ggVariables.getFunctionDefaults();
                 config = config.withFallback(functionDefaults);
 
                 // Add the default environment values to the config so they can be used for resolution
@@ -214,7 +218,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
                 functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
                 functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
-                functionConfBuilder.greengrassContainer(config.getBoolean(CONF_GREENGRASS_CONTAINER));
+                functionConfBuilder.greengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
                 functionConfBuilder.uid(config.getInt("conf.uid"));
                 functionConfBuilder.gid(config.getInt("conf.gid"));
 
