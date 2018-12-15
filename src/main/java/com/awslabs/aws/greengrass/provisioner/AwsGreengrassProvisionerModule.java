@@ -1,11 +1,10 @@
 package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.docker.BasicDockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.BasicDockerPushHandler;
+import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.UnixSocketDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerPushHandler;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicGradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicMavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicNodeBuilder;
@@ -17,6 +16,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.spotify.docker.client.ProgressHandler;
 import dagger.Binds;
 import dagger.Module;
 import dagger.Provides;
@@ -185,9 +185,6 @@ public abstract class AwsGreengrassProvisionerModule {
     public abstract DockerClientProvider dockerClientProvider(UnixSocketDockerClientProvider unixSocketDockerClientProvider);
 
     @Binds
-    public abstract DockerPushHandler dockerPushHandler(BasicDockerPushHandler basicDockerPushHandler);
-
-    @Binds
     public abstract IdExtractor idExtractor(BasicIdExtractor basicIdExtractor);
 
     @Binds
@@ -198,4 +195,7 @@ public abstract class AwsGreengrassProvisionerModule {
 
     @Binds
     public abstract ThreadHelper threadHelper(BasicThreadHelper basicThreadHelper);
+
+    @Binds
+    public abstract ProgressHandler progressHandler(BasicProgressHandler basicProgressHandler);
 }

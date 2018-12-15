@@ -10,15 +10,14 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
+import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerPushHandler;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassBuildImageResultCallback;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.github.dockerjava.api.DockerClient;
-import com.github.dockerjava.api.exception.DockerClientException;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.*;
+import com.spotify.docker.client.DockerClient;
+import com.spotify.docker.client.exceptions.DockerException;
 import com.typesafe.config.*;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.regions.Region;
@@ -32,7 +31,6 @@ import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 
 import javax.inject.Inject;
-import javax.inject.Provider;
 import java.io.*;
 import java.net.URL;
 import java.nio.file.Files;
@@ -95,21 +93,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     DockerClientProvider dockerClientProvider;
     @Inject
-    DockerPushHandler dockerPushHandler;
+    BasicProgressHandler basicProgressHandler;
     @Inject
     Ec2Client ec2Client;
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
     @Inject
     ThreadHelper threadHelper;
-
     @Inject
-    Provider<GreengrassBuildImageResultCallback> greengrassBuildImageResultCallbackProvider;
+    JsonHelper jsonHelper;
+
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> ggdVirtualTarEntries = Optional.empty();
-
-    private GreengrassBuildImageResultCallback greengrassBuildImageResultCallback;
 
     @Inject
     public BasicDeploymentHelper() {
@@ -613,22 +609,40 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.buildContainer == true) {
             log.info("Configuring container build");
-            greengrassBuildImageResultCallback = greengrassBuildImageResultCallbackProvider.get();
 
             dockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
             dockerHelper.setEcrImageName(Optional.ofNullable(deploymentArguments.ecrImageNameString));
             String imageName = dockerHelper.getImageName();
             String currentDirectory = System.getProperty(USER_DIR);
             File dockerfile = dockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture);
+            String dockerfileTemplate = ioHelper.readFileAsString(dockerfile);
+            dockerfileTemplate = dockerfileTemplate.replaceAll("GROUP_NAME", deploymentArguments.groupName);
 
-            dockerClientProvider.get().buildImageCmd()
-                    // NOTE: Base directory MUST come before Dockerfile or the build will fail!
-                    .withBaseDirectory(new File(currentDirectory))
-                    .withDockerfile(dockerfile)
-                    .withBuildArg("GROUP_NAME", deploymentArguments.groupName)
-                    .withTags(Collections.singleton(imageName))
-                    .exec(greengrassBuildImageResultCallback);
-            log.info("Building container in background");
+            // Add the group name and UUID so we don't accidentally overwrite an existing file
+            File tempDockerfile = dockerfile.toPath().getParent().resolve(
+                    String.join(".", "Dockerfile", deploymentArguments.groupName, ioHelper.getUuid())).toFile();
+            ioHelper.writeFile(tempDockerfile.toString(), dockerfileTemplate.getBytes());
+            tempDockerfile.deleteOnExit();
+
+            try (DockerClient dockerClient = dockerClientProvider.get()) {
+                log.info("Building container");
+
+                String imageId = dockerClient.build(new File(currentDirectory).toPath(),
+                        basicProgressHandler,
+                        DockerClient.BuildParam.dockerfile(tempDockerfile.toPath()));
+
+                dockerClient.tag(imageId, imageName);
+                pushContainerIfNecessary(deploymentArguments, imageId);
+            } catch (DockerException e) {
+                log.error("Container build failed");
+                throw new UnsupportedOperationException(e);
+            } catch (InterruptedException e) {
+                log.error("Container build failed");
+                throw new UnsupportedOperationException(e);
+            } catch (IOException e) {
+                log.error("Container build failed");
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
@@ -711,31 +725,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             Session session = optionalSession.get();
 
             threadHelper.timeLimitTask(getCopyAndBootstrapTask(deploymentArguments, publicIpAddress, user, session), 5, TimeUnit.MINUTES);
-        }
-
-        ///////////////////////////////////////////////////////
-        // Wait for the Docker build to finish, if necessary //
-        ///////////////////////////////////////////////////////
-
-        if (deploymentArguments.buildContainer == true) {
-            try {
-                log.info("Waiting for Docker build to complete...");
-                String imageId = greengrassBuildImageResultCallback.awaitImageId();
-
-                if (imageId != null) {
-                    pushContainerIfNecessary(deploymentArguments, imageId);
-                } else if (greengrassBuildImageResultCallback.error()) {
-                    throw new UnsupportedOperationException(greengrassBuildImageResultCallback.getBuildError().get());
-                } else {
-                    throw new UnsupportedOperationException("No image ID received from Docker, this is likely a bug in the provisioner");
-                }
-            } catch (DockerClientException e) {
-                log.error("Docker build failed [" + e.getMessage() + "]");
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                log.error("Interrupted while waiting for Docker build");
-                e.printStackTrace();
-            }
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -1250,18 +1239,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String shortEcrEndpoint = ecrEndpoint.substring("https://".length()); // Remove leading https://
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
-        DockerClient dockerClient = dockerClientProvider.get();
+        try (DockerClient dockerClient = dockerClientProvider.get()) {
+            try {
+                dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
+            } catch (DockerException e) {
+                throw new UnsupportedOperationException(e);
+            }
 
-        dockerClient.tagImageCmd(imageId, shortEcrEndpointAndRepo, deploymentArguments.groupName).exec();
-        dockerClient.pushImageCmd(shortEcrEndpointAndRepo)
-                .withAuthConfig(dockerClient.authConfig())
-                .exec(dockerPushHandler);
-        dockerPushHandler.await();
-
-        Optional<Throwable> pushError = dockerPushHandler.getPushError();
-
-        if (pushError.isPresent()) {
-            log.error("Docker push failed [" + pushError.get().getMessage() + "]");
+            try {
+                dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, dockerClientProvider.getRegistryAuthSupplier().authFor(""));
+            } catch (DockerException e) {
+                log.error("Docker push failed [" + e.getMessage() + "]");
+                throw new UnsupportedOperationException(e);
+            }
         }
 
         String containerName = shortEcrEndpointAndRepo + ":" + deploymentArguments.groupName;
