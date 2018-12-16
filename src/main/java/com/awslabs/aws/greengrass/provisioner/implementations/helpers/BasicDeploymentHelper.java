@@ -1267,6 +1267,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String containerName = shortEcrEndpointAndRepo + ":" + deploymentArguments.groupName;
         log.info("Container pushed to [" + containerName + "]");
 
+        /* Temporarily removed until Ubuntu issues are sorted out
         String baseDockerScriptName = String.join(".", "docker", deploymentArguments.groupName, "sh");
         String dockerShScriptName = String.join("/", BUILD, baseDockerScriptName);
 
@@ -1274,7 +1275,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info(" - Attach a role to the EC2 instance that gives it access to ECR");
         log.info(" - Run the Docker script [" + dockerShScriptName + "]");
 
-        /* Temporarily removed until Ubuntu issues are sorted out
         if (!deploymentArguments.dockerScriptOutput == true) {
             log.warn("The Docker script was NOT built on this run");
         } else {
