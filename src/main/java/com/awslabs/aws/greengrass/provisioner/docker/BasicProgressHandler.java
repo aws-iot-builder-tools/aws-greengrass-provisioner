@@ -6,9 +6,12 @@ import com.spotify.docker.client.messages.ProgressMessage;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 @Slf4j
 public class BasicProgressHandler implements ProgressHandler {
+    String lastMessage = null;
+
     @Inject
     public BasicProgressHandler() {
     }
@@ -20,16 +23,19 @@ public class BasicProgressHandler implements ProgressHandler {
             return;
         }
 
-        if (message.status() != null) {
+        if ((message.status() != null) && (!message.status().equals(lastMessage))) {
             log.info("Status: " + message.status());
+            lastMessage = message.status();
         }
 
-        if (message.progress() != null) {
+        if ((message.progress() != null) && (!message.progress().equals(lastMessage))) {
             log.info("Progress: " + message.progress());
+            lastMessage = message.progress();
         }
 
-        if (message.stream() != null) {
+        if ((message.stream() != null) && (!message.stream().equals(lastMessage))) {
             log.info("Stream: " + message.stream());
+            lastMessage = message.stream();
         }
     }
 }
