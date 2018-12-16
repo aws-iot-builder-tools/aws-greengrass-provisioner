@@ -3,9 +3,9 @@ package com.awslabs.aws.greengrass.provisioner.docker;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
-import com.github.dockerjava.api.exception.DockerException;
+import com.spotify.docker.client.DockerClient;
+import com.spotify.docker.client.exceptions.DockerException;
 import lombok.extern.slf4j.Slf4j;
-import org.newsclub.net.unix.AFUNIXSocketException;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.ecr.model.CreateRepositoryRequest;
 import software.amazon.awssdk.services.ecr.model.DescribeRepositoriesRequest;
@@ -13,7 +13,6 @@ import software.amazon.awssdk.services.ecr.model.DescribeRepositoriesResponse;
 import software.amazon.awssdk.services.ecr.model.RepositoryNotFoundException;
 
 import javax.inject.Inject;
-import javax.ws.rs.ProcessingException;
 import java.io.File;
 import java.util.Optional;
 
@@ -46,22 +45,17 @@ public class BasicDockerHelper implements DockerHelper {
 
     @Override
     public boolean isDockerAvailable() {
-        try {
-            dockerClientProvider.get().listImagesCmd().exec();
+        try (DockerClient dockerClient = dockerClientProvider.get()) {
+            dockerClient.listImages(DockerClient.ListImagesParam.allImages());
+        } catch (InterruptedException e) {
+            log.error("Interrupted, can't check if Docker is present");
+
+            return false;
         } catch (DockerException e) {
             log.error("Failed to connect to Docker.  Is it running on this host?  Is it listening on the standard Unix socket?");
             log.error("Docker exception message [" + e.getMessage() + "]");
 
             return false;
-        } catch (ProcessingException e) {
-            if (e.getCause() instanceof AFUNIXSocketException) {
-                log.error("Failed to connect to Docker on the Unix socket.  It is running on this host?");
-                log.error("UNIX socket exception [" + e.getMessage() + "]");
-                return false;
-            }
-
-            // Unknown exception
-            throw new UnsupportedOperationException(e);
         }
 
         return true;
