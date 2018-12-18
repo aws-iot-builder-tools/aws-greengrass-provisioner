@@ -13,8 +13,6 @@ import javax.inject.Inject;
 public class BasicGGConstants implements GGConstants {
     public static final String DEVICE_KEY = "device.key";
     public static final String DEVICE_CRT = "device.crt";
-    @Getter(lazy = true)
-    private final String architectureNameList = buildArchitectureNameList();
     @Getter
     private final String rootCaUrl = "https://www.symantec.com/content/en/us/enterprise/verisign/roots/VeriSign-Class%203-Public-Primary-Certification-Authority-G5.pem";
     @Getter
@@ -57,19 +55,6 @@ public class BasicGGConstants implements GGConstants {
     @Override
     public String getDevicePrivateKeyName(String thingName) {
         return String.join(".", ggdPrefix, thingName, DEVICE_KEY);
-    }
-
-    public String buildArchitectureNameList() {
-        StringBuilder stringBuilder = new StringBuilder();
-        String separator = "";
-
-        for (Architecture architecture : Architecture.values()) {
-            stringBuilder.append(separator);
-            stringBuilder.append(architecture.toString());
-            separator = ", ";
-        }
-
-        return stringBuilder.toString();
     }
 
     private Function buildGgIpDetectorFunction() {
