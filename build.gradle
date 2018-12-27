@@ -30,7 +30,7 @@ distZip.enabled = shadowDistZip.enabled = false
 distTar.enabled = shadowDistTar.enabled = false
 
 // Specify all of our dependency versions
-def daggerVersion = '2.19'
+def daggerVersion = '2.20'
 def configVersion = '1.3.3'
 def ztZipVersion = '1.13'
 def jcommanderVersion = '1.72'
@@ -39,7 +39,7 @@ def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerClientVersion = '8.14.5'
-def awsSdk1Version = '1.11.472'
+def awsSdk1Version = '1.11.475'
 def awsSdk2Version = '2.2.0'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.8.1'
