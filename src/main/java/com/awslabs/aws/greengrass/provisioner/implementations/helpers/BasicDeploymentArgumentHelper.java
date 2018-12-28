@@ -123,7 +123,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.groupName == null) {
-            if (!deploymentArguments.ec2Launch) {
+            if (!deploymentArguments.ec2Launch && !deploymentArguments.dockerLaunch) {
                 deploymentArguments.setError("Group name is required for all operations");
                 return deploymentArguments;
             }
