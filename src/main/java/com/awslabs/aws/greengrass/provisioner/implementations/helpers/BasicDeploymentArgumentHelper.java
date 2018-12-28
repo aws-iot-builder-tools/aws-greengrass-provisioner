@@ -129,6 +129,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
 
             deploymentArguments.groupName = Nomen.est().separator("-").space("-").adjective().pokemon().get();
+            // Filter out dot characters, sometimes the library uses the value "jr." which is not allowed in a group name
+            deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("\\.", "");
             log.info("No group name specified, group name auto-generated [" + deploymentArguments.groupName + "]");
         }
 
