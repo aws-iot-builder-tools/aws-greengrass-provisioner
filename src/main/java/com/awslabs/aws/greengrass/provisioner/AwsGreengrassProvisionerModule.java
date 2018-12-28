@@ -37,7 +37,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(LambdaClient.class).toProvider(LambdaClientProvider.class);
         bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
         bind(EcrClient.class).toProvider(EcrClientProvider.class);
-        bind(AwsRegionProviderChain.class).toProvider(DefaultAwsRegionProviderChain::new);
+//        bind(AwsRegionProviderChain.class).toProvider(DefaultAwsRegionProviderChain::new);
 
         bind(GGConstants.class).to(BasicGGConstants.class);
         bind(PolicyHelper.class).to(BasicPolicyHelper.class);
