@@ -8,19 +8,11 @@ public class GuiceInjectorTest {
 
     @Test
     public void shouldGetSdkErrorHandler() {
-        try {
-            AwsGreengrassProvisioner.getSdkErrorHandler();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        AwsGreengrassProvisioner.getSdkErrorHandler();
     }
 
     @Test
     public void shouldGetAwsGreengrassProvisioner() {
-        try {
-            AwsGreengrassProvisioner.getAwsGreengrassProvisioner();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        AwsGreengrassProvisioner.getAwsGreengrassProvisioner();
     }
 }
