@@ -5,16 +5,19 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.beust.jcommander.ParameterException;
+import com.google.inject.Guice;
+import com.google.inject.Injector;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
 import java.util.Arrays;
+import java.util.Optional;
 
 @Slf4j
 public class AwsGreengrassProvisioner implements Runnable {
     public static final String serviceRoleName = "Greengrass_ServiceRole";
-
+    private static Optional<Injector> optionalInjector = Optional.empty();
     @Inject
     DeploymentArgumentHelper deploymentArgumentHelper;
     @Inject
@@ -37,8 +40,8 @@ public class AwsGreengrassProvisioner implements Runnable {
         SdkErrorHandler sdkErrorHandler = null;
 
         try {
-            sdkErrorHandler = DaggerAwsGreengrassProvisionerComponent.create().SDK_ERROR_HANDLER();
-            AwsGreengrassProvisioner awsGreengrassProvisioner = DaggerAwsGreengrassProvisionerComponent.create().GG_PROVISIONER();
+            sdkErrorHandler = getSdkErrorHandler();
+            AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
 
             awsGreengrassProvisioner.setArgs(args);
 
@@ -46,6 +49,22 @@ public class AwsGreengrassProvisioner implements Runnable {
         } catch (SdkClientException e) {
             sdkErrorHandler.handleSdkError(e);
         }
+    }
+
+    public static SdkErrorHandler getSdkErrorHandler() {
+        return getInjector().getInstance(SdkErrorHandler.class);
+    }
+
+    public static AwsGreengrassProvisioner getAwsGreengrassProvisioner() {
+        return getInjector().getInstance(AwsGreengrassProvisioner.class);
+    }
+
+    public static Injector getInjector() {
+        if (!optionalInjector.isPresent()) {
+            optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule()));
+        }
+
+        return optionalInjector.get();
     }
 
     public void run() {

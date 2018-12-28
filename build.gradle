@@ -30,7 +30,7 @@ distZip.enabled = shadowDistZip.enabled = false
 distTar.enabled = shadowDistTar.enabled = false
 
 // Specify all of our dependency versions
-def daggerVersion = '2.20'
+def guiceVersion = '4.2.2'
 def configVersion = '1.3.3'
 def ztZipVersion = '1.13'
 def jcommanderVersion = '1.72'
@@ -172,7 +172,8 @@ repositories {
 }
 
 dependencies {
-    compile "com.google.dagger:dagger:$daggerVersion"
+    compile "com.google.inject:guice:$guiceVersion"
+
     compile "com.typesafe:config:$configVersion"
     compile "org.zeroturnaround:zt-zip:$ztZipVersion"
     compile "com.beust:jcommander:$jcommanderVersion"
@@ -205,9 +206,6 @@ dependencies {
 
     testCompile "junit:junit:$junitVersion"
     testCompile "org.mockito:mockito-all:$mockitoVersion"
-
-    compileOnly "com.google.dagger:dagger-compiler:$daggerVersion"
-    annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
 }
 
 // From: https://gist.github.com/matthiasbalke/3c9ecccbea1d460ee4c3fbc5843ede4a
