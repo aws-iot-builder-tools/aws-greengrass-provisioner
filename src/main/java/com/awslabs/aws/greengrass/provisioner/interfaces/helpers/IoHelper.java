@@ -3,6 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import org.apache.commons.codec.binary.Hex;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 
 import java.io.*;
@@ -12,8 +14,10 @@ import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.util.Optional;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
     default void writeFile(String filename, byte[] contents) {
@@ -186,4 +190,52 @@ public interface IoHelper {
 
         throw new UnsupportedOperationException("Couldn't deserialize keys.  This is a bug.");
     }
+
+    default Optional<InputStream> extractTar(String tarFile, String filenameToExtract) {
+        try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new FileInputStream(new File(tarFile)))) {
+            return getInputStreamFromTar(tarIn, filenameToExtract);
+        } catch (FileNotFoundException e) {
+            throw new UnsupportedOperationException(e);
+        } catch (IOException e) {
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    default Optional<InputStream> extractTarGz(String tarGzFile, String filenameToExtract) {
+        try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(new File(tarGzFile))))) {
+            return getInputStreamFromTar(tarIn, filenameToExtract);
+        } catch (FileNotFoundException e) {
+            throw new UnsupportedOperationException(e);
+        } catch (IOException e) {
+            throw new UnsupportedOperationException(e);
+        }
+    }
+
+    default Optional<InputStream> getInputStreamFromTar(TarArchiveInputStream tarIn, String filenameToExtract) throws IOException {
+        TarArchiveEntry tarEntry = tarIn.getNextTarEntry();
+
+        while (tarEntry != null) {
+            String currentFileName = tarEntry.getName();
+
+            if (!currentFileName.endsWith(filenameToExtract)) {
+                tarEntry = tarIn.getNextTarEntry();
+                continue;
+            }
+
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+
+            int length = 0;
+
+            byte[] buffer = new byte[16384];
+
+            while ((length = tarIn.read(buffer)) != -1) {
+                baos.write(buffer, 0, length);
+            }
+
+            return Optional.of(new ByteArrayInputStream(baos.toByteArray()));
+        }
+
+        return Optional.empty();
+    }
+
 }

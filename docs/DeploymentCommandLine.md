@@ -41,15 +41,47 @@ Long form: `--ec2-launch`
 
 Launches an EC2 instance, sends the bootstrap script to it, and starts Greengrass Core on that instance.
 
-If no group name is specified with this option one will be randomly generated.  This option will only work on a new
-group and will refuse to run if the group already exists.  This is to prevent Greengrass Cores from running on multiple
-instances at the same time.  To update an EC2 instance that has been built with this option simply omit the
-`--ec2-launch` option on subsequent runs and make sure the group name is specified.
+If no group name is specified with this option one will be randomly generated.
+
+This option will only work on a new group and will refuse to run if the group already exists.  This is to prevent
+Greengrass Cores from running on multiple instances at the same time.  To update an EC2 instance that has been built
+with this option simply omit the `--ec2-launch` option on subsequent runs and make sure the group name is specified.
 
 Example (initial launch):
 
 ```bash
 GGP -d deployments/python-hello-world.conf -g newgroup --ec2-launch
+```
+
+Example (subsequent runs):
+
+```bash
+GGP -d deployments/python-hello-world.conf -g newgroup
+```
+
+## Launch Docker container
+
+Long form: `--docker-launch`
+
+Launches a Docker container locally using the official Docker images and the specified deployment.
+
+If no group name is specified with this option one will be randomly generated.
+  
+This option will work on new and existing groups.  The name of the Docker container launched with this command will be
+the name of the group.  This is to prevent Greengrass Cores from running in multiple containers at the same time.
+
+To update a Docker container that has been built with this option simply omit the `--docker-launch` option on subsequent
+runs and make sure the group name is specified.  If you specify this option on a group that is already running in a
+Docker container you will receive a warning like this:
+
+```
+[WARN] GreengrassDockerHelper: The Docker container for this core is already running locally, the core should be redeploying now
+```
+
+Example (initial launch):
+
+```bash
+GGP -d deployments/python-hello-world.conf -g newgroup --docker-launch
 ```
 
 Example (subsequent runs):

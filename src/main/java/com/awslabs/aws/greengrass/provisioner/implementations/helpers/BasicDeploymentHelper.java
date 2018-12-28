@@ -11,8 +11,10 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.GreengrassDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.NormalDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.NormalDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.*;
@@ -45,12 +47,8 @@ import static com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner.se
 
 @Slf4j
 public class BasicDeploymentHelper implements DeploymentHelper {
-    public static final String DEPLOYMENT_DEFAULTS_CONF = "deployments/deployment.defaults.conf";
-    public static final String BUILD = "build";
     public static final String USER_DIR = "user.dir";
 
-    public static final String CERTS_DIRECTORY_PREFIX = "certs";
-    public static final String CONFIG_DIRECTORY_PREFIX = "config";
     public static final String AWS_AMI_ACCOUNT_ID = "099720109477";
     public static final String UBUNTU_16_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????";
 
@@ -89,9 +87,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     ArchiveHelper archiveHelper;
     @Inject
-    DockerHelper dockerHelper;
+    NormalDockerHelper normalDockerHelper;
     @Inject
-    DockerClientProvider dockerClientProvider;
+    GreengrassDockerHelper greengrassDockerHelper;
+    @Inject
+    NormalDockerClientProvider normalDockerClientProvider;
+    @Inject
+    GreengrassDockerClientProvider greengrassDockerClientProvider;
     @Inject
     BasicProgressHandler basicProgressHandler;
     @Inject
@@ -100,8 +102,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     GlobalDefaultHelper globalDefaultHelper;
     @Inject
     ThreadHelper threadHelper;
-    @Inject
-    JsonHelper jsonHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -177,7 +177,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private Config getFallbackConfig() {
-        return ConfigFactory.parseFile(new File(DEPLOYMENT_DEFAULTS_CONF));
+        return ConfigFactory.parseFile(ggConstants.getDeploymentDefaultsConf());
     }
 
     /**
@@ -284,7 +284,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Override
     public void doDeployment(DeploymentArguments deploymentArguments) {
         // Make the directories for build, if necessary
-        ioHelper.createDirectoryIfNecessary(BUILD);
+        ioHelper.createDirectoryIfNecessary(ggConstants.getBuildDirectory());
 
         ///////////////////////////////////////
         // Load the deployment configuration //
@@ -399,6 +399,31 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (functionsRunningAsRoot) {
             log.warn("At least one function was detected that is configured to run outside of the Greengrass container as root");
+        }
+
+        ////////////////////////////////////////////////////////////////////////////
+        // Determine if any functions are running inside the Greengrass container //
+        ////////////////////////////////////////////////////////////////////////////
+
+        List<String> functionsRunningInGreengrassContainer = functionConfs.stream()
+                .filter(functionConf -> functionConf.isGreengrassContainer())
+                .map(FunctionConf::getFunctionName)
+                .collect(Collectors.toList());
+
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+        // Check if Docker launching was specified with functions running in the Greengrass container //
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+        if (deploymentArguments.dockerLaunch && !functionsRunningInGreengrassContainer.isEmpty()) {
+            log.error("The following functions are marked to run in the Greengrass container:");
+
+            functionsRunningInGreengrassContainer.stream()
+                    .forEach(name -> log.error("  " + name));
+
+            log.error("When running in Docker all functions must be running without the Greengrass container.");
+            log.error("Set the greengrassContainer option to false in the functions.default.conf and/or the individual function configurations and try again.");
+            System.exit(1);
         }
 
         /////////////////////////////////////////////////////
@@ -610,11 +635,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (deploymentArguments.buildContainer == true) {
             log.info("Configuring container build");
 
-            dockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
-            dockerHelper.setEcrImageName(Optional.ofNullable(deploymentArguments.ecrImageNameString));
-            String imageName = dockerHelper.getImageName();
+            normalDockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
+            normalDockerHelper.setEcrImageName(Optional.ofNullable(deploymentArguments.ecrImageNameString));
+            String imageName = normalDockerHelper.getImageName();
             String currentDirectory = System.getProperty(USER_DIR);
-            File dockerfile = dockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture);
+
+            File dockerfile = greengrassDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture);
             String dockerfileTemplate = ioHelper.readFileAsString(dockerfile);
             dockerfileTemplate = dockerfileTemplate.replaceAll("GROUP_NAME", deploymentArguments.groupName);
 
@@ -624,7 +650,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             ioHelper.writeFile(tempDockerfile.toString(), dockerfileTemplate.getBytes());
             tempDockerfile.deleteOnExit();
 
-            try (DockerClient dockerClient = dockerClientProvider.get()) {
+            try (DockerClient dockerClient = greengrassDockerClientProvider.get()) {
                 log.info("Building container");
 
                 String imageId = dockerClient.build(new File(currentDirectory).toPath(),
@@ -649,6 +675,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (!createAndWaitForDeployment(Optional.of(greengrassServiceRole), Optional.of(greengrassRole), groupId, groupVersionId)) {
             // Deployment failed
             return;
+        }
+
+        //////////////////////////////////////////////
+        // Launch the Docker container if necessary //
+        //////////////////////////////////////////////
+
+        if (deploymentArguments.dockerLaunch) {
+            log.info("Launching Docker container");
+            greengrassDockerHelper.pullImage(ggConstants.getOfficialGreengrassDockerImage());
+            greengrassDockerHelper.createAndStartContainer(ggConstants.getOfficialGreengrassDockerImage(), deploymentArguments.groupName);
         }
 
         ///////////////////////////////////////////////////////
@@ -1087,8 +1123,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Adding keys and certificate files to archive");
         archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
 
         for (String thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
@@ -1117,7 +1153,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Adding config.json to archive");
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getConfigFileName(), configJson.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, ggConstants.getConfigFileName()), configJson.getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), ggConstants.getConfigFileName()), configJson.getBytes(), normalFilePermissions));
 
         /////////////////////////
         // Get the AWS root CA //
@@ -1125,25 +1161,25 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Getting root CA");
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getRootCaName(), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CERTS_DIRECTORY_PREFIX, ggConstants.getRootCaName()), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getRootCaName()), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
         ggdVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getRootCaName(), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Add some extra files to the OEM deployment so that Docker based deployments can do a redeployment on startup //
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "group-id.txt"), groupId.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", CONFIG_DIRECTORY_PREFIX, "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
 
         ///////////////////////
         // Build the scripts //
         ///////////////////////
 
-        String baseGgShScriptName = getBaseGgScriptName(deploymentArguments);
-        String ggShScriptName = getGgShScriptName(deploymentArguments);
+        String baseGgShScriptName = ggVariables.getBaseGgScriptName(deploymentArguments.groupName);
+        String ggShScriptName = ggVariables.getGgShScriptName(deploymentArguments.groupName);
 
         log.info("Adding scripts to archive");
         Optional<Architecture> architecture = getArchitecture(deploymentArguments);
@@ -1207,26 +1243,18 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         if (oemVirtualTarEntries.isPresent()) {
-            String oemArchiveName = String.join("/", BUILD, String.join(".", "oem", deploymentArguments.groupName, "tar"));
+            String oemArchiveName = ggVariables.getOemArchiveName(deploymentArguments.groupName);
             log.info("Writing OEM file [" + oemArchiveName + "]");
             ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
             ioHelper.makeExecutable(oemArchiveName);
         }
 
         if (ggdVirtualTarEntries.isPresent()) {
-            String ggdArchiveName = String.join("/", BUILD, String.join(".", "ggd", deploymentArguments.groupName, "tar"));
+            String ggdArchiveName = ggVariables.getGgdArchiveName(deploymentArguments.groupName);
             log.info("Writing GGD file [" + ggdArchiveName + "]");
             ioHelper.writeFile(ggdArchiveName, getByteArrayOutputStream(ggdVirtualTarEntries).get().toByteArray());
             ioHelper.makeExecutable(ggdArchiveName);
         }
-    }
-
-    private String getGgShScriptName(DeploymentArguments deploymentArguments) {
-        return String.join("/", BUILD, getBaseGgScriptName(deploymentArguments));
-    }
-
-    private String getBaseGgScriptName(DeploymentArguments deploymentArguments) {
-        return String.join(".", "gg", deploymentArguments.groupName, "sh");
     }
 
     public void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) throws InterruptedException {
@@ -1234,12 +1262,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             return;
         }
 
-        String ecrEndpoint = dockerHelper.getEcrProxyEndpoint();
-        dockerHelper.createEcrRepositoryIfNecessary();
+        String ecrEndpoint = normalDockerHelper.getEcrProxyEndpoint();
+        normalDockerHelper.createEcrRepositoryIfNecessary();
         String shortEcrEndpoint = ecrEndpoint.substring("https://".length()); // Remove leading https://
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
-        try (DockerClient dockerClient = dockerClientProvider.get()) {
+        try (DockerClient dockerClient = normalDockerClientProvider.get()) {
             try {
                 dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
             } catch (DockerException e) {
@@ -1247,7 +1275,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             }
 
             try {
-                dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, dockerClientProvider.getRegistryAuthSupplier().authFor(""));
+                dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
             } catch (DockerException e) {
                 log.error("Docker push failed [" + e.getMessage() + "]");
                 throw new UnsupportedOperationException(e);

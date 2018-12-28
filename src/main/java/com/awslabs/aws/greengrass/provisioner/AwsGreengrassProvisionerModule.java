@@ -1,10 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner;
 
-import com.awslabs.aws.greengrass.provisioner.docker.BasicDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
-import com.awslabs.aws.greengrass.provisioner.docker.UnixSocketDockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicGradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicMavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicNodeBuilder;
@@ -156,9 +152,6 @@ public abstract class AwsGreengrassProvisionerModule {
     public abstract CloudFormationHelper cloudFormationHelper(BasicCloudFormationHelper basicCloudFormationHelper);
 
     @Binds
-    public abstract DockerHelper dockerHelper(BasicDockerHelper basicDockerHelper);
-
-    @Binds
     public abstract DeploymentArgumentHelper deploymentArgumentHelper(BasicDeploymentArgumentHelper basicDeploymentArgumentHelper);
 
     @Binds
@@ -180,9 +173,6 @@ public abstract class AwsGreengrassProvisionerModule {
     // Centralized error handling for SDK errors
     @Binds
     public abstract SdkErrorHandler sdkErrorHandler(BasicSdkErrorHandler basicSdkErrorHandler);
-
-    @Binds
-    public abstract DockerClientProvider dockerClientProvider(UnixSocketDockerClientProvider unixSocketDockerClientProvider);
 
     @Binds
     public abstract IdExtractor idExtractor(BasicIdExtractor basicIdExtractor);

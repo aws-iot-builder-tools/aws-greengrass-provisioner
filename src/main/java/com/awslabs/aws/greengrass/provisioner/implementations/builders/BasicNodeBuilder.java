@@ -30,6 +30,8 @@ public class BasicNodeBuilder implements NodeBuilder {
     LoggingHelper loggingHelper;
     @Inject
     ResourceHelper resourceHelper;
+    @Inject
+    IoHelper ioHelper;
 
     @Inject
     public BasicNodeBuilder() {
@@ -43,7 +45,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf, resourceHelper);
+        copySdk(log, functionConf, resourceHelper, ioHelper);
 
         if (functionConf.getDependencies().size() > 0) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");

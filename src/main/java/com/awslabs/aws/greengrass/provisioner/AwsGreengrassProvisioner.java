@@ -57,7 +57,6 @@ public class AwsGreengrassProvisioner implements Runnable {
             try {
                 deploymentArguments = deploymentArgumentHelper.parseArguments(args);
                 deploymentError = deploymentArguments.getError();
-
             } catch (ParameterException e) {
                 deploymentError = e.getMessage();
             }
@@ -82,7 +81,6 @@ public class AwsGreengrassProvisioner implements Runnable {
             try {
                 updateArguments = updateArgumentHelper.parseArguments(args);
                 updateError = updateArguments.getError();
-
             } catch (ParameterException e) {
                 updateError = e.getMessage();
             }
@@ -107,7 +105,6 @@ public class AwsGreengrassProvisioner implements Runnable {
             try {
                 queryArguments = queryArgumentHelper.parseArguments(args);
                 queryError = queryArguments.getError();
-
             } catch (ParameterException e) {
                 queryError = e.getMessage();
             }
