@@ -8,6 +8,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
+import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
@@ -24,6 +25,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 @Slf4j
 public class GreengrassDockerHelper extends AbstractDockerHelper {
@@ -65,7 +67,7 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
     }
 
     @Override
-    public Optional<ContainerCreation> createContainer(String tag, String groupName) {
+    public Optional<String> createContainer(String tag, String groupName) {
         Optional<Image> optionalImage = getImageFromTag(tag);
 
         if (!optionalImage.isPresent()) {
@@ -144,6 +146,16 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
         }
 
         try (DockerClient dockerClient = getDockerClient()) {
+            // Is there any existing container with the group name?
+            Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
+
+            if (optionalContainer.isPresent()) {
+                Container container = optionalContainer.get();
+                String containerId = container.id();
+
+                return Optional.of(containerId);
+            }
+
             ContainerCreation containerCreation = dockerClient.createContainer(ContainerConfig.builder()
                     .image(image.id())
                     .entrypoint("/greengrass-entrypoint.sh")
@@ -160,13 +172,8 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
                     containerCreation.id(),
                     absoluteConfigPath);
 
-            return Optional.of(containerCreation);
+            return Optional.of(containerCreation.id());
         } catch (DockerException | InterruptedException e) {
-            if (e.getMessage().contains("already in use by container")) {
-                log.warn("The Docker container for this core is already running locally, the core should be redeploying now");
-                return Optional.empty();
-            }
-
             log.error("Couldn't create container [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);
         } catch (IOException e) {
