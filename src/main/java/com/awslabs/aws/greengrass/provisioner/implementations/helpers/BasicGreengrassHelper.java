@@ -760,7 +760,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     .collect(Collectors.joining(", "));
 
             log.error("Duplicate local device resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
-            throw new UnsupportedOperationException("Invalid resource configuration");
+            throw new RuntimeException("Invalid resource configuration");
         }
     }
 
@@ -777,7 +777,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     .collect(Collectors.joining(", "));
 
             log.error("Duplicate local volume resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
-            throw new UnsupportedOperationException("Invalid resource configuration");
+            throw new RuntimeException("Invalid resource configuration");
         }
     }
 
@@ -794,7 +794,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     .collect(Collectors.joining(", "));
 
             log.error("Duplicate local SageMaker resource destination paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
-            throw new UnsupportedOperationException("Invalid resource configuration");
+            throw new RuntimeException("Invalid resource configuration");
         }
     }
 
@@ -811,7 +811,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     .collect(Collectors.joining(", "));
 
             log.error("Duplicate local S3 resource destination paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
-            throw new UnsupportedOperationException("Invalid resource configuration");
+            throw new RuntimeException("Invalid resource configuration");
         }
     }
 
@@ -844,13 +844,13 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         try {
             iotHelper.getThingArn(thingName);
         } catch (ResourceNotFoundException e) {
-            throw new UnsupportedOperationException("Thing [" + thingName + "] does not exist");
+            throw new RuntimeException("Thing [" + thingName + "] does not exist");
         }
 
         String certificateArn = iotHelper.getThingPrincipal(thingName);
 
         if (certificateArn == null) {
-            throw new UnsupportedOperationException("Thing [" + thingName + "] does not have a certificate attached");
+            throw new RuntimeException("Thing [" + thingName + "] does not have a certificate attached");
         }
 
         return Device.builder()

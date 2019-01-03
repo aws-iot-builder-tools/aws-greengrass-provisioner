@@ -58,7 +58,7 @@ public enum Architecture {
         try {
             return Optional.of(resource.toURI().toURL());
         } catch (MalformedURLException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 }

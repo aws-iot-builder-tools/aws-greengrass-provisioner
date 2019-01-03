@@ -130,7 +130,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             return buildDeploymentConf(deploymentConfigFilename, config, groupName);
         } catch (ConfigException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -661,13 +661,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 pushContainerIfNecessary(deploymentArguments, imageId);
             } catch (DockerException e) {
                 log.error("Container build failed");
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             } catch (InterruptedException e) {
                 log.error("Container build failed");
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             } catch (IOException e) {
                 log.error("Container build failed");
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             }
         }
 
@@ -1208,7 +1208,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             if (mainScript == null) {
                 String message = "Main GGD script not found for [" + ggdConf.getScriptName() + "], exiting";
                 log.error(message);
-                throw new UnsupportedOperationException(message);
+                throw new RuntimeException(message);
             }
 
             File finalMainScript = mainScript;
@@ -1234,7 +1234,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ggScriptTemplate.write("PAYLOAD:\n".getBytes());
                 ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
             } catch (IOException e) {
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             }
 
             log.info("Writing script [" + ggShScriptName + "]");
@@ -1271,14 +1271,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             try {
                 dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
             } catch (DockerException e) {
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             }
 
             try {
                 dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
             } catch (DockerException e) {
                 log.error("Docker push failed [" + e.getMessage() + "]");
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             }
         }
 
@@ -1331,7 +1331,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         try {
             baos = archiveHelper.tar(virtualTarEntries);
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         return baos;

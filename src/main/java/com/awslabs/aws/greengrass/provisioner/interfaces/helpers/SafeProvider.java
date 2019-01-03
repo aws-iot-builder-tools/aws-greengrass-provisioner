@@ -12,7 +12,7 @@ public interface SafeProvider<T> extends Provider<T> {
             sdkErrorHandler.handleSdkError(e);
         }
 
-        throw new UnsupportedOperationException("You should never reach here, this is a bug");
+        throw new RuntimeException("You should never reach here, this is a bug");
     }
 
     T unsafeGet();

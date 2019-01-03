@@ -68,7 +68,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 String[] components = tempFunctionName.split("/");
 
                 if (components.length < 3) {
-                    throw new UnsupportedOperationException("The git URL specified [" + functionName + "] is in a format that was not understood (1)");
+                    throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (1)");
                 }
 
                 String last = components[components.length - 1];
@@ -81,7 +81,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     String[] repoAndDirectory = last.split(":");
 
                     if (repoAndDirectory.length != 2) {
-                        throw new UnsupportedOperationException("The git URL specified [" + functionName + "] is in a format that was not understood (2)");
+                        throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (2)");
                     }
 
                     repoName = repoAndDirectory[0];
@@ -98,7 +98,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 File functionConf = tempDir.resolve(directoryName).resolve(FUNCTION_CONF).toFile();
 
                 if (!functionConf.exists()) {
-                    throw new UnsupportedOperationException("This function and repo doesn't contain a function.conf");
+                    throw new RuntimeException("This function and repo doesn't contain a function.conf");
                 }
 
                 return functionConf;
@@ -122,7 +122,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 return tempPath.resolve(FUNCTION_CONF).toFile();
             }
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -151,7 +151,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         } else if (exitVal.get() != 0) {
             // Error
             stderrStrings.stream().forEach(log::error);
-            throw new UnsupportedOperationException("An error occurred while checking out the git repo");
+            throw new RuntimeException("An error occurred while checking out the git repo");
         }
         return tempDir;
     }
@@ -241,7 +241,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     functionConfBuilder.cfTemplate(cfTemplate);
                 }
             } catch (ConfigException e) {
-                throw new UnsupportedOperationException(e);
+                throw new RuntimeException(e);
             }
 
             FunctionConf functionConf = functionConfBuilder.build();
@@ -280,7 +280,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             log.error("Missing config files (this is NOT OK in normal deployments): ");
             missingConfigFunctions.stream()
                     .forEach(functionName -> log.error("  " + functionName));
-            throw new UnsupportedOperationException("Missing configuration files, can not build deployment");
+            throw new RuntimeException("Missing configuration files, can not build deployment");
         }
     }
 
@@ -401,21 +401,21 @@ public class BasicFunctionHelper implements FunctionHelper {
             String[] arnComponents = arn.split(":");
 
             if (arnComponents.length != 6) {
-                throw new UnsupportedOperationException("SageMaker ARN looks malformed [" + arn + "]");
+                throw new RuntimeException("SageMaker ARN looks malformed [" + arn + "]");
             }
 
             if (!arnComponents[2].equals("sagemaker")) {
-                throw new UnsupportedOperationException("SageMaker ARN does not look like a SageMaker ARN [" + arn + "]");
+                throw new RuntimeException("SageMaker ARN does not look like a SageMaker ARN [" + arn + "]");
             }
 
             arnComponents = arnComponents[5].split("/");
 
             if (arnComponents.length < 2) {
-                throw new UnsupportedOperationException("SageMaker ARN looks malformed [" + arn + "]");
+                throw new RuntimeException("SageMaker ARN looks malformed [" + arn + "]");
             }
 
             if (!arnComponents[0].equals(TRAINING_JOB)) {
-                throw new UnsupportedOperationException("SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [" + arn + "]");
+                throw new RuntimeException("SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [" + arn + "]");
             }
 
             Optional<String> name = getName(temp);

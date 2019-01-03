@@ -100,7 +100,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             return;
         }
 
-        throw new UnsupportedOperationException("This should never happen.  This is a bug.");
+        throw new RuntimeException("This should never happen.  This is a bug.");
     }
 
     private void writeToFile(QueryArguments queryArguments, String output, String outputFilename) {

@@ -74,7 +74,7 @@ public class BasicPythonBuilder implements PythonBuilder {
             tempFile.deleteOnExit();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         // Get the directories, longest named directories first
@@ -129,7 +129,7 @@ public class BasicPythonBuilder implements PythonBuilder {
                 }
             }
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -145,7 +145,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         try {
             return Files.list(functionConf.getBuildDirectory()).collect(Collectors.toList());
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

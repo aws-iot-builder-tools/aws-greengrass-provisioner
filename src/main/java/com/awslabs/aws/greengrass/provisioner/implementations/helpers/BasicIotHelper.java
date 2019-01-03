@@ -51,7 +51,7 @@ public class BasicIotHelper implements IotHelper {
                 return iotClient.describeThing(describeThingRequest).thingArn();
             }
 
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

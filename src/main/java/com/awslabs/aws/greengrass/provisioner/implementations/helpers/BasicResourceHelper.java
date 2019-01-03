@@ -28,7 +28,7 @@ public class BasicResourceHelper implements ResourceHelper {
         try {
             return getResource(resourcePath).openStream();
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -74,7 +74,7 @@ public class BasicResourceHelper implements ResourceHelper {
 
             return tempFile.toString();
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 }

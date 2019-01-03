@@ -64,13 +64,13 @@ public class BasicLambdaHelper implements LambdaHelper {
 
             zipFilePath = mavenBuilder.getArchivePath(functionConf);
             */
-            throw new UnsupportedOperationException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
+            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
         } else if (gradleBuilder.isGradleFunction(functionConf)) {
             gradleBuilder.buildJavaFunctionIfNecessary(functionConf);
 
             zipFilePath = gradleBuilder.getArchivePath(functionConf);
         } else {
-            throw new UnsupportedOperationException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
+            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
         }
 
         return createFunctionIfNecessary(functionConf, Runtime.JAVA8, role, zipFilePath);
@@ -152,7 +152,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                     counter++;
 
                     if (counter > 10) {
-                        throw new UnsupportedOperationException("Something went wrong with the Lambda IAM role, try again later");
+                        throw new RuntimeException("Something went wrong with the Lambda IAM role, try again later");
                     }
 
                     log.warn("Waiting for IAM role to be available to AWS Lambda...");

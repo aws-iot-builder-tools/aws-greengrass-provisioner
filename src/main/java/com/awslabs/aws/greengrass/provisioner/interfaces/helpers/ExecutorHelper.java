@@ -22,13 +22,13 @@ public interface ExecutorHelper {
                         try {
                             return future.get();
                         } catch (Exception e) {
-                            throw new UnsupportedOperationException(e);
+                            throw new RuntimeException(e);
                         }
                     })
                     .collect(Collectors.toList());
         } catch (InterruptedException e) {
             log.error("Parallel task execution failed [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         } finally {
             // Clean up the executor
             executorService.shutdown();
