@@ -147,9 +147,7 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
 
         try (DockerClient dockerClient = getDockerClient()) {
             // Is there any existing container with the group name?
-            Optional<Container> optionalContainer = dockerClient.listContainers(DockerClient.ListContainersParam.allContainers(true)).stream()
-                    .filter(getContainerPredicate(groupName))
-                    .findFirst();
+            Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
 
             if (optionalContainer.isPresent()) {
                 Container container = optionalContainer.get();
@@ -182,15 +180,6 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
             log.error("Couldn't copy files to container [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);
         }
-    }
-
-    public void warnContainerAlreadyRunning() {
-        log.warn("The Docker container for this core already exists locally. If it is running, the core should be redeploying now. If it is not running, you can start it manually or re-run the provisioner to start it.");
-    }
-
-    private Predicate<Container> getContainerPredicate(String groupName) {
-        String dockerContainerName = String.join("", "/", groupName);
-        return container -> container.names().contains(dockerContainerName);
     }
 
     @Override

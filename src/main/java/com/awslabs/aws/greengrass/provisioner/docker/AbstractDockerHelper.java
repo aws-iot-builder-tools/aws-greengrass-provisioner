@@ -19,6 +19,7 @@ import software.amazon.awssdk.services.ecr.model.RepositoryNotFoundException;
 import java.io.File;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -160,11 +161,31 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         String containerId = optionalContainerId.get();
 
         try (DockerClient dockerClient = getDockerClient()) {
-            dockerClient.startContainer(containerId);
+            if (!isContainerRunning(groupName, dockerClient)) {
+                dockerClient.startContainer(containerId);
+            } else {
+                log.info("The Docker container for this core is already running locally, the core should be redeploying now");
+            }
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't start container [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);
         }
+    }
+
+    protected Optional<Container> getContainerByName(String groupName, DockerClient dockerClient) throws DockerException, InterruptedException {
+        return dockerClient.listContainers(DockerClient.ListContainersParam.allContainers(true)).stream()
+                .filter(getContainerPredicate(groupName))
+                .findFirst();
+    }
+
+    protected boolean isContainerRunning(String groupName, DockerClient dockerClient) throws DockerException, InterruptedException {
+        return dockerClient.listContainers(DockerClient.ListContainersParam.withStatusRunning()).stream()
+                .anyMatch(getContainerPredicate(groupName));
+    }
+
+    protected Predicate<Container> getContainerPredicate(String groupName) {
+        String dockerContainerName = String.join("", "/", groupName);
+        return container -> container.names().contains(dockerContainerName);
     }
 
     @Override
