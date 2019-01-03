@@ -8,7 +8,6 @@ import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.ecr.EcrClient;
@@ -131,7 +130,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     }
 
     @Override
-    public Optional<ContainerCreation> createContainer(String tag, String groupName) {
+    public Optional<String> createContainer(String tag, String groupName) {
         Optional<Image> optionalImage = getImageFromTag(tag);
 
         if (!optionalImage.isPresent()) {
@@ -143,7 +142,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         try (DockerClient dockerClient = getDockerClient()) {
             return Optional.of(dockerClient.createContainer(ContainerConfig.builder()
                     .image(image.id())
-                    .build(), groupName));
+                    .build(), groupName).id());
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't create container [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);
@@ -151,17 +150,17 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     }
 
     public void createAndStartContainer(String tag, String groupName) {
-        Optional<ContainerCreation> optionalContainerCreation = createContainer(tag, groupName);
+        Optional<String> optionalContainerId = createContainer(tag, groupName);
 
-        if (!optionalContainerCreation.isPresent()) {
+        if (!optionalContainerId.isPresent()) {
             log.warn("Container [" + tag + "] not started because it couldn't be created");
             return;
         }
 
-        ContainerCreation containerCreation = optionalContainerCreation.get();
+        String containerId = optionalContainerId.get();
 
         try (DockerClient dockerClient = getDockerClient()) {
-            dockerClient.startContainer(containerCreation.id());
+            dockerClient.startContainer(containerId);
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't start container [" + e.getMessage() + "]");
             throw new UnsupportedOperationException(e);

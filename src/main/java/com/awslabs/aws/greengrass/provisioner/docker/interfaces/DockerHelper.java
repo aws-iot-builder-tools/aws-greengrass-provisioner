@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.spotify.docker.client.messages.Container;
-import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
 
 import java.io.File;
@@ -25,7 +24,14 @@ public interface DockerHelper {
 
     Optional<Image> getImageFromTag(String tag);
 
-    Optional<ContainerCreation> createContainer(String tag, String groupName);
+    /**
+     * Creates a container, if necessary, and returns the container ID
+     *
+     * @param tag
+     * @param groupName
+     * @return the container ID or empty if the container could not be created or found
+     */
+    Optional<String> createContainer(String tag, String groupName);
 
     Optional<Container> getContainerFromImage(String imageId);
 
