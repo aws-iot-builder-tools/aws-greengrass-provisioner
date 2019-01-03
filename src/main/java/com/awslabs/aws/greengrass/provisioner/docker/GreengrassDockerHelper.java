@@ -133,7 +133,7 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
             if (errors.size() != 0) {
                 errors.stream()
                         .forEach(error -> log.error(error));
-                throw new UnsupportedOperationException("OEM extraction failed");
+                throw new RuntimeException("OEM extraction failed");
             }
 
             FileUtils.copyInputStreamToFile(coreCertStream.get(), tempDirectory.resolve(coreCertFilename).toFile());
@@ -142,7 +142,7 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
             FileUtils.copyInputStreamToFile(configJsonStream.get(), tempDirectory.resolve(configJsonFilename).toFile());
         } catch (IOException e) {
             log.error("Couldn't create temporary path for credentials");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         try (DockerClient dockerClient = getDockerClient()) {
@@ -175,10 +175,10 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
             return Optional.of(containerCreation.id());
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't create container [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         } catch (IOException e) {
             log.error("Couldn't copy files to container [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

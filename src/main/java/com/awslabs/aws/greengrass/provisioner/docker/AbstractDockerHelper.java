@@ -86,7 +86,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             }
 
             log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");
-            throw new UnsupportedOperationException("More than one matching ECR repository");
+            throw new RuntimeException("More than one matching ECR repository");
         } catch (RepositoryNotFoundException e) {
             log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
             getEcrClient().createRepository(CreateRepositoryRequest.builder()
@@ -146,7 +146,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                     .build(), groupName).id());
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't create container [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -168,7 +168,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             }
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't start container [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -206,7 +206,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             return Optional.empty();
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to get container from image [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -243,7 +243,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             log.info("Containers [" + listString + "]");
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to list containers [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -269,7 +269,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             dockerClient.stopContainer(container.id(), 5);
         } catch (DockerException | InterruptedException e) {
             log.error("Failed to stop container [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -279,7 +279,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
             dockerClient.pull(name, getDockerClientProvider().getRegistryAuthSupplier().authFor(""), getProgressHandler());
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't pull image [" + e.getMessage() + "]");
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 }

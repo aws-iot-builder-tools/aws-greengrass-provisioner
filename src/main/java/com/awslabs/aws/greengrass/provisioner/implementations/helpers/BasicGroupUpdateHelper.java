@@ -86,7 +86,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             return;
         }
 
-        throw new UnsupportedOperationException("This should never happen.  This is a bug.");
+        throw new RuntimeException("This should never happen.  This is a bug.");
     }
 
     private void removeDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -359,7 +359,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             subscriptions.remove(subscriptionToRemove);
             log.info("Subscription removed [" + subscriptionToRemove.source() + ", " + subscriptionToRemove.target() + ", " + subscriptionToRemove.subject() + "]");
         } else {
-            throw new UnsupportedOperationException("This should never happen.  This is a bug.");
+            throw new RuntimeException("This should never happen.  This is a bug.");
         }
 
         String newSubscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);

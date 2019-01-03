@@ -223,7 +223,7 @@ public class BasicMavenBuilder implements MavenBuilder {
                 }
 
                 printDebugInfo(outputList, errorList);
-                throw new UnsupportedOperationException("Maven build failed");
+                throw new RuntimeException("Maven build failed");
             }
 
             if (functionName.isPresent()) {
@@ -236,7 +236,7 @@ public class BasicMavenBuilder implements MavenBuilder {
                 loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Finished Maven build");
             }
         } catch (MavenInvocationException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -299,6 +299,6 @@ public class BasicMavenBuilder implements MavenBuilder {
 
     @Override
     public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        throw new RuntimeException("Not implemented yet");
     }
 }

@@ -81,7 +81,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
                 }
             }
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -95,7 +95,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
             Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             e.printStackTrace();
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

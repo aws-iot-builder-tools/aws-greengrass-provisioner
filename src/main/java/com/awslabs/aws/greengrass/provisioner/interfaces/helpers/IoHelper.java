@@ -24,9 +24,9 @@ public interface IoHelper {
         try (FileOutputStream out = new FileOutputStream(filename)) {
             out.write(contents);
         } catch (FileNotFoundException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         makeWritable(filename);
@@ -40,7 +40,7 @@ public interface IoHelper {
         try {
             return Files.readAllBytes(Paths.get(filename));
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -54,7 +54,7 @@ public interface IoHelper {
         try {
             return Files.readAllBytes(file.toPath());
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -72,7 +72,7 @@ public interface IoHelper {
 
             return baos.toByteArray();
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -84,7 +84,7 @@ public interface IoHelper {
             FileOutputStream fos = new FileOutputStream(file);
             fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -92,7 +92,7 @@ public interface IoHelper {
         try {
             return new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next();
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -142,7 +142,7 @@ public interface IoHelper {
 
             return object;
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -159,7 +159,7 @@ public interface IoHelper {
 
             return Hex.encodeHexString(sha1.digest()).toLowerCase();
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -188,16 +188,16 @@ public interface IoHelper {
             return KeysAndCertificate.from((CreateKeysAndCertificateResult) object);
         }
 
-        throw new UnsupportedOperationException("Couldn't deserialize keys.  This is a bug.");
+        throw new RuntimeException("Couldn't deserialize keys.  This is a bug.");
     }
 
     default Optional<InputStream> extractTar(String tarFile, String filenameToExtract) {
         try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new FileInputStream(new File(tarFile)))) {
             return getInputStreamFromTar(tarIn, filenameToExtract);
         } catch (FileNotFoundException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 
@@ -205,9 +205,9 @@ public interface IoHelper {
         try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(new File(tarGzFile))))) {
             return getInputStreamFromTar(tarIn, filenameToExtract);
         } catch (FileNotFoundException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         } catch (IOException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

@@ -70,7 +70,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public void runGradle(Optional<File> gradleBuildPath, Optional<String> functionName) {
         if (!gradleBuildPath.isPresent()) {
-            throw new UnsupportedOperationException("gradle build path is not present.  This is a bug.");
+            throw new RuntimeException("gradle build path is not present.  This is a bug.");
         }
 
         // Guidance from: https://discuss.gradle.org/t/how-to-execute-a-gradle-task-from-java-code/7421
@@ -91,6 +91,6 @@ public class BasicGradleBuilder implements GradleBuilder {
 
     @Override
     public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        throw new RuntimeException("Not implemented yet");
     }
 }

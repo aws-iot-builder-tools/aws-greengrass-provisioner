@@ -62,7 +62,7 @@ public class BasicNodeBuilder implements NodeBuilder {
             tempFile.deleteOnExit();
         } catch (IOException e) {
             e.printStackTrace();
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         // Create the deployment package
@@ -94,7 +94,7 @@ public class BasicNodeBuilder implements NodeBuilder {
                 }
             }
         } catch (Exception e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
     }
 

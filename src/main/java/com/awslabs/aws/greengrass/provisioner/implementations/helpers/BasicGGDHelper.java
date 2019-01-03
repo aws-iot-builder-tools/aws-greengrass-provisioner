@@ -62,7 +62,7 @@ public class BasicGGDHelper implements GGDHelper {
             log.error("The configuration file for the GGD may be missing");
             System.exit(1);
         } catch (ConfigException e) {
-            throw new UnsupportedOperationException(e);
+            throw new RuntimeException(e);
         }
 
         GGDConf ggdConf = ggdConfBuilder.build();

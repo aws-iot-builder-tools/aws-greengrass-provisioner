@@ -37,7 +37,7 @@ public interface DockerClientProvider extends Provider<DockerClient> {
 
             @Override
             public RegistryAuth authForSwarm() throws DockerException {
-                throw new UnsupportedOperationException("Not implemented");
+                throw new RuntimeException("Not implemented");
             }
 
             @Override

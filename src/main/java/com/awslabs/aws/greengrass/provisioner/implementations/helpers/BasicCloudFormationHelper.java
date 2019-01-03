@@ -98,7 +98,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
             if (stackStatus.equals(StackStatus.ROLLBACK_IN_PROGRESS) ||
                     (stackStatus.equals(StackStatus.ROLLBACK_COMPLETE)) ||
                     (stackStatus.equals(StackStatus.ROLLBACK_FAILED))) {
-                throw new UnsupportedOperationException("CloudFormation stack [" + stackName + "] failed to launch");
+                throw new RuntimeException("CloudFormation stack [" + stackName + "] failed to launch");
             }
 
             String action = "creating";
