@@ -9,6 +9,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -46,12 +47,9 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .functionName(functionName)
                 .build();
 
-        try {
-            lambdaClient.getFunction(getFunctionRequest);
-            return true;
-        } catch (ResourceNotFoundException e) {
-            return false;
-        }
+        return Try.of(() -> lambdaClient.getFunction(getFunctionRequest) != null)
+                .recover(ResourceNotFoundException.class, throwable -> false)
+                .get();
     }
 
     @Override
@@ -141,28 +139,25 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
             while (!created) {
-                try {
-                    lambdaClient.createFunction(createFunctionRequest);
-                    created = true;
-                } catch (InvalidParameterValueException e) {
-                    if (!e.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda.")) {
-                        throw e;
-                    }
+                counter++;
 
-                    counter++;
-
-                    if (counter > 10) {
-                        throw new RuntimeException("Something went wrong with the Lambda IAM role, try again later");
-                    }
-
-                    log.warn("Waiting for IAM role to be available to AWS Lambda...");
-
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
-                    }
+                if (counter > 10) {
+                    throw new RuntimeException("Something went wrong with the Lambda IAM role, try again later");
                 }
+
+                created = Try.of(() -> lambdaClient.createFunction(createFunctionRequest) != null)
+                        .recover(InvalidParameterValueException.class, throwable -> {
+                            if (!throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda.")) {
+                                throw throwable;
+                            }
+
+                            log.warn("Waiting for IAM role to be available to AWS Lambda...");
+
+                            ioHelper.sleep(5000);
+
+                            return false;
+                        })
+                        .get();
             }
         }
 
@@ -202,12 +197,9 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .name(aliasName)
                 .build();
 
-        try {
-            lambdaClient.getAlias(getAliasRequest);
-            return true;
-        } catch (ResourceNotFoundException e) {
-            return false;
-        }
+        return Try.of(() -> lambdaClient.getAlias(getAliasRequest) != null)
+                .recover(ResourceNotFoundException.class, throwable -> false)
+                .get();
     }
 
     private String getFunctionName(FunctionConf functionConf) {
@@ -261,13 +253,9 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .functionName(functionName)
                 .build();
 
-        try {
-            GetFunctionResponse getFunctionResponse = lambdaClient.getFunction(getFunctionRequest);
-
-            return Optional.of(getFunctionResponse);
-        } catch (ResourceNotFoundException e) {
-            return Optional.empty();
-        }
+        return Try.of(() -> Optional.of(lambdaClient.getFunction(getFunctionRequest)))
+                .recover(ResourceNotFoundException.class, throwable -> Optional.empty())
+                .get();
     }
 
     @Override

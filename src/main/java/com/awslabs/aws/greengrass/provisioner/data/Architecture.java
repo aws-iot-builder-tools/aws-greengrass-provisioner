@@ -1,9 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
+import io.vavr.control.Try;
 import lombok.Getter;
 
 import java.io.File;
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Optional;
@@ -55,10 +55,6 @@ public enum Architecture {
             return Optional.ofNullable(getResource(resourcePath));
         }
 
-        try {
-            return Optional.of(resource.toURI().toURL());
-        } catch (MalformedURLException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> Optional.of(resource.toURI().toURL())).get();
     }
 }

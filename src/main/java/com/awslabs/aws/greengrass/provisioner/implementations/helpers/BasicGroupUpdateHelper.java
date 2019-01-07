@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -37,56 +39,61 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     EnvironmentHelper environmentHelper;
     @Inject
     JsonHelper jsonHelper;
+    @Inject
+    UpdateArgumentHelper updateArgumentHelper;
 
     @Inject
     public BasicGroupUpdateHelper() {
     }
 
     @Override
-    public void doUpdate(UpdateArguments updateArguments) {
+    public Void execute(UpdateArguments updateArguments) {
         if (!updateArguments.addSubscription &&
                 !updateArguments.removeSubscription &&
                 (updateArguments.addDevice == null) &&
                 (updateArguments.removeDevice == null) &&
                 (updateArguments.addFunction == null) &&
                 (updateArguments.removeFunction == null)) {
-            log.error("No update specified");
-            return;
+            throw new RuntimeException("No update specified");
         }
 
         Optional<GroupInformation> optionalGroupInformation = greengrassHelper.getGroupInformation(updateArguments.groupName);
 
         if (!optionalGroupInformation.isPresent()) {
-            log.error("Group [" + updateArguments.groupName + "] not found");
-            return;
+            throw new RuntimeException("Group [" + updateArguments.groupName + "] not found");
         }
 
         if (updateArguments.addSubscription || updateArguments.removeSubscription) {
             addOrRemoveSubscription(updateArguments, optionalGroupInformation.get());
-            return;
         }
 
         if (updateArguments.addDevice != null) {
             addDevice(updateArguments, optionalGroupInformation.get());
-            return;
         }
 
         if (updateArguments.removeDevice != null) {
             removeDevice(updateArguments, optionalGroupInformation.get());
-            return;
         }
 
         if (updateArguments.addFunction != null) {
             addFunction(updateArguments, optionalGroupInformation.get());
-            return;
         }
 
         if (updateArguments.removeFunction != null) {
             removeFunction(updateArguments, optionalGroupInformation.get());
-            return;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
+    }
+
+    @Override
+    public ArgumentHelper<UpdateArguments> getArgumentHelper() {
+        return updateArgumentHelper;
+    }
+
+    @Override
+    public UpdateArguments getArguments() {
+        return new UpdateArguments();
     }
 
     private void removeDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -100,8 +107,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String thingArn = deviceToRemove.thingArn();
 
         if (!devices.stream().anyMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
-            log.error("Device with thing ARN [" + thingArn + "] is not part of this Greengrass Group, nothing to do");
-            return;
+            throw new RuntimeException("Device with thing ARN [" + thingArn + "] is not part of this Greengrass Group, nothing to do");
         }
 
         List<Device> devicesToRemove = devices.stream()
@@ -124,9 +130,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
                 .build();
 
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
+        };
 
-        deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId);
+        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
     }
 
     private void addDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -165,8 +172,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (devices.stream()
                 .anyMatch(device -> device.thingArn().equals(finalThingArn))) {
-            log.error("Device with thing ARN [" + thingArn + "] is already part of this Greengrass Group.  Nothing to do.");
-            return;
+            throw new RuntimeException("Device with thing ARN [" + thingArn + "] is already part of this Greengrass Group.  Nothing to do.");
         }
 
         devices.add(newDevice);
@@ -178,11 +184,19 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
                 .build();
 
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Device added [" + newDevice.thingArn() + ", " + newDevice.certificateArn() + "]");
+
+        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+    }
+
+    private void createAndWaitForDeployment(String groupId, GroupVersion newGroupVersion, Consumer<? super Void> successHandler) {
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
-        if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
-            log.info("Device added [" + newDevice.thingArn() + ", " + newDevice.certificateArn() + "]");
-        }
+        Try.of(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId))
+                .onSuccess(successHandler)
+                .onFailure(throwable -> {
+                    throw new RuntimeException(throwable);
+                });
     }
 
     private void addFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -194,15 +208,13 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String functionAlias = updateArguments.functionAlias;
 
         if (lambdaHelper.aliasExists(functionName, functionAlias)) {
-            log.error("The specified alias [" + functionAlias + "] already exists.  You must specify a new alias for an ad-hoc add function so other group configurations are not affected.");
-            return;
+            throw new RuntimeException("The specified alias [" + functionAlias + "] already exists.  You must specify a new alias for an ad-hoc add function so other group configurations are not affected.");
         }
 
         Optional<GetFunctionResponse> optionalGetFunctionResponse = lambdaHelper.getFunction(functionName);
 
         if (!optionalGetFunctionResponse.isPresent()) {
-            log.error("Function [" + functionName + "] not found.  Make sure only the function name is specified without an alias or version number.");
-            return;
+            throw new RuntimeException("Function [" + functionName + "] not found.  Make sure only the function name is specified without an alias or version number.");
         }
 
         GetFunctionResponse getFunctionResponse = optionalGetFunctionResponse.get();
@@ -223,8 +235,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (functions.stream()
                 .anyMatch(function -> function.functionArn().equals(aliasArn))) {
-            log.error("Function with ARN [" + aliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
-            return;
+            throw new RuntimeException("Function with ARN [" + aliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
         }
 
         functions.add(newFunction);
@@ -235,11 +246,9 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
                 .build();
 
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Function added [" + newFunction.functionArn() + "]");
 
-        if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
-            log.info("Function added [" + newFunction.functionArn() + "]");
-        }
+        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
     }
 
     private void removeFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -253,11 +262,9 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .collect(Collectors.toList());
 
         if (functionsToDelete.size() == 0) {
-            log.error("Function with ARN [" + functionArn + "] is not part of this Greengrass Group.  Nothing to do.");
-            return;
+            throw new RuntimeException("Function with ARN [" + functionArn + "] is not part of this Greengrass Group.  Nothing to do.");
         } else if (functionsToDelete.size() > 1) {
-            log.error("More than one function matched the pattern [" + functionArn + "].  Only one function can be removed at a time.");
-            return;
+            throw new RuntimeException("More than one function matched the pattern [" + functionArn + "].  Only one function can be removed at a time.");
         }
 
         Function functionToDelete = functionsToDelete.get(0);
@@ -276,12 +283,12 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
                 .build();
 
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
-
-        if (deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId)) {
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
             log.info("Function removed [" + functionToDelete.functionArn() + "]");
             lambdaHelper.deleteAlias(functionToDeleteArn);
-        }
+        };
+
+        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
     }
 
     private List<Subscription> removeSubscriptions(GroupInformation groupInformation, String thingOrFunctionArn) {
@@ -314,8 +321,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
             if (!validatedSource.isPresent()) {
                 // Source is invalid
-                log.error("Source [" + source + "] " + SUBSCRIPTION_ERROR);
-                return;
+                throw new RuntimeException("Source [" + source + "] " + SUBSCRIPTION_ERROR);
             } else {
                 source = validatedSource.get();
             }
@@ -325,8 +331,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
             if (!validatedTarget.isPresent()) {
                 // Target is invalid
-                log.error("Target [" + target + "] " + SUBSCRIPTION_ERROR);
-                return;
+                throw new RuntimeException("Target [" + target + "] " + SUBSCRIPTION_ERROR);
             } else {
                 target = validatedTarget.get();
             }
@@ -334,8 +339,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             Set<Subscription> existingSubscriptions = getMatchingSubscriptions(subscriptions, source, target, subject);
 
             if (existingSubscriptions.size() != 0) {
-                log.error("Subscription already exists.  Nothing to do.");
-                return;
+                throw new RuntimeException("Subscription already exists.  Nothing to do.");
             }
 
             Subscription subscription = subscriptionHelper.createSubscription(source, target, subject);
@@ -346,12 +350,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             Set<Subscription> existingSubscriptions = getMatchingSubscriptions(subscriptions, source, target, subject);
 
             if (existingSubscriptions.size() == 0) {
-                log.error("Subscription doesn't exist.  Nothing to do.");
-                return;
+                throw new RuntimeException("Subscription doesn't exist.  Nothing to do.");
             } else if (existingSubscriptions.size() > 1) {
                 log.error(jsonHelper.toJson(existingSubscriptions));
-                log.error("More than one matching subscription exists.  Specify a more specific match.");
-                return;
+                throw new RuntimeException("More than one matching subscription exists.  Specify a more specific match.");
             }
 
             // Exactly one, remove it
@@ -368,9 +370,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
                 .build();
 
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
+        };
 
-        deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId);
+        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
     }
 
     /**

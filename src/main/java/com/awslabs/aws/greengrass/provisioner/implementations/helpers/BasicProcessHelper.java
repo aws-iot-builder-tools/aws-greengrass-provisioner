@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
+import io.vavr.control.Try;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 
@@ -38,7 +39,7 @@ public class BasicProcessHelper implements ProcessHelper {
 
     @Override
     public Optional<Integer> getOutputFromProcess(Logger logger, ProcessBuilder pb, boolean waitForExit, Optional<Consumer<String>> stdoutConsumer, Optional<Consumer<String>> stderrConsumer) {
-        try {
+        return (Optional<Integer>) Try.of(() -> {
             Process p = pb.start();
 
             BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));
@@ -65,10 +66,12 @@ public class BasicProcessHelper implements ProcessHelper {
             } else {
                 return Optional.empty();
             }
-        } catch (Exception e) {
-            logger.error(e.getMessage());
-        }
+        })
+                .recover(Exception.class, throwable -> {
+                    logger.error(throwable.getMessage());
 
-        return Optional.empty();
+                    return Optional.empty();
+                })
+                .get();
     }
 }

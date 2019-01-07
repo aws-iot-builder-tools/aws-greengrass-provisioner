@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.beust.jcommander.Parameter;
 import lombok.Getter;
-import lombok.Setter;
 
 public class UpdateArguments extends Arguments {
     private final String LONG_UPDATE_GROUP_OPTION = "--update-group";
@@ -51,11 +50,8 @@ public class UpdateArguments extends Arguments {
     @Parameter(names = {SUBSCRIPTION_TARGET_OPTION}, description = "The target for a subscription table update")
     public String subscriptionTarget;
     @Parameter(names = "--help", help = true)
-    public boolean help;
-
     @Getter
-    @Setter
-    private String error;
+    public boolean help;
 
     @Override
     public boolean isRequiredOptionSet() {

@@ -10,6 +10,7 @@ import com.beust.jcommander.JCommander;
 import com.oblac.nomen.Nomen;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
@@ -42,13 +43,9 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             return Optional.empty();
         }
 
-        try {
-            return Optional.of(defaults.get().getString(name));
-        } catch (ConfigException.Missing e) {
-            // Ignore
-        }
-
-        return Optional.empty();
+        return Try.of(() -> Optional.of(defaults.get().getString(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
     }
 
     private Optional<Boolean> getBooleanDefault(Optional<Config> defaults, String name) {
@@ -57,13 +54,9 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             return Optional.empty();
         }
 
-        try {
-            return Optional.of(defaults.get().getBoolean(name));
-        } catch (ConfigException.Missing e) {
-            // Ignore
-        }
-
-        return Optional.empty();
+        return Try.of(() -> Optional.of(defaults.get().getBoolean(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
     }
 
     @Override
@@ -102,8 +95,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
 
         if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch) {
-            deploymentArguments.setError("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
-            return deploymentArguments;
+            throw new RuntimeException("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
         }
 
         if (deploymentArguments.ec2Launch) {
@@ -112,8 +104,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.scriptOutput = true;
 
             if (deploymentArguments.buildContainer) {
-                deploymentArguments.setError("Can't build a container for an EC2 launch");
-                return deploymentArguments;
+                throw new RuntimeException("Can't build a container for an EC2 launch");
             }
         }
 
@@ -124,8 +115,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.groupName == null) {
             if (!deploymentArguments.ec2Launch && !deploymentArguments.dockerLaunch) {
-                deploymentArguments.setError("Group name is required for all operations");
-                return deploymentArguments;
+                throw new RuntimeException("Group name is required for all operations");
             }
 
             deploymentArguments.groupName = Nomen.est().separator("-").space("-").adjective().pokemon().get();
@@ -138,16 +128,16 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ecrImageNameString = getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
 
         if (deploymentArguments.architectureString != null) {
-            try {
-                deploymentArguments.architecture = Architecture.valueOf(deploymentArguments.architectureString);
-            } catch (IllegalArgumentException e) {
-                StringBuilder stringBuilder = new StringBuilder();
-                stringBuilder.append("[" + deploymentArguments.architectureString + "] is not a valid architecture.");
-                stringBuilder.append("\r\n");
-                stringBuilder.append("Valid options are: " + Architecture.getList());
-                deploymentArguments.setError(stringBuilder.toString());
-                return deploymentArguments;
-            }
+            deploymentArguments.architecture = Try.of(() -> Architecture.valueOf(deploymentArguments.architectureString))
+                    .recover(IllegalArgumentException.class, throwable -> {
+                        StringBuilder stringBuilder = new StringBuilder();
+                        stringBuilder.append("[" + deploymentArguments.architectureString + "] is not a valid architecture.");
+                        stringBuilder.append("\r\n");
+                        stringBuilder.append("Valid options are: " + Architecture.getList());
+                        
+                        throw new RuntimeException(stringBuilder.toString());
+                    })
+                    .get();
         }
 
         if (deploymentArguments.buildContainer == true) {
@@ -168,24 +158,22 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if ((deploymentArguments.buildContainer || deploymentArguments.scriptOutput) && (deploymentArguments.architecture == null)) {
-            deploymentArguments.setError("Architecture must be specified when building a container or installation script");
-            return deploymentArguments;
+            throw new RuntimeException("Architecture must be specified when building a container or installation script");
         }
 
         if (deploymentArguments.deploymentConfigFilename == null) {
-            deploymentArguments.setError("A deployment configuration file name is required");
-            return deploymentArguments;
+            throw new RuntimeException("A deployment configuration file name is required");
         }
 
         if (deploymentArguments.buildContainer) {
             if (!normalDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
-                deploymentArguments.setError("No dockerfile exists for architecture [" + deploymentArguments.architecture.toString() + "]");
-                return deploymentArguments;
+                throw new RuntimeException("No dockerfile exists for architecture [" + deploymentArguments.architecture.toString() + "]");
             }
+        }
 
+        if (deploymentArguments.buildContainer || deploymentArguments.dockerLaunch) {
             if (!normalDockerHelper.isDockerAvailable()) {
-                deploymentArguments.setError("Docker is not available, cannot build a container");
-                return deploymentArguments;
+                throw new RuntimeException("Docker is not available, cannot continue");
             }
         }
 

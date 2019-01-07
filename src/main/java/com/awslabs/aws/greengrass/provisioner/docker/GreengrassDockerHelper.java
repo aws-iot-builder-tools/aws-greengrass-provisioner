@@ -12,6 +12,7 @@ import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import software.amazon.awssdk.regions.Region;
@@ -25,7 +26,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 @Slf4j
 public class GreengrassDockerHelper extends AbstractDockerHelper {
@@ -79,15 +79,11 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
         String absoluteCertsPath = String.join("/", "", "greengrass", ggConstants.getCertsDirectoryPrefix());
         String absoluteConfigPath = String.join("/", "", "greengrass", ggConstants.getConfigDirectoryPrefix());
 
-        Path tempDirectory;
-        Path localCertsPath;
-        Path localConfigPath;
+        Path tempDirectory = Try.of(() -> {
+            Path innerTempDirectory = Files.createTempDirectory(groupName);
 
-        try {
-            tempDirectory = Files.createTempDirectory(groupName);
-
-            localCertsPath = tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix());
-            localConfigPath = tempDirectory.resolve(ggConstants.getConfigDirectoryPrefix());
+            Path localCertsPath = innerTempDirectory.resolve(ggConstants.getCertsDirectoryPrefix());
+            Path localConfigPath = innerTempDirectory.resolve(ggConstants.getConfigDirectoryPrefix());
 
             Files.createDirectory(localCertsPath);
             Files.createDirectory(localConfigPath);
@@ -136,50 +132,67 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
                 throw new RuntimeException("OEM extraction failed");
             }
 
-            FileUtils.copyInputStreamToFile(coreCertStream.get(), tempDirectory.resolve(coreCertFilename).toFile());
-            FileUtils.copyInputStreamToFile(coreKeyStream.get(), tempDirectory.resolve(coreKeyFilename).toFile());
-            FileUtils.copyInputStreamToFile(rootCaStream.get(), tempDirectory.resolve(rootCaFilename).toFile());
-            FileUtils.copyInputStreamToFile(configJsonStream.get(), tempDirectory.resolve(configJsonFilename).toFile());
-        } catch (IOException e) {
-            log.error("Couldn't create temporary path for credentials");
-            throw new RuntimeException(e);
-        }
+            FileUtils.copyInputStreamToFile(coreCertStream.get(), innerTempDirectory.resolve(coreCertFilename).toFile());
+            FileUtils.copyInputStreamToFile(coreKeyStream.get(), innerTempDirectory.resolve(coreKeyFilename).toFile());
+            FileUtils.copyInputStreamToFile(rootCaStream.get(), innerTempDirectory.resolve(rootCaFilename).toFile());
+            FileUtils.copyInputStreamToFile(configJsonStream.get(), innerTempDirectory.resolve(configJsonFilename).toFile());
 
-        try (DockerClient dockerClient = getDockerClient()) {
-            // Is there any existing container with the group name?
-            Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
+            return innerTempDirectory;
+        }).recover(IOException.class, throwable -> {
+            printCouldNotCreateTemporaryCredentialsAndThrow(throwable);
+            return null;
+        })
+                .get();
 
-            if (optionalContainer.isPresent()) {
-                Container container = optionalContainer.get();
-                String containerId = container.id();
+        return Try.withResources(this::getDockerClient)
+                .of(dockerClient -> {
+                    // Is there any existing container with the group name?
+                    Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
 
-                return Optional.of(containerId);
-            }
+                    if (optionalContainer.isPresent()) {
+                        Container container = optionalContainer.get();
+                        String containerId = container.id();
 
-            ContainerCreation containerCreation = dockerClient.createContainer(ContainerConfig.builder()
-                    .image(image.id())
-                    .entrypoint("/greengrass-entrypoint.sh")
-                    .exposedPorts("8883")
-                    .build(), groupName);
+                        return Optional.of(containerId);
+                    }
 
-            // Copy the certs to the container
-            dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix()),
-                    containerCreation.id(),
-                    absoluteCertsPath);
+                    ContainerCreation containerCreation = dockerClient.createContainer(ContainerConfig.builder()
+                            .image(image.id())
+                            .entrypoint("/greengrass-entrypoint.sh")
+                            .exposedPorts("8883")
+                            .build(), groupName);
 
-            // Copy the config to the container
-            dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getConfigDirectoryPrefix()),
-                    containerCreation.id(),
-                    absoluteConfigPath);
+                    // Copy the certs to the container
+                    dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix()),
+                            containerCreation.id(),
+                            absoluteCertsPath);
 
-            return Optional.of(containerCreation.id());
-        } catch (DockerException | InterruptedException e) {
-            log.error("Couldn't create container [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            log.error("Couldn't copy files to container [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
-        }
+                    // Copy the config to the container
+                    dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getConfigDirectoryPrefix()),
+                            containerCreation.id(),
+                            absoluteConfigPath);
+
+                    return Optional.of(containerCreation.id());
+                })
+                .recover(DockerException.class, this::printCouldNotCreateContainerAndThrow)
+                .recover(InterruptedException.class, this::printCouldNotCreateContainerAndThrow)
+                .recover(IOException.class, this::printCouldNotCopyFilesToContainerAndThrow)
+                .get();
+    }
+
+    private Optional<String> printCouldNotCreateContainerAndThrow(Throwable throwable) {
+        log.error("Couldn't create container [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
+    }
+
+    private Optional<String> printCouldNotCopyFilesToContainerAndThrow(Throwable throwable) {
+        log.error("Couldn't copy files to container [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
+    }
+
+    private Optional<String> printCouldNotCreateTemporaryCredentialsAndThrow(Throwable throwable) {
+        log.error("Couldn't create temporary path for credentials");
+        throw new RuntimeException(throwable);
     }
 
     @Override

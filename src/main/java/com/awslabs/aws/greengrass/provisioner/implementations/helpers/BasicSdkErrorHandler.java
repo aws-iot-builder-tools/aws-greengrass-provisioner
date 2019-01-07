@@ -1,14 +1,17 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 public class BasicSdkErrorHandler implements SdkErrorHandler {
-    String REGION_EXCEPTION = "Unable to find a region";
+    String REGION_EXCEPTION_1 = "Unable to find a region";
+    String REGION_EXCEPTION_2 = "Unable to load region from any of the providers in the chain";
     String MISSING_CREDENTIALS_EXCEPTION = "Unable to load AWS credentials from any provider in the chain";
     String BAD_CREDENTIALS_EXCEPTION = "The security token included in the request is invalid";
     String BAD_PERMISSIONS_EXCEPTION = "is not authorized to perform";
@@ -34,11 +37,11 @@ public class BasicSdkErrorHandler implements SdkErrorHandler {
     }
 
     @Override
-    public void handleSdkError(SdkClientException e) {
+    public Void handleSdkError(SdkClientException e) {
         String message = e.getMessage();
         List<String> errors = new ArrayList<>();
 
-        if (message.contains(REGION_EXCEPTION)) {
+        if (message.contains(REGION_EXCEPTION_1) || message.contains(REGION_EXCEPTION_2)) {
             errors.add(REGION_ERROR);
             errors.add(GENERIC_CREDENTIALS_SOLUTION);
             errors.add(REGION_SOLUTION);
@@ -59,10 +62,12 @@ public class BasicSdkErrorHandler implements SdkErrorHandler {
 
         if (errors.size() != 0) {
             errors.stream()
-                    .forEach(s -> System.err.println(s));
+                    .forEach(s -> log.error(s));
             System.exit(1);
         } else {
             throw e;
         }
+
+        return null;
     }
 }

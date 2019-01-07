@@ -30,8 +30,6 @@ public class DeploymentConf {
 
     private List<String> ggds;
 
-    private String error;
-
     @Singular
     private Map<String, String> environmentVariables;
 }

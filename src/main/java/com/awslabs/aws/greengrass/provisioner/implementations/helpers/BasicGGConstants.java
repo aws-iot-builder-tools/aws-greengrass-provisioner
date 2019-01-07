@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import lombok.Getter;

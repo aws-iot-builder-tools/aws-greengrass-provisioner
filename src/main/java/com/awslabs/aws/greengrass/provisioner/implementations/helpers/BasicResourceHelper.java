@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -25,11 +26,7 @@ public class BasicResourceHelper implements ResourceHelper {
 
     @Override
     public InputStream getResourceAsStream(String resourcePath) {
-        try {
-            return getResource(resourcePath).openStream();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> getResource(resourcePath).openStream()).get();
     }
 
     @Override
@@ -40,11 +37,9 @@ public class BasicResourceHelper implements ResourceHelper {
             return getResourceAsStream(sourcePath);
         }
 
-        try {
-            return new FileInputStream(resource);
-        } catch (FileNotFoundException e) {
-            return null;
-        }
+        return Try.of(() -> new FileInputStream(resource))
+                .recover(FileNotFoundException.class, exception -> null)
+                .get();
     }
 
     @Override
@@ -54,7 +49,7 @@ public class BasicResourceHelper implements ResourceHelper {
 
     @Override
     public String resourceToTempFile(String filename) {
-        try {
+        return Try.of(() -> {
             InputStream inputStream = getResourceAsStream(filename);
 
             if (inputStream == null) {
@@ -73,8 +68,6 @@ public class BasicResourceHelper implements ResourceHelper {
             }
 
             return tempFile.toString();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+        }).get();
     }
 }

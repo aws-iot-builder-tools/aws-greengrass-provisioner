@@ -7,6 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.zeroturnaround.zip.ZipUtil;
@@ -67,15 +68,8 @@ public class BasicPythonBuilder implements PythonBuilder {
         addedFiles.removeAll(beforeSnapshot);
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
-        File tempFile;
 
-        try {
-            tempFile = File.createTempFile("python-lambda-build", "zip");
-            tempFile.deleteOnExit();
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        File tempFile = ioHelper.getTempFile("python-lambda-build", "zip");
 
         // Get the directories, longest named directories first
         List<Path> addedDirectories = addedFiles
@@ -104,7 +98,7 @@ public class BasicPythonBuilder implements PythonBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        try {
+        Try.of(() -> {
             for (String dependency : functionConf.getDependencies()) {
                 loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
                 List<String> programAndArguments = new ArrayList<>();
@@ -128,25 +122,20 @@ public class BasicPythonBuilder implements PythonBuilder {
                     System.exit(1);
                 }
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+
+            return null;
+        });
     }
 
     private void touch(File file) {
-        try {
+        Try.of(() -> {
             new FileOutputStream(file).close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+            return null;
+        });
     }
 
     private List<Path> getDirectorySnapshot(FunctionConf functionConf) {
-        try {
-            return Files.list(functionConf.getBuildDirectory()).collect(Collectors.toList());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> Files.list(functionConf.getBuildDirectory()).collect(Collectors.toList())).get();
     }
 
     @Override
@@ -173,7 +162,7 @@ public class BasicPythonBuilder implements PythonBuilder {
             return Optional.of("Python handler file [" + handlerFile.toPath() + "] does not exist");
         }
 
-        try {
+        return (Optional<String>) Try.of(() -> {
             // Use a regex to find what the function should look like
             String pattern = "^def\\s+" + handlerFunctionName + "\\s*\\(.*";
 
@@ -181,10 +170,10 @@ public class BasicPythonBuilder implements PythonBuilder {
                     .noneMatch(line -> line.matches(pattern))) {
                 return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build.");
             }
-        } catch (IOException e) {
-            return Optional.of(e.getMessage());
-        }
 
-        return Optional.empty();
+            return Optional.empty();
+        })
+                .recover(IOException.class, throwable -> Optional.of(throwable.getMessage()))
+                .get();
     }
 }

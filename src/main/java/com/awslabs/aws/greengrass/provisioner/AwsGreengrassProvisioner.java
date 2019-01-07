@@ -1,29 +1,22 @@
 package com.awslabs.aws.greengrass.provisioner;
 
-import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
-import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.beust.jcommander.ParameterException;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.ProvisionException;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 @Slf4j
 public class AwsGreengrassProvisioner implements Runnable {
     public static final String serviceRoleName = "Greengrass_ServiceRole";
     private static Optional<Injector> optionalInjector = Optional.empty();
-    @Inject
-    DeploymentArgumentHelper deploymentArgumentHelper;
-    @Inject
-    UpdateArgumentHelper updateArgumentHelper;
-    @Inject
-    QueryArgumentHelper queryArgumentHelper;
     @Inject
     GroupQueryHelper groupQueryHelper;
     @Inject
@@ -37,18 +30,28 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     public static void main(String[] args) {
-        SdkErrorHandler sdkErrorHandler = null;
+        SdkErrorHandler sdkErrorHandler = getSdkErrorHandler();
 
-        try {
-            sdkErrorHandler = getSdkErrorHandler();
+        Try.of(() -> {
             AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
 
             awsGreengrassProvisioner.setArgs(args);
 
             awsGreengrassProvisioner.run();
-        } catch (SdkClientException e) {
-            sdkErrorHandler.handleSdkError(e);
-        }
+
+            return null;
+        }).onFailure(throwable -> {
+            // Sometimes dependency injection exceptions mask the actual SDK exception
+            if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
+                throwable = throwable.getCause();
+            }
+
+            if (throwable instanceof SdkClientException) {
+                sdkErrorHandler.handleSdkError((SdkClientException) throwable);
+            }
+
+            throw new RuntimeException(throwable);
+        });
     }
 
     public static SdkErrorHandler getSdkErrorHandler() {
@@ -68,88 +71,26 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     public void run() {
-        if (contains(new DeploymentArguments().getRequiredOptionName(), args)) {
-            // This looks like a deployment
-            String deploymentError;
-            DeploymentArguments deploymentArguments = null;
+        List<Operation> operations =
+                Arrays.asList(deploymentHelper, groupUpdateHelper, groupQueryHelper);
 
-            try {
-                deploymentArguments = deploymentArgumentHelper.parseArguments(args);
-                deploymentError = deploymentArguments.getError();
-            } catch (ParameterException e) {
-                deploymentError = e.getMessage();
-            }
-
-            if ((deploymentError == null) && deploymentArguments.help) {
-                deploymentArgumentHelper.displayUsage();
-                return;
-            } else if (deploymentError != null) {
-                log.error(deploymentError);
-            } else {
-                deploymentHelper.doDeployment(deploymentArguments);
-            }
-
-            return;
-        }
-
-        if (contains(new UpdateArguments().getRequiredOptionName(), args)) {
-            // This looks like an update
-            String updateError;
-            UpdateArguments updateArguments = null;
-
-            try {
-                updateArguments = updateArgumentHelper.parseArguments(args);
-                updateError = updateArguments.getError();
-            } catch (ParameterException e) {
-                updateError = e.getMessage();
-            }
-
-            if ((updateError == null) && updateArguments.help) {
-                updateArgumentHelper.displayUsage();
-                return;
-            } else if (updateError != null) {
-                log.error(updateError);
-            } else {
-                groupUpdateHelper.doUpdate(updateArguments);
-            }
-
-            return;
-        }
-
-        if (contains(new QueryArguments().getRequiredOptionName(), args)) {
-            // This looks like a query
-            String queryError;
-            QueryArguments queryArguments = null;
-
-            try {
-                queryArguments = queryArgumentHelper.parseArguments(args);
-                queryError = queryArguments.getError();
-            } catch (ParameterException e) {
-                queryError = e.getMessage();
-            }
-
-            if ((queryError == null) && queryArguments.help) {
-                queryArgumentHelper.displayUsage();
-                return;
-            } else if (queryError != null) {
-                log.error(queryError);
-            } else {
-                groupQueryHelper.doQuery(queryArguments);
-            }
-
-            return;
-        }
-
-        // Couldn't figure out what they wanted to do, just exit
-        log.error("No operation specified");
+        Try.of(() -> operations.stream()
+                // Find an operation with arguments that match
+                .filter(operation -> operation.matches(args))
+                .findFirst()
+                // Execute the operation
+                .map(operation -> operation.execute(log, args)))
+                // If the operation fails then log the error
+                .onFailure(throwable -> log.error(throwable.getMessage()))
+                // If the operation succeeds make sure the result isn't empty. An empty result means that nothing was done.
+                .onSuccess(success -> {
+                    if (!success.isPresent()) {
+                        log.error("No operation specified");
+                    }
+                });
     }
 
     public void setArgs(String[] args) {
         this.args = args;
-    }
-
-
-    private boolean contains(String requiredOption, String[] args) {
-        return Arrays.stream(args).anyMatch(arg -> arg.equals(requiredOption));
     }
 }

@@ -8,6 +8,7 @@ import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResou
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
@@ -841,11 +842,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public Device getDevice(String thingName) {
-        try {
-            iotHelper.getThingArn(thingName);
-        } catch (ResourceNotFoundException e) {
-            throw new RuntimeException("Thing [" + thingName + "] does not exist");
-        }
+        Try.of(() -> iotHelper.getThingArn(thingName))
+                .recover(ResourceNotFoundException.class, throwable -> {
+                    throw new RuntimeException("Thing [" + thingName + "] does not exist");
+                });
 
         String certificateArn = iotHelper.getThingPrincipal(thingName);
 

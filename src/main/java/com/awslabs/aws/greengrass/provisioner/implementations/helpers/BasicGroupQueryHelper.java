@@ -1,10 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GroupQueryHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.greengrass.model.*;
 
@@ -20,26 +17,26 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     IoHelper ioHelper;
     @Inject
     JsonHelper jsonHelper;
+    @Inject
+    QueryArgumentHelper queryArgumentHelper;
 
     @Inject
     public BasicGroupQueryHelper() {
     }
 
     @Override
-    public void doQuery(QueryArguments queryArguments) {
+    public Void execute(QueryArguments queryArguments) {
         if (!queryArguments.getGroupCa &&
                 !queryArguments.listSubscriptions &&
                 !queryArguments.listFunctions &&
                 !queryArguments.listDevices) {
-            log.error("No query specified");
-            return;
+            throw new RuntimeException("No query specified");
         }
 
         Optional<GroupInformation> optionalGroupInformation = greengrassHelper.getGroupInformation(queryArguments.groupName);
 
         if (!optionalGroupInformation.isPresent()) {
-            log.error("Group [" + queryArguments.groupName + "] not found");
-            return;
+            throw new RuntimeException("Group [" + queryArguments.groupName + "] not found");
         }
 
         GroupInformation groupInformation = optionalGroupInformation.get();
@@ -48,8 +45,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             GetGroupCertificateAuthorityResponse getGroupCertificateAuthorityResponse = greengrassHelper.getGroupCa(groupInformation);
 
             if (getGroupCertificateAuthorityResponse == null) {
-                log.error("Couldn't get the group CA");
-                return;
+                throw new RuntimeException("Couldn't get the group CA");
             }
 
             String pem = getGroupCertificateAuthorityResponse.pemEncodedCertificate();
@@ -58,7 +54,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String outputFilename = "build/" + queryArguments.groupName + "_Core_CA.pem";
 
             writeToFile(queryArguments, pem, outputFilename);
-            return;
+            return null;
         }
 
         if (queryArguments.listSubscriptions) {
@@ -71,7 +67,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String outputFilename = "build/" + queryArguments.groupName + "_subscription_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
-            return;
+            return null;
         }
 
         if (queryArguments.listFunctions) {
@@ -84,7 +80,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String outputFilename = "build/" + queryArguments.groupName + "_function_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
-            return;
+            return null;
         }
 
         if (queryArguments.listDevices) {
@@ -97,10 +93,20 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String outputFilename = "build/" + queryArguments.groupName + "_device_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
-            return;
+            return null;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
+    }
+
+    @Override
+    public ArgumentHelper<QueryArguments> getArgumentHelper() {
+        return queryArgumentHelper;
+    }
+
+    @Override
+    public QueryArguments getArguments() {
+        return new QueryArguments();
     }
 
     private void writeToFile(QueryArguments queryArguments, String output, String outputFilename) {
@@ -109,5 +115,4 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             log.info("This data was also written to [" + outputFilename + "]");
         }
     }
-
 }

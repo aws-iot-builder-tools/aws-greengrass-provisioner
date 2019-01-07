@@ -7,6 +7,7 @@ import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
@@ -34,7 +35,7 @@ public class BasicGGDHelper implements GGDHelper {
 
         GGDConf.GGDConfBuilder ggdConfBuilder = GGDConf.builder();
 
-        try {
+        return Try.of(() -> {
             Config config = ConfigFactory.parseFile(ggdConfigFile);
             config = config.withValue("GROUP_NAME", ConfigValueFactory.fromAnyRef(groupName));
             Config fallback = ConfigFactory.parseFile(new File(ggConstants.getGgdDefaultsConf()));
@@ -57,15 +58,16 @@ public class BasicGGDHelper implements GGDHelper {
                     .collect(Collectors.toList());
 
             ggdConfBuilder.files(files);
-        } catch (ConfigException.Missing e) {
-            log.error(e.getMessage());
-            log.error("The configuration file for the GGD may be missing");
-            System.exit(1);
-        } catch (ConfigException e) {
-            throw new RuntimeException(e);
-        }
 
-        GGDConf ggdConf = ggdConfBuilder.build();
-        return ggdConf;
+            return ggdConfBuilder.build();
+        })
+                .recover(ConfigException.Missing.class, throwable -> {
+                    log.error(throwable.getMessage());
+                    log.error("The configuration file for the GGD may be missing");
+                    System.exit(1);
+
+                    return null;
+                })
+                .get();
     }
 }

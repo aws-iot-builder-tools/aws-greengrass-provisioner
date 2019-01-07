@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IamHelper;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.iam.model.*;
@@ -23,11 +24,9 @@ public class BasicIamHelper implements IamHelper {
     private Role getRole(String name) {
         GetRoleRequest getRoleRequest = GetRoleRequest.builder().roleName(name).build();
 
-        try {
-            return iamClient.getRole(getRoleRequest).role();
-        } catch (NoSuchEntityException e) {
-            return null;
-        }
+        return Try.of(() -> iamClient.getRole(getRoleRequest).role())
+                .recover(NoSuchEntityException.class, throwable -> null)
+                .get();
     }
 
     @Override

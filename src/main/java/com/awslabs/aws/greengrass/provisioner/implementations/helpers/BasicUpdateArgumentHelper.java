@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.UpdateArgumentHelper;
 import com.beust.jcommander.JCommander;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
@@ -33,27 +34,26 @@ public class BasicUpdateArgumentHelper implements UpdateArgumentHelper {
                 .parse(args);
 
         if (!updateArguments.isRequiredOptionSet()) {
-            updateArguments.setError("This is not an update request");
-            return updateArguments;
+            throw new RuntimeException("This is not an update request");
         }
 
         if (updateArguments.groupName == null) {
-            updateArguments.setError("Group name is required for all operations");
-            return updateArguments;
+            throw new RuntimeException("Group name is required for all operations");
         }
 
+        Try triedSubscriptionTableEntriesPresent = Try.of(() -> subscriptionTableEntriesPresent(updateArguments));
+
         if ((updateArguments.addSubscription || updateArguments.removeSubscription) &&
-                !subscriptionTableEntriesPresent(updateArguments)) {
+                triedSubscriptionTableEntriesPresent.isFailure()) {
             // They want to add/remove a subscription but haven't specified the necessary subscription table entries
-            return updateArguments;
+            throw new RuntimeException(triedSubscriptionTableEntriesPresent.getCause());
         }
 
         if ((updateArguments.addFunction != null) || (updateArguments.removeFunction != null)) {
             // They want to add/remove a function...
             if (updateArguments.functionAlias == null) {
                 // ...but haven't specified the alias
-                updateArguments.setError("No function alias specified");
-                return updateArguments;
+                throw new RuntimeException("No function alias specified");
             }
         }
 
@@ -71,22 +71,19 @@ public class BasicUpdateArgumentHelper implements UpdateArgumentHelper {
         return updateArguments;
     }
 
-    private boolean subscriptionTableEntriesPresent(UpdateArguments updateArguments) {
+    private Void subscriptionTableEntriesPresent(UpdateArguments updateArguments) {
         if (updateArguments.subscriptionSource == null) {
-            updateArguments.setError("No source was specified");
-            return false;
+            throw new RuntimeException("No source was specified");
         }
 
         if (updateArguments.subscriptionSubject == null) {
-            updateArguments.setError("No subject was specified");
-            return false;
+            throw new RuntimeException("No subject was specified");
         }
 
         if (updateArguments.subscriptionTarget == null) {
-            updateArguments.setError("No target was specified");
-            return false;
+            throw new RuntimeException("No target was specified");
         }
 
-        return true;
+        return null;
     }
 }
