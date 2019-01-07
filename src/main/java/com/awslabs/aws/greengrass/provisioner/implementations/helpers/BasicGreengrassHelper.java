@@ -845,7 +845,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         Try.of(() -> iotHelper.getThingArn(thingName))
                 .recover(ResourceNotFoundException.class, throwable -> {
                     throw new RuntimeException("Thing [" + thingName + "] does not exist");
-                });
+                })
+                .get();
 
         String certificateArn = iotHelper.getThingPrincipal(thingName);
 

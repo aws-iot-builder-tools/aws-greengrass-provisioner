@@ -124,14 +124,16 @@ public class BasicPythonBuilder implements PythonBuilder {
             }
 
             return null;
-        });
+        })
+                .get();
     }
 
     private void touch(File file) {
         Try.of(() -> {
             new FileOutputStream(file).close();
             return null;
-        });
+        })
+                .get();
     }
 
     private List<Path> getDirectorySnapshot(FunctionConf functionConf) {

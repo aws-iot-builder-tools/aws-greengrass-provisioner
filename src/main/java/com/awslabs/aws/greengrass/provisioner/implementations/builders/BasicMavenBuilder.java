@@ -238,7 +238,8 @@ public class BasicMavenBuilder implements MavenBuilder {
             }
 
             return null;
-        });
+        })
+                .get();
     }
 
     public String getInternalName(Optional<Map<String, String>> properties) {

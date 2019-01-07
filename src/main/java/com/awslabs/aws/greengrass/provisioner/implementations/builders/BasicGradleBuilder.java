@@ -87,7 +87,9 @@ public class BasicGradleBuilder implements GradleBuilder {
             build.run();
 
             return null;
-        }).andFinally(() -> connection.close());
+        })
+                .andFinally(() -> connection.close())
+                .get();
     }
 
     @Override

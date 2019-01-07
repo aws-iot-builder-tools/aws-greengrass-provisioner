@@ -176,7 +176,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     log.info("No environment variables specified in this deployment");
 
                     return null;
-                });
+                })
+                .get();
     }
 
     private Config getFallbackConfig() {
@@ -293,13 +294,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Load the deployment configuration //
         ///////////////////////////////////////
 
-        Try<DeploymentConf> tryDeploymentConf = Try.of(() -> getDeploymentConf(deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName));
-
-        tryDeploymentConf.onFailure(throwable -> {
-            throw new RuntimeException(throwable);
-        });
-
-        DeploymentConf deploymentConf = tryDeploymentConf.get();
+        DeploymentConf deploymentConf = Try.of(() -> getDeploymentConf(deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
+                .get();
 
         // Create the service role
         Role greengrassServiceRole = createServiceRole(deploymentConf);
@@ -676,9 +672,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
         Try.of(() -> createAndWaitForDeployment(Optional.of(greengrassServiceRole), Optional.of(greengrassRole), groupId, groupVersionId))
-                .onFailure(throwable -> {
-                    throw new RuntimeException(throwable);
-                });
+                .get();
 
         //////////////////////////////////////////////
         // Launch the Docker container if necessary //
@@ -749,11 +743,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                                     log.error("Issue with private key file [" + privateKeyFile + "], skipping");
 
                                     return null;
-                                });
+                                })
+                                .get();
                     }
 
                     return null;
-                });
+                })
+                        .get();
             }
 
             Optional<Session> optionalSession = threadHelper.timeLimitTask(getSshSessionTask(publicIpAddress, user, jsch), 2, TimeUnit.MINUTES);
@@ -835,7 +831,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
                             log.error("There was an SSH error [" + message + "]");
                             return Optional.empty();
-                        }).get();
+                        })
+                        .get();
             }
 
             return optionalSession.get();
@@ -1260,7 +1257,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
 
                 return null;
-            });
+            })
+                    .get();
 
             log.info("Writing script [" + ggShScriptName + "]");
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
@@ -1296,7 +1294,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             Try.of(() -> {
                 dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
                 return null;
-            });
+            })
+                    .get();
 
             Try.of(() -> {
                 dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
@@ -1305,7 +1304,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .recover(DockerException.class, throwable -> {
                         log.error("Docker push failed [" + throwable.getMessage() + "]");
                         throw new RuntimeException(throwable);
-                    });
+                    })
+                    .get();
         }
 
         String containerName = shortEcrEndpointAndRepo + ":" + deploymentArguments.groupName;

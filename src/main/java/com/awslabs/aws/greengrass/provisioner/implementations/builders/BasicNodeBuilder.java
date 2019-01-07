@@ -87,7 +87,8 @@ public class BasicNodeBuilder implements NodeBuilder {
                 }
             }
             return null;
-        });
+        })
+                .get();
     }
 
     @Override

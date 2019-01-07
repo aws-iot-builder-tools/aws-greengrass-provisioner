@@ -75,11 +75,13 @@ public interface IoHelper {
             FileOutputStream fos = new FileOutputStream(file);
             fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
             return null;
-        });
+        })
+                .get();
     }
 
     default String download(String url) {
-        return Try.of(() -> new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next()).get();
+        return Try.of(() -> new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next())
+                .get();
     }
 
     default void makeExecutable(String filename) {
@@ -123,7 +125,8 @@ public interface IoHelper {
                     ois.close();
 
                     return object;
-                })).get();
+                }))
+                .get();
     }
 
     default String calcSHA1(URL url) {
@@ -237,6 +240,7 @@ public interface IoHelper {
         Try.of(() -> {
             Thread.sleep(milliseconds);
             return null;
-        });
+        })
+                .get();
     }
 }

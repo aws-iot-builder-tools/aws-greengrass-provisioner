@@ -82,7 +82,8 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
             }
 
             return null;
-        });
+        })
+                .get();
     }
 
     default String trimFilenameIfNecessary(String filename) {
@@ -91,7 +92,8 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     }
 
     default void moveDeploymentPackage(FunctionConf functionConf, File tempFile) {
-        Try.of(() -> Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING));
+        Try.of(() -> Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING))
+                .get();
     }
 
     default String getArchivePath(FunctionConf functionConf) {

@@ -98,7 +98,8 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                             .build());
 
                     return null;
-                });
+                })
+                .get();
     }
 
     protected abstract EcrClient getEcrClient();
