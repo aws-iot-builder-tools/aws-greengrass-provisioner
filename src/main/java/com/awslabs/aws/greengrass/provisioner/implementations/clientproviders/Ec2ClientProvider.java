@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.clientproviders;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SafeProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
 import software.amazon.awssdk.services.ec2.Ec2Client;
-import software.amazon.awssdk.services.iot.IotClient;
 
 import javax.inject.Inject;
 

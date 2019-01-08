@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import io.vavr.control.Try;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -39,20 +40,20 @@ public class BasicIotHelper implements IotHelper {
                 .thingName(name)
                 .build();
 
-        try {
-            return iotClient.createThing(createThingRequest).thingArn();
-        } catch (ResourceAlreadyExistsException e) {
-            if (e.getMessage().contains("with different tags")) {
-                log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
+        return Try.of(() -> iotClient.createThing(createThingRequest).thingArn())
+                .recover(ResourceAlreadyExistsException.class, throwable -> {
+                    if (throwable.getMessage().contains("with different tags")) {
+                        log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
 
-                DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
-                        .thingName(name)
-                        .build();
-                return iotClient.describeThing(describeThingRequest).thingArn();
-            }
+                        DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
+                                .thingName(name)
+                                .build();
+                        return iotClient.describeThing(describeThingRequest).thingArn();
+                    }
 
-            throw new RuntimeException(e);
-        }
+                    throw new RuntimeException(throwable);
+                })
+                .get();
     }
 
     private String credentialDirectoryForGroupId(String groupId) {
@@ -68,13 +69,9 @@ public class BasicIotHelper implements IotHelper {
                 .certificateId(certificateId)
                 .build();
 
-        try {
-            iotClient.describeCertificate(describeCertificateRequest);
-        } catch (ResourceNotFoundException e) {
-            return false;
-        }
-
-        return true;
+        return Try.of(() -> iotClient.describeCertificate(describeCertificateRequest) != null)
+                .recover(ResourceNotFoundException.class, throwable -> false)
+                .get();
     }
 
     @Override
@@ -127,12 +124,9 @@ public class BasicIotHelper implements IotHelper {
                 .policyName(name)
                 .build();
 
-        try {
-            iotClient.getPolicy(getPolicyRequest);
-            return true;
-        } catch (ResourceNotFoundException e) {
-            return false;
-        }
+        return Try.of(() -> iotClient.getPolicy(getPolicyRequest) != null)
+                .recover(ResourceNotFoundException.class, throwable -> false)
+                .get();
     }
 
     @Override
@@ -217,16 +211,16 @@ public class BasicIotHelper implements IotHelper {
                 .roleAlias(roleAlias)
                 .build();
 
-        try {
-            return iotClient.createRoleAlias(createRoleAliasRequest);
-        } catch (ResourceAlreadyExistsException e) {
-            // Already exists, delete so we can try
-            DeleteRoleAliasRequest deleteRoleAliasRequest = DeleteRoleAliasRequest.builder()
-                    .roleAlias(roleAlias)
-                    .build();
-            iotClient.deleteRoleAlias(deleteRoleAliasRequest);
-        }
+        return Try.of(() -> iotClient.createRoleAlias(createRoleAliasRequest))
+                .recover(ResourceAlreadyExistsException.class, throwable -> {
+                    // Already exists, delete it and try again
+                    DeleteRoleAliasRequest deleteRoleAliasRequest = DeleteRoleAliasRequest.builder()
+                            .roleAlias(roleAlias)
+                            .build();
+                    iotClient.deleteRoleAlias(deleteRoleAliasRequest);
 
-        return iotClient.createRoleAlias(createRoleAliasRequest);
+                    return iotClient.createRoleAlias(createRoleAliasRequest);
+                })
+                .get();
     }
 }

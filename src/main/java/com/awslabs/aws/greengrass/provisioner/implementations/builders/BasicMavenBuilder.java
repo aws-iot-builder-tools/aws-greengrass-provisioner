@@ -6,6 +6,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ExecutorHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.invoker.*;
 
@@ -199,7 +200,7 @@ public class BasicMavenBuilder implements MavenBuilder {
         invoker.setOutputHandler(invocationOutputHandler);
         invoker.setErrorHandler(invocationErrorHandler);
 
-        try {
+        Try.of(() -> {
             if (functionName.isPresent()) {
                 loggingHelper.logInfoWithName(log, functionName.get(), "Attempting Maven build of Java function");
             } else if (pomXmlPath.isPresent()) {
@@ -235,9 +236,10 @@ public class BasicMavenBuilder implements MavenBuilder {
 
                 loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Finished Maven build");
             }
-        } catch (MavenInvocationException e) {
-            throw new RuntimeException(e);
-        }
+
+            return null;
+        })
+                .get();
     }
 
     public String getInternalName(Optional<Map<String, String>> properties) {

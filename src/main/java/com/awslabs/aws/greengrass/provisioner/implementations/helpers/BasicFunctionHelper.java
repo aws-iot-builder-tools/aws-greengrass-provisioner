@@ -14,6 +14,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.typesafe.config.*;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
@@ -60,7 +61,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private File getFunctionConfPath(String functionName) {
-        try {
+        return Try.of(() -> {
             if (functionName.startsWith(HTTPS)) {
                 // This is a git repo, fetch it
                 String tempFunctionName = functionName.substring(HTTPS.length());
@@ -121,9 +122,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
                 return tempPath.resolve(FUNCTION_CONF).toFile();
             }
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        }).get();
     }
 
     private Path runGitClone(String repoName, String directoryName, String cloneName) throws IOException {
@@ -186,9 +185,9 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
             Path functionPath = getFunctionPath(enabledFunctionConf);
 
-            FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
+            FunctionConf functionConf = Try.of(() -> {
+                FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
 
-            try {
                 // Load function config file and use function.defaults.conf as the fallback for missing values
                 Config config = ConfigFactory.parseFile(enabledFunctionConf);
                 Config functionDefaults = ggVariables.getFunctionDefaults();
@@ -240,11 +239,9 @@ public class BasicFunctionHelper implements FunctionHelper {
                 if (cfTemplate.exists()) {
                     functionConfBuilder.cfTemplate(cfTemplate);
                 }
-            } catch (ConfigException e) {
-                throw new RuntimeException(e);
-            }
 
-            FunctionConf functionConf = functionConfBuilder.build();
+                return functionConfBuilder.build();
+            }).get();
 
             enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
@@ -340,11 +337,9 @@ public class BasicFunctionHelper implements FunctionHelper {
             String sourcePath = temp.getString("sourcePath");
             String destinationPath;
 
-            try {
-                destinationPath = temp.getString("destinationPath");
-            } catch (ConfigException.Missing e) {
-                destinationPath = sourcePath;
-            }
+            destinationPath = Try.of(() -> temp.getString("destinationPath"))
+                    .recover(ConfigException.Missing.class, throwable -> sourcePath)
+                    .get();
 
             Optional<String> name = getName(temp);
             name = makeNameSafe(sourcePath, name);
@@ -432,14 +427,10 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private Optional<String> getName(Config temp) {
-        Optional<String> name = Optional.empty();
-
-        try {
-            name = Optional.ofNullable(temp.getString("name"));
-        } catch (ConfigException.Missing e) {
-            // Use path
-        }
-        return name;
+        // Get the config value or simply return empty if it isn't specified
+        return Try.of(() -> Optional.of(temp.getString("name")))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
     }
 
     private Optional<String> makeNameSafe(String path, Optional<String> name) {

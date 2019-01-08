@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.data.arguments;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.beust.jcommander.Parameter;
 import lombok.Getter;
-import lombok.Setter;
 
 public class DeploymentArguments extends Arguments {
     private final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
@@ -58,11 +57,8 @@ public class DeploymentArguments extends Arguments {
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
     @Parameter(names = "--help", help = true)
-    public boolean help;
-
     @Getter
-    @Setter
-    private String error;
+    public boolean help;
 
     @Override
     public boolean isRequiredOptionSet() {

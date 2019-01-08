@@ -9,6 +9,7 @@ import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.Image;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.ecr.model.CreateRepositoryRequest;
@@ -47,16 +48,17 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public boolean isDockerAvailable() {
-        try {
-            listImages();
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to connect to Docker.  Is it running on this host?  Is it listening on the standard Unix socket?");
-            log.error("Docker exception message [" + e.getMessage() + "]");
+        return Try.of(() -> listImages() != null)
+                .recover(DockerException.class, this::printDockerNotAvailableErrorAndReturnFalse)
+                .recover(InterruptedException.class, this::printDockerNotAvailableErrorAndReturnFalse)
+                .get();
+    }
 
-            return false;
-        }
+    private boolean printDockerNotAvailableErrorAndReturnFalse(Throwable throwable) {
+        log.error("Failed to connect to Docker.  Is it running on this host?  Is it listening on the standard Unix socket?");
+        log.error("Docker exception message [" + throwable.getMessage() + "]");
 
-        return true;
+        return false;
     }
 
     private List<Image> listImages() throws DockerException, InterruptedException {
@@ -74,7 +76,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public void createEcrRepositoryIfNecessary() {
-        try {
+        Try.of(() -> {
             DescribeRepositoriesResponse describeRepositoriesResponse = getEcrClient().describeRepositories(
                     DescribeRepositoriesRequest.builder()
                             .repositoryNames(ecrRepositoryName.get())
@@ -82,17 +84,22 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
             if (describeRepositoriesResponse.repositories().size() == 1) {
                 log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
-                return;
+                return null;
             }
 
             log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");
+
             throw new RuntimeException("More than one matching ECR repository");
-        } catch (RepositoryNotFoundException e) {
-            log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
-            getEcrClient().createRepository(CreateRepositoryRequest.builder()
-                    .repositoryName(ecrRepositoryName.get())
-                    .build());
-        }
+        })
+                .recover(RepositoryNotFoundException.class, throwable -> {
+                    log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
+                    getEcrClient().createRepository(CreateRepositoryRequest.builder()
+                            .repositoryName(ecrRepositoryName.get())
+                            .build());
+
+                    return null;
+                })
+                .get();
     }
 
     protected abstract EcrClient getEcrClient();
@@ -109,25 +116,26 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public Optional<Image> getImageFromTag(String tag) {
-        try {
-            List<Image> images = listImages();
+        Optional<Image> optionalImage = Try.of(() -> listImages().stream()
+                .filter(image -> image.repoTags() != null)
+                .filter(image -> image.repoTags().stream().anyMatch(s -> s.equals(tag)))
+                .findFirst())
+                .recover(DockerException.class, this::printFailedToListImagesFromDockerAndReturnEmpty)
+                .recover(InterruptedException.class, this::printFailedToListImagesFromDockerAndReturnEmpty)
+                .get();
 
-            Optional<Image> optionalImage = images.stream()
-                    .filter(image -> image.repoTags() != null)
-                    .filter(image -> image.repoTags().stream().anyMatch(s -> s.equals(tag)))
-                    .findFirst();
+        optionalImage.ifPresent(image -> log.info("Found tag [" + tag + "] with ID [" + optionalImage.get().id() + "]"));
 
-            if (optionalImage.isPresent()) {
-                log.info("Found tag [" + tag + "] with ID [" + optionalImage.get().id() + "]");
-                return optionalImage;
-            }
-
+        if (!optionalImage.isPresent()) {
             log.info("Tag [" + tag + "] not found");
-            return Optional.empty();
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to list images from Docker [" + e.getMessage() + "]");
-            return Optional.empty();
         }
+
+        return optionalImage;
+    }
+
+    private Optional<Image> printFailedToListImagesFromDockerAndReturnEmpty(Throwable throwable) {
+        log.error("Failed to list images from Docker [" + throwable.getMessage() + "]");
+        return Optional.empty();
     }
 
     @Override
@@ -190,61 +198,56 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public Optional<Container> getContainerFromImage(String imageId) {
-        try {
-            List<Container> containers = listContainers();
+        Optional<Container> optionalContainer = Try.of(() -> listContainers().stream()
+                .filter(container -> container.image().equals(imageId))
+                .findFirst())
+                .recover(DockerException.class, this::printFailedToGetContainerFromImageAndThrow)
+                .recover(InterruptedException.class, this::printFailedToGetContainerFromImageAndThrow)
+                .get();
 
-            Optional<Container> optionalContainer = containers.stream()
-                    .filter(container -> container.image().equals(imageId))
-                    .findFirst();
+        optionalContainer.ifPresent(container -> log.info("Found container [" + container.id() + "] with image ID [" + imageId + "]"));
 
-            if (optionalContainer.isPresent()) {
-                log.info("Found container [" + optionalContainer.get().id() + "] with image ID [" + imageId + "]");
-                return optionalContainer;
-            }
-
+        if (!optionalContainer.isPresent()) {
             log.info("No container running image [" + imageId + "] found");
-            return Optional.empty();
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to get container from image [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
         }
+
+        return optionalContainer;
+    }
+
+    private Optional<Container> printFailedToGetContainerFromImageAndThrow(Throwable throwable) {
+        log.error("Failed to get container from image [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
     }
 
     @Override
     public void dumpImagesInfo() {
-        try {
-            List<Image> images = listImages();
-
-            String listString = images.stream()
-                    .map(image -> image.id() + " [" + image.repoTags().stream().collect(Collectors.joining("|")) + "]")
-                    .collect(Collectors.joining(", "));
-
-            log.info("Images [" + listString + "]");
-        } catch (DockerException | InterruptedException e) {
-            e.printStackTrace();
-        }
+        Try.of(() -> listImages().stream()
+                .map(image -> image.id() + " [" + image.repoTags().stream().collect(Collectors.joining("|")) + "]")
+                .collect(Collectors.joining(", ")))
+                .onSuccess(string -> log.info("Images [" + string + "]"))
+                .onFailure(Throwable::printStackTrace);
     }
 
-    private List<Container> listContainers() throws DockerException, InterruptedException {
-        try (DockerClient dockerClient = getDockerClient()) {
-            return dockerClient.listContainers(DockerClient.ListContainersParam.allContainers());
-        }
+    private List<Container> listContainers() {
+        return Try.withResources(this::getDockerClient)
+                .of(dockerClient -> dockerClient.listContainers(DockerClient.ListContainersParam.allContainers()))
+                .get();
     }
 
     @Override
     public void dumpContainersInfo() {
-        try {
-            List<Container> containers = listContainers();
+        Try.of(() -> listContainers().stream()
+                .map(container -> container.id())
+                .collect(Collectors.joining(", ")))
+                .onSuccess(string -> log.info("Containers [" + string + "]"))
+                .recover(DockerException.class, this::printFailedToListContainersAndThrow)
+                .recover(InterruptedException.class, this::printFailedToListContainersAndThrow)
+                .get();
+    }
 
-            String listString = containers.stream()
-                    .map(container -> container.id())
-                    .collect(Collectors.joining(", "));
-
-            log.info("Containers [" + listString + "]");
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to list containers [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
-        }
+    private String printFailedToListContainersAndThrow(Throwable throwable) {
+        log.error("Failed to list containers [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
     }
 
     @Override
@@ -265,12 +268,18 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
         Container container = optionalContainer.get();
 
-        try (DockerClient dockerClient = getDockerClient()) {
-            dockerClient.stopContainer(container.id(), 5);
-        } catch (DockerException | InterruptedException e) {
-            log.error("Failed to stop container [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
-        }
+        Try.withResources(this::getDockerClient)
+                .of(dockerClient -> {
+                    dockerClient.stopContainer(container.id(), 5);
+                    return null;
+                })
+                .recover(DockerException.class, this::printFailedToStopContainerAndThrow)
+                .recover(InterruptedException.class, this::printFailedToStopContainerAndThrow);
+    }
+
+    private Void printFailedToStopContainerAndThrow(Throwable throwable) {
+        log.error("Failed to stop container [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
     }
 
     @Override

@@ -46,6 +46,7 @@ def commonsLangVersion = '3.8.1'
 def junitVersion = '4.12'
 def mockitoVersion = '1.10.19'
 def lombokVersion = '1.18.4'
+def vavrVersion = '0.9.2'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirTemp = "$buildDir/temp"
@@ -203,6 +204,7 @@ dependencies {
     compile "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+    compile "io.vavr:vavr:$vavrVersion"
 
     testCompile "junit:junit:$junitVersion"
     testCompile "org.mockito:mockito-all:$mockitoVersion"

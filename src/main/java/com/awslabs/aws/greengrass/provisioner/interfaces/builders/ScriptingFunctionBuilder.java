@@ -4,11 +4,11 @@ import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
@@ -30,7 +30,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
         String sdkInnerZipPath = getSdk().getInnerSdkZipPath();
 
-        try {
+        Try.of(() -> {
             // Try to get the SDK from inside the JAR
             Optional<InputStream> optionalInputStream = Optional.ofNullable(resourceHelper.getFileOrResourceAsStream(sdkInnerZipPath));
 
@@ -80,9 +80,10 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
                     fileOutputStream.close();
                 }
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+
+            return null;
+        })
+                .get();
     }
 
     default String trimFilenameIfNecessary(String filename) {
@@ -91,12 +92,8 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     }
 
     default void moveDeploymentPackage(FunctionConf functionConf, File tempFile) {
-        try {
-            Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING);
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        Try.of(() -> Files.move(tempFile.toPath(), new File(getArchivePath(functionConf)).toPath(), StandardCopyOption.REPLACE_EXISTING))
+                .get();
     }
 
     default String getArchivePath(FunctionConf functionConf) {

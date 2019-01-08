@@ -6,6 +6,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ExecutorHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnector;
@@ -78,15 +79,17 @@ public class BasicGradleBuilder implements GradleBuilder {
                 .forProjectDirectory(gradleBuildPath.get())
                 .connect();
 
-        try {
+        Try.of(() -> {
             // Build with gradle and send the output to stdout
             BuildLauncher build = connection.newBuild();
             build.forTasks("build");
             build.setStandardOutput(System.out);
             build.run();
-        } finally {
-            connection.close();
-        }
+
+            return null;
+        })
+                .andFinally(() -> connection.close())
+                .get();
     }
 
     @Override

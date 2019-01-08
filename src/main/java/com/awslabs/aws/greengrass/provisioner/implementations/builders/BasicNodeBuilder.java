@@ -7,13 +7,13 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import io.vavr.control.Try;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.zeroturnaround.zip.ZipUtil;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -55,15 +55,8 @@ public class BasicNodeBuilder implements NodeBuilder {
         }
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
-        File tempFile;
 
-        try {
-            tempFile = File.createTempFile("node-lambda-build", "zip");
-            tempFile.deleteOnExit();
-        } catch (IOException e) {
-            e.printStackTrace();
-            throw new RuntimeException(e);
-        }
+        File tempFile = ioHelper.getTempFile("node-lambda-build", "zip");
 
         // Create the deployment package
         ZipUtil.pack(new File(functionConf.getBuildDirectory().toString()), tempFile);
@@ -72,7 +65,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        try {
+        Try.of(() -> {
             for (String dependency : functionConf.getDependencies()) {
                 loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
                 List<String> programAndArguments = new ArrayList<>();
@@ -93,9 +86,9 @@ public class BasicNodeBuilder implements NodeBuilder {
                     System.exit(1);
                 }
             }
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+            return null;
+        })
+                .get();
     }
 
     @Override

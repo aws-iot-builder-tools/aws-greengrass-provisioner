@@ -8,7 +8,5 @@ public abstract class Arguments {
 
     abstract public boolean isRequiredOptionSet();
 
-    abstract String getError();
-
-    abstract void setError(String error);
+    abstract public boolean isHelp();
 }

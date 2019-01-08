@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
+import io.vavr.control.Try;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
@@ -21,13 +22,11 @@ import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
     default void writeFile(String filename, byte[] contents) {
-        try (FileOutputStream out = new FileOutputStream(filename)) {
-            out.write(contents);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        Try.withResources(() -> new FileOutputStream(filename))
+                .of(out -> {
+                    out.write(contents);
+                    return null;
+                });
 
         makeWritable(filename);
     }
@@ -37,11 +36,7 @@ public interface IoHelper {
     }
 
     default byte[] readFile(String filename) {
-        try {
-            return Files.readAllBytes(Paths.get(filename));
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> Files.readAllBytes(Paths.get(filename))).get();
     }
 
     default String readFileAsString(File file) {
@@ -51,49 +46,42 @@ public interface IoHelper {
     }
 
     default byte[] readFile(File file) {
-        try {
-            return Files.readAllBytes(file.toPath());
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> Files.readAllBytes(file.toPath())).get();
     }
 
     default byte[] readFile(URL url) {
-        try (InputStream inputStream = url.openStream()) {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            byte[] buffer = new byte[8192];
+        return Try.withResources(() -> url.openStream())
+                .of(inputStream -> {
+                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                    byte[] buffer = new byte[8192];
 
-            int len = inputStream.read(buffer);
+                    int len = inputStream.read(buffer);
 
-            while (len != -1) {
-                baos.write(buffer, 0, len);
-                len = inputStream.read(buffer);
-            }
+                    while (len != -1) {
+                        baos.write(buffer, 0, len);
+                        len = inputStream.read(buffer);
+                    }
 
-            return baos.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+                    return baos.toByteArray();
+                })
+                .get();
     }
 
     default void download(String url, File file) {
-        try {
+        Try.of(() -> {
             // From: http://stackoverflow.com/a/921400
             URL website = new URL(url);
             ReadableByteChannel rbc = Channels.newChannel(website.openStream());
             FileOutputStream fos = new FileOutputStream(file);
             fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+            return null;
+        })
+                .get();
     }
 
     default String download(String url) {
-        try {
-            return new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+        return Try.of(() -> new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next())
+                .get();
     }
 
     default void makeExecutable(String filename) {
@@ -128,22 +116,17 @@ public interface IoHelper {
     }
 
     default Object deserializeObject(byte[] bytes, JsonHelper jsonHelper) {
-        try {
-            return jsonHelper.fromJson(KeysAndCertificate.class, bytes);
-        } catch (Exception e) {
-            // Do nothing and try again
-        }
+        return Try.of(() -> jsonHelper.fromJson(KeysAndCertificate.class, bytes))
+                .onFailure(exception -> Try.of(() -> {
+                    // Try again
+                    ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+                    ObjectInputStream ois = new ObjectInputStream(bais);
+                    Object object = ois.readObject();
+                    ois.close();
 
-        try {
-            ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-            Object object = ois.readObject();
-            ois.close();
-
-            return object;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+                    return object;
+                }))
+                .get();
     }
 
     default String calcSHA1(URL url) {
@@ -238,4 +221,26 @@ public interface IoHelper {
         return Optional.empty();
     }
 
+    /**
+     * Returns a temp file that is deleted when the JVM exits
+     *
+     * @param prefix
+     * @param suffix
+     * @return
+     */
+    default File getTempFile(String prefix, String suffix) {
+        return Try.of(() -> {
+            File innerTempFile = File.createTempFile(prefix, suffix);
+            innerTempFile.deleteOnExit();
+            return innerTempFile;
+        }).get();
+    }
+
+    default void sleep(int milliseconds) {
+        Try.of(() -> {
+            Thread.sleep(milliseconds);
+            return null;
+        })
+                .get();
+    }
 }

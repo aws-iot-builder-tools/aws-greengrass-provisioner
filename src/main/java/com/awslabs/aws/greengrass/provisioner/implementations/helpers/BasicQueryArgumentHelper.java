@@ -33,13 +33,11 @@ public class BasicQueryArgumentHelper implements QueryArgumentHelper {
                 .parse(args);
 
         if (!queryArguments.isRequiredOptionSet()) {
-            queryArguments.setError("This is not a query request");
-            return queryArguments;
+            throw new RuntimeException("This is not a query request");
         }
 
         if (queryArguments.groupName == null) {
-            queryArguments.setError("Group name is required for all operations");
-            return queryArguments;
+            throw new RuntimeException("Group name is required for all operations");
         }
 
         return queryArguments;

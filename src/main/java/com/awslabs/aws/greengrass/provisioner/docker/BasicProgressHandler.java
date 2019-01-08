@@ -6,7 +6,6 @@ import com.spotify.docker.client.messages.ProgressMessage;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.inject.Inject;
-import java.util.Optional;
 
 @Slf4j
 public class BasicProgressHandler implements ProgressHandler {

@@ -2,8 +2,5 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 
-public interface DeploymentArgumentHelper {
-    void displayUsage();
-
-    DeploymentArguments parseArguments(String[] args);
+public interface DeploymentArgumentHelper extends ArgumentHelper<DeploymentArguments> {
 }

@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import io.vavr.control.Try;
 import org.slf4j.Logger;
 
 import java.util.List;
@@ -12,27 +13,19 @@ public interface ExecutorHelper {
         // Get an executor
         ExecutorService executorService = getExecutor();
 
-        List<T> results = null;
-
-        try {
+        List<T> results = Try.of(() -> {
             // Invoke all of the tasks and collect the results
-            results = executorService.invokeAll(callables)
+            return executorService.invokeAll(callables)
                     .stream()
-                    .map(future -> {
-                        try {
-                            return future.get();
-                        } catch (Exception e) {
-                            throw new RuntimeException(e);
-                        }
-                    })
+                    .map(future -> Try.of(() -> future.get()).get())
                     .collect(Collectors.toList());
-        } catch (InterruptedException e) {
-            log.error("Parallel task execution failed [" + e.getMessage() + "]");
-            throw new RuntimeException(e);
-        } finally {
-            // Clean up the executor
-            executorService.shutdown();
-        }
+        })
+                .onFailure(throwable -> {
+                    log.error("Parallel task execution failed [" + throwable.getMessage() + "]");
+                    throw new RuntimeException(throwable);
+                })
+                .andFinallyTry(() -> executorService.shutdown())
+                .get();
 
         return results;
     }

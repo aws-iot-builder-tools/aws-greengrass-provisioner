@@ -6,16 +6,14 @@ import software.amazon.awssdk.services.iam.model.Role;
 
 import java.util.Optional;
 
-public interface DeploymentHelper {
+public interface DeploymentHelper extends Operation<DeploymentArguments> {
     String CORE_SUB_NAME = "core";
 
     DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName);
 
-    boolean createAndWaitForDeployment(java.util.Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId);
+    Void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId);
 
     void associateRoleToGroup(Role greengrassRole, String groupId);
 
     void associateServiceRoleToAccount(Role greengrassServiceRole);
-
-    void doDeployment(DeploymentArguments deploymentArguments);
 }

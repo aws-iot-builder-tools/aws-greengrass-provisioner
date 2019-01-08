@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.CloudFormationHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
 import software.amazon.awssdk.services.cloudformation.model.*;
@@ -55,33 +56,46 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                 .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
                 .build();
 
-        try {
+        String finalStackName = stackName;
+
+        boolean stackCreated = Try.of(() -> {
             CreateStackResponse createStackResponse = cloudFormationClient.createStack(createStackRequest);
 
-            log.info("CloudFormation stack launched [" + stackName + ", " + createStackResponse.stackId() + "]");
+            log.info("CloudFormation stack launched [" + finalStackName + ", " + createStackResponse.stackId() + "]");
 
+            return true;
+        })
+                .recover(AlreadyExistsException.class, throwable -> {
+                    log.warn("CloudFormation stack [" + finalStackName + "] already exists, attempting update");
+                    return false;
+                })
+                .get();
+
+        if (stackCreated) {
             return Optional.of(stackName);
-        } catch (AlreadyExistsException e) {
-            log.warn("CloudFormation stack [" + stackName + "] already exists, attempting update");
         }
 
-        try {
+        return Try.of(() -> {
             UpdateStackRequest updateStackRequest = UpdateStackRequest.builder()
-                    .stackName(stackName)
+                    .stackName(finalStackName)
                     .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
                     .parameters(parameters)
                     .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
                     .build();
 
             cloudFormationClient.updateStack(updateStackRequest);
-        } catch (CloudFormationException e) {
-            if (e.getMessage().contains("No updates are to be performed")) {
-                log.info("No updates necessary for CloudFormation stack [" + stackName + "]");
-                return Optional.empty();
-            }
-        }
 
-        return Optional.of(stackName);
+            return Optional.of(finalStackName);
+        })
+                .recover(CloudFormationException.class, throwable -> {
+                    if (throwable.getMessage().contains("No updates are to be performed")) {
+                        log.info("No updates necessary for CloudFormation stack [" + finalStackName + "]");
+                        return Optional.empty();
+                    }
+
+                    throw new RuntimeException(throwable);
+                })
+                .get();
     }
 
     @Override
@@ -109,11 +123,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
 
             log.info("Waiting for stack to finish " + action + " [" + stackName + ", " + stackStatus + "]...");
 
-            try {
-                Thread.sleep(10000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            ioHelper.sleep(10000);
 
             describeStacksResponse = cloudFormationClient.describeStacks(describeStacksRequest);
             stackStatus = describeStacksResponse.stacks().get(0).stackStatus();
