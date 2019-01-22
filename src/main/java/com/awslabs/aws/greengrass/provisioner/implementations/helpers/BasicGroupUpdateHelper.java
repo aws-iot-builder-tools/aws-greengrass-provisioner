@@ -179,7 +179,6 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
 
-
         GroupVersion newGroupVersion = GroupVersion.builder()
                 .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
                 .build();
