@@ -927,7 +927,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetDeviceDefinitionVersionResponse getDeviceDefinitionVersionResponse = greengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
 
         DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResponse.definition();
-        List<Device> devices = deviceDefinition.devices();
+
+        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
+        List<Device> devices = new ArrayList<>(deviceDefinition.devices());
 
         return devices;
     }
