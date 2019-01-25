@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import io.vavr.control.Try;
 import org.apache.commons.codec.binary.Hex;
@@ -165,10 +164,6 @@ public interface IoHelper {
 
         if (object instanceof CreateKeysAndCertificateResponse) {
             return KeysAndCertificate.from((CreateKeysAndCertificateResponse) object);
-        }
-
-        if (object instanceof CreateKeysAndCertificateResult) {
-            return KeysAndCertificate.from((CreateKeysAndCertificateResult) object);
         }
 
         throw new RuntimeException("Couldn't deserialize keys.  This is a bug.");

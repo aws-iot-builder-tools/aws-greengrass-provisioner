@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import com.amazonaws.services.iot.model.CreateKeysAndCertificateResult;
 import lombok.Builder;
 import lombok.Data;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
@@ -23,20 +22,6 @@ public class KeysAndCertificate {
                 .certificateId(createKeysAndCertificateResponse.certificateId())
                 .certificatePem(createKeysAndCertificateResponse.certificatePem())
                 .keyPair(createKeysAndCertificateResponse.keyPair()).build();
-
-        return keysAndCertificate;
-    }
-
-    public static KeysAndCertificate from(CreateKeysAndCertificateResult createKeysAndCertificateResult) {
-        KeysAndCertificate keysAndCertificate = KeysAndCertificate.builder()
-                .certificateArn(createKeysAndCertificateResult.getCertificateArn())
-                .certificateId(createKeysAndCertificateResult.getCertificateId())
-                .certificatePem(createKeysAndCertificateResult.getCertificatePem())
-                .keyPair(KeyPair.builder()
-                        .privateKey(createKeysAndCertificateResult.getKeyPair().getPrivateKey())
-                        .publicKey(createKeysAndCertificateResult.getKeyPair().getPublicKey())
-                        .build())
-                .build();
 
         return keysAndCertificate;
     }
