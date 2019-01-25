@@ -65,27 +65,22 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (updateArguments.addSubscription || updateArguments.removeSubscription) {
             addOrRemoveSubscription(updateArguments, optionalGroupInformation.get());
-            return null;
         }
 
         if (updateArguments.addDevice != null) {
             addDevice(updateArguments, optionalGroupInformation.get());
-            return null;
         }
 
         if (updateArguments.removeDevice != null) {
             removeDevice(updateArguments, optionalGroupInformation.get());
-            return null;
         }
 
         if (updateArguments.addFunction != null) {
             addFunction(updateArguments, optionalGroupInformation.get());
-            return null;
         }
 
         if (updateArguments.removeFunction != null) {
             removeFunction(updateArguments, optionalGroupInformation.get());
-            return null;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
@@ -135,10 +130,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
                 .build();
 
-        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
-        };
-
-        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+        createAndWaitForDeployment(groupId, newGroupVersion);
     }
 
     private void addDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -184,6 +176,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
 
+
         GroupVersion newGroupVersion = GroupVersion.builder()
                 .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
                 .build();
@@ -193,14 +186,21 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
     }
 
+    private void createAndWaitForDeployment(String groupId, GroupVersion newGroupVersion) {
+        createAndWaitForDeployment(groupId, newGroupVersion, null);
+    }
+
     private void createAndWaitForDeployment(String groupId, GroupVersion newGroupVersion, Consumer<? super Void> successHandler) {
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
 
+        if (successHandler == null) {
+            successHandler = (Consumer<Void>) aVoid -> {
+            };
+        }
+
         Try.of(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId))
                 .onSuccess(successHandler)
-                .onFailure(throwable -> {
-                    throw new RuntimeException(throwable);
-                });
+                .get();
     }
 
     private void addFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
@@ -287,12 +287,12 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
                 .build();
 
-        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
-            log.info("Function removed [" + functionToDelete.functionArn() + "]");
-            lambdaHelper.deleteAlias(functionToDeleteArn);
-        };
+        createAndWaitForDeployment(groupId, newGroupVersion, nothing -> logFunctionRemovedAndDeleteLambdaAlias(functionToDelete, functionToDeleteArn));
+    }
 
-        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+    private void logFunctionRemovedAndDeleteLambdaAlias(Function functionToDelete, String functionToDeleteArn) {
+        log.info("Function removed [" + functionToDelete.functionArn() + "]");
+        lambdaHelper.deleteAlias(functionToDeleteArn);
     }
 
     private List<Subscription> removeSubscriptions(GroupInformation groupInformation, String thingOrFunctionArn) {
@@ -374,10 +374,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
                 .build();
 
-        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> {
-        };
-
-        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+        // Do nothing extra if successful
+        createAndWaitForDeployment(groupId, newGroupVersion);
     }
 
     /**
@@ -442,38 +440,44 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
     private List<Subscription> getTargetMatches(String target, boolean exactTarget, List<Subscription> sourceMatches) {
         return sourceMatches.stream()
-                .filter(subscription -> {
-                    if (exactTarget) {
-                        return subscription.target().equals(target);
-                    }
-
-                    return subscription.target().endsWith(target);
-                })
+                .filter(subscription -> checkTarget(target, exactTarget, subscription))
                 .collect(Collectors.toList());
+    }
+
+    private boolean checkTarget(String target, boolean exactTarget, Subscription subscription) {
+        if (exactTarget) {
+            return subscription.target().equals(target);
+        }
+
+        return subscription.target().endsWith(target);
     }
 
     private List<Subscription> getSourceMatches(String source, boolean exactSource, List<Subscription> subjectMatches) {
         return subjectMatches.stream()
-                .filter(subscription -> {
-                    if (exactSource) {
-                        return subscription.source().equals(source);
-                    }
-
-                    return subscription.source().endsWith(source);
-                })
+                .filter(subscription -> matchSource(source, exactSource, subscription))
                 .collect(Collectors.toList());
+    }
+
+    private boolean matchSource(String source, boolean exactSource, Subscription subscription) {
+        if (exactSource) {
+            return subscription.source().equals(source);
+        }
+
+        return subscription.source().endsWith(source);
     }
 
     private List<Subscription> getSubjectMatches(List<Subscription> subscriptions, Optional<String> optionalSubject) {
         return subscriptions.stream()
-                .filter(subscription -> {
-                    if (optionalSubject.isPresent()) {
-                        return subscription.subject().equals(optionalSubject.get());
-                    }
-
-                    return true;
-                })
+                .filter(subscription -> checkSubject(optionalSubject, subscription))
                 .collect(Collectors.toList());
+    }
+
+    private boolean checkSubject(Optional<String> optionalSubject, Subscription subscription) {
+        if (optionalSubject.isPresent()) {
+            return subscription.subject().equals(optionalSubject.get());
+        }
+
+        return true;
     }
 
     private Optional<String> validateSubscriptionSourceOrTarget(String sourceOrTarget, List<Function> functions, List<Device> devices) {

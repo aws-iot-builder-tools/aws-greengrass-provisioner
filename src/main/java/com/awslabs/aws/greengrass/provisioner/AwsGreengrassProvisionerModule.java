@@ -7,12 +7,14 @@ import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicNode
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicPythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.*;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.*;
+import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
 import com.spotify.docker.client.ProgressHandler;
 import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
@@ -61,25 +63,40 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(FunctionHelper.class).to(BasicFunctionHelper.class);
         bind(ArchiveHelper.class).to(BasicArchiveHelper.class);
         bind(GGDHelper.class).to(BasicGGDHelper.class);
-        bind(DeploymentHelper.class).to(BasicDeploymentHelper.class);
         bind(SubscriptionHelper.class).to(BasicSubscriptionHelper.class);
         bind(GlobalDefaultHelper.class).to(BasicGlobalDefaultHelper.class);
         bind(CloudFormationHelper.class).to(BasicCloudFormationHelper.class);
-        bind(DeploymentArgumentHelper.class).to(BasicDeploymentArgumentHelper.class);
-        bind(UpdateArgumentHelper.class).to(BasicUpdateArgumentHelper.class);
-        bind(QueryArgumentHelper.class).to(BasicQueryArgumentHelper.class);
         bind(LoggingHelper.class).to(BasicLoggingHelper.class);
         bind(EnvironmentHelper.class).to(BasicEnvironmentHelper.class);
         bind(ExecutorHelper.class).to(SingleThreadedExecutorHelper.class);
         //bind(ExecutorHelper.class).to(ParallelExecutorHelper.class);
 
+        // Argument helpers
+        bind(DeploymentArgumentHelper.class).to(BasicDeploymentArgumentHelper.class);
+        bind(UpdateArgumentHelper.class).to(BasicUpdateArgumentHelper.class);
+        bind(QueryArgumentHelper.class).to(BasicQueryArgumentHelper.class);
+        bind(TestArgumentHelper.class).to(BasicTestArgumentHelper.class);
+
         // Centralized error handling for SDK errors
         bind(SdkErrorHandler.class).to(BasicSdkErrorHandler.class);
 
         bind(IdExtractor.class).to(BasicIdExtractor.class);
-        bind(GroupQueryHelper.class).to(BasicGroupQueryHelper.class);
-        bind(GroupUpdateHelper.class).to(BasicGroupUpdateHelper.class);
         bind(ThreadHelper.class).to(BasicThreadHelper.class);
         bind(ProgressHandler.class).to(BasicProgressHandler.class);
+
+        Multibinder<Operation> operationMultibinder = Multibinder.newSetBinder(binder(), Operation.class);
+        operationMultibinder.addBinding().to(BasicDeploymentHelper.class);
+        operationMultibinder.addBinding().to(BasicGroupQueryHelper.class);
+        operationMultibinder.addBinding().to(BasicGroupUpdateHelper.class);
+        operationMultibinder.addBinding().to(BasicGroupTestHelper.class);
+
+        bind(DeploymentHelper.class).to(BasicDeploymentHelper.class);
+        bind(GroupQueryHelper.class).to(BasicGroupQueryHelper.class);
+        bind(GroupUpdateHelper.class).to(BasicGroupUpdateHelper.class);
+        bind(GroupTestHelper.class).to(BasicGroupTestHelper.class);
+
+        bind(DeviceTesterHelper.class).to(BasicDeviceTesterHelper.class);
+
+        bind(ExceptionHelper.class).to(BasicExceptionHelper.class);
     }
 }

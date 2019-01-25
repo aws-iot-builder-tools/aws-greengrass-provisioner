@@ -58,44 +58,52 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
 
         String finalStackName = stackName;
 
-        boolean stackCreated = Try.of(() -> {
-            CreateStackResponse createStackResponse = cloudFormationClient.createStack(createStackRequest);
-
-            log.info("CloudFormation stack launched [" + finalStackName + ", " + createStackResponse.stackId() + "]");
-
-            return true;
-        })
-                .recover(AlreadyExistsException.class, throwable -> {
-                    log.warn("CloudFormation stack [" + finalStackName + "] already exists, attempting update");
-                    return false;
-                })
+        boolean stackCreated = Try.of(() -> createStack(createStackRequest, finalStackName))
+                .recover(AlreadyExistsException.class, throwable -> logStackAlreadyExists(finalStackName))
                 .get();
 
         if (stackCreated) {
             return Optional.of(stackName);
         }
 
-        return Try.of(() -> {
-            UpdateStackRequest updateStackRequest = UpdateStackRequest.builder()
-                    .stackName(finalStackName)
-                    .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
-                    .parameters(parameters)
-                    .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
-                    .build();
-
-            cloudFormationClient.updateStack(updateStackRequest);
-
-            return Optional.of(finalStackName);
-        })
-                .recover(CloudFormationException.class, throwable -> {
-                    if (throwable.getMessage().contains("No updates are to be performed")) {
-                        log.info("No updates necessary for CloudFormation stack [" + finalStackName + "]");
-                        return Optional.empty();
-                    }
-
-                    throw new RuntimeException(throwable);
-                })
+        return Try.of(() -> updateStack(functionConf, parameters, finalStackName))
+                .recover(CloudFormationException.class, throwable -> recoverFromCloudFormationException(finalStackName, throwable))
                 .get();
+    }
+
+    private Optional<String> recoverFromCloudFormationException(String finalStackName, CloudFormationException throwable) {
+        if (throwable.getMessage().contains("No updates are to be performed")) {
+            log.info("No updates necessary for CloudFormation stack [" + finalStackName + "]");
+            return Optional.empty();
+        }
+
+        throw new RuntimeException(throwable);
+    }
+
+    private Optional<String> updateStack(FunctionConf functionConf, List<Parameter> parameters, String finalStackName) {
+        UpdateStackRequest updateStackRequest = UpdateStackRequest.builder()
+                .stackName(finalStackName)
+                .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
+                .parameters(parameters)
+                .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
+                .build();
+
+        cloudFormationClient.updateStack(updateStackRequest);
+
+        return Optional.of(finalStackName);
+    }
+
+    private Boolean logStackAlreadyExists(String finalStackName) {
+        log.warn("CloudFormation stack [" + finalStackName + "] already exists, attempting update");
+        return false;
+    }
+
+    private Boolean createStack(CreateStackRequest createStackRequest, String finalStackName) {
+        CreateStackResponse createStackResponse = cloudFormationClient.createStack(createStackRequest);
+
+        log.info("CloudFormation stack launched [" + finalStackName + ", " + createStackResponse.stackId() + "]");
+
+        return true;
     }
 
     @Override

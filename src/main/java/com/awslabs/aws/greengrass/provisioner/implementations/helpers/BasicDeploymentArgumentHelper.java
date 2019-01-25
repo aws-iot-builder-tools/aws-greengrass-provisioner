@@ -128,16 +128,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ecrImageNameString = getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
 
         if (deploymentArguments.architectureString != null) {
-            deploymentArguments.architecture = Try.of(() -> Architecture.valueOf(deploymentArguments.architectureString))
-                    .recover(IllegalArgumentException.class, throwable -> {
-                        StringBuilder stringBuilder = new StringBuilder();
-                        stringBuilder.append("[" + deploymentArguments.architectureString + "] is not a valid architecture.");
-                        stringBuilder.append("\r\n");
-                        stringBuilder.append("Valid options are: " + Architecture.getList());
-                        
-                        throw new RuntimeException(stringBuilder.toString());
-                    })
-                    .get();
+            deploymentArguments.architecture = getArchitecture(deploymentArguments.architectureString);
         }
 
         if (deploymentArguments.buildContainer == true) {

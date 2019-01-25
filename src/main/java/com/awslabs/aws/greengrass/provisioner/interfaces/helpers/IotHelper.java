@@ -26,7 +26,7 @@ public interface IotHelper {
      */
     String getThingPrincipal(String thingArn);
 
-    String getThingArn(String connectedShadowThingName);
+    String getThingArn(String thingName);
 
     String getCredentialProviderUrl();
 

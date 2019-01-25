@@ -17,20 +17,20 @@ public interface Operation<T extends Arguments> {
         return Arrays.stream(args).anyMatch(arg -> arg.equals(getArguments().getRequiredOptionName()));
     }
 
-    default boolean execute(Logger log, String[] args) {
+    default boolean execute(String[] args) {
         Try.of(() -> getArgumentHelper().parseArguments(args))
-                .onFailure(throwable -> {
-                    throw new RuntimeException(throwable);
-                })
-                .onSuccess(success -> {
-                    if (success.isHelp()) {
-                        getArgumentHelper().displayUsage();
-                        return;
-                    }
-
-                    execute(success);
-                });
+                .onSuccess(success -> executeOrDisplayHelp(success))
+                .get();
 
         return true;
+    }
+
+    default void executeOrDisplayHelp(T success) {
+        if (success.isHelp()) {
+            getArgumentHelper().displayUsage();
+            return;
+        }
+
+        execute(success);
     }
 }

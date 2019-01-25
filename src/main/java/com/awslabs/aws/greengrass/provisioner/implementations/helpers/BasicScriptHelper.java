@@ -102,18 +102,22 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     private void addScriptName(ImmutableMap.Builder<String, String> variables, Optional<String> scriptName) {
-        scriptName.ifPresent(name -> {
-            variables.put("SCRIPT_NAME", name);
-            variables.put("GG_SH", name);
-        });
+        scriptName.ifPresent(name -> putScriptNameAndGgSh(variables, name));
+    }
+
+    private void putScriptNameAndGgSh(ImmutableMap.Builder<String, String> variables, String name) {
+        variables.put("SCRIPT_NAME", name);
+        variables.put("GG_SH", name);
     }
 
     private void addThingNameVariables(ImmutableMap.Builder<String, String> variables, Optional<String> thingName) {
-        thingName.ifPresent(name -> {
-            variables.put("DEVICE_THING_NAME", name);
-            variables.put("DEVICE_PUBLIC_CERTIFICATE", ggConstants.getDevicePublicCertificateName(name));
-            variables.put("DEVICE_PRIVATE_KEY", ggConstants.getDevicePrivateKeyName(name));
-        });
+        thingName.ifPresent(name -> putThingNameCertAndPrivateKey(variables, name));
+    }
+
+    private void putThingNameCertAndPrivateKey(ImmutableMap.Builder<String, String> variables, String name) {
+        variables.put("DEVICE_THING_NAME", name);
+        variables.put("DEVICE_PUBLIC_CERTIFICATE", ggConstants.getDevicePublicCertificateName(name));
+        variables.put("DEVICE_PRIVATE_KEY", ggConstants.getDevicePrivateKeyName(name));
     }
 
     private void addNormalVariables(ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
@@ -150,18 +154,20 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     private void addGgdPipDependencies(ImmutableMap.Builder<String, String> variablesBuilder, Optional<Set<String>> ggdPipDependencies) {
-        ggdPipDependencies.ifPresent(list -> {
-            if (list.isEmpty()) {
-                return;
-            }
-
-            variablesBuilder.put(GGD_PIP_DEPENDENCIES, String.join(" ", list));
-        });
+        ggdPipDependencies.ifPresent(list -> createListOfGgdPipDependencies(variablesBuilder, list));
 
         // Make sure this is filled in so that we don't leave the placeholder string in the template
         if (!variablesBuilder.build().containsKey(GGD_PIP_DEPENDENCIES)) {
             variablesBuilder.put(GGD_PIP_DEPENDENCIES, "");
         }
+    }
+
+    private void createListOfGgdPipDependencies(ImmutableMap.Builder<String, String> variablesBuilder, Set<String> list) {
+        if (list.isEmpty()) {
+            return;
+        }
+
+        variablesBuilder.put(GGD_PIP_DEPENDENCIES, String.join(" ", list));
     }
 
     private String replaceVariables(ImmutableMap<String, String> variables, String input) {

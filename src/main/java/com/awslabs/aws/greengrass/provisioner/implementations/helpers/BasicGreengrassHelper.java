@@ -362,7 +362,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         // Scrub the necessary functions
         Set<Function> scrubbedFunctions = functionsToScrubBuilder.build().stream()
-                .map(scrubFunctionForNoContainer())
+                .map(getScrubFunctionForNoContainerFunction())
                 .collect(Collectors.toSet());
 
         // Merge the functions back together (scrubbed functions and the functions we don't need to scrub)
@@ -383,17 +383,19 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createFunctionDefinitionResponse.latestVersionArn();
     }
 
-    private java.util.function.Function<Function, Function> scrubFunctionForNoContainer() {
-        return function -> {
-            Function.Builder functionBuilder = function.toBuilder();
-            FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
-            functionConfigurationBuilder.memorySize(null);
-            functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
+    private java.util.function.Function<Function, Function> getScrubFunctionForNoContainerFunction() {
+        return function -> scrubFunctionForNoContainer(function);
+    }
 
-            log.warn("Scrubbing memory size from function [" + function.functionArn() + "] since it is running without Greengrass container isolation");
+    private Function scrubFunctionForNoContainer(Function function) {
+        Function.Builder functionBuilder = function.toBuilder();
+        FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
+        functionConfigurationBuilder.memorySize(null);
+        functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
 
-            return functionBuilder.build();
-        };
+        log.warn("Scrubbing memory size from function [" + function.functionArn() + "] since it is running without Greengrass container isolation");
+
+        return functionBuilder.build();
     }
 
 
@@ -843,9 +845,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Override
     public Device getDevice(String thingName) {
         Try.of(() -> iotHelper.getThingArn(thingName))
-                .recover(ResourceNotFoundException.class, throwable -> {
-                    throw new RuntimeException("Thing [" + thingName + "] does not exist");
-                })
+                .recover(ResourceNotFoundException.class, throwable -> rethrowResourceNotFoundException(thingName))
                 .get();
 
         String certificateArn = iotHelper.getThingPrincipal(thingName);
@@ -860,6 +860,16 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .syncShadow(true)
                 .thingArn(iotHelper.getThingArn(thingName))
                 .build();
+    }
+
+    /**
+     * Rethrows the exception with a more succinct message
+     *
+     * @param thingName
+     * @return
+     */
+    public String rethrowResourceNotFoundException(String thingName) {
+        throw new RuntimeException("Thing [" + thingName + "] does not exist");
     }
 
     @Override
@@ -908,9 +918,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetFunctionDefinitionVersionResponse getFunctionDefinitionVersionResponse = greengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
 
         FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Function> functions = new ArrayList<>(functionDefinition.functions());
+        List<Function> functions = functionDefinition.functions();
 
         return functions;
     }
@@ -929,9 +937,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetDeviceDefinitionVersionResponse getDeviceDefinitionVersionResponse = greengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
 
         DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Device> devices = new ArrayList<>(deviceDefinition.devices());
+        List<Device> devices = deviceDefinition.devices();
 
         return devices;
     }
@@ -950,9 +956,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetSubscriptionDefinitionVersionResponse getSubscriptionDefinitionVersionResponse = greengrassClient.getSubscriptionDefinitionVersion(getSubscriptionDefinitionVersionRequest);
 
         SubscriptionDefinitionVersion subscriptionDefinition = getSubscriptionDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Subscription> subscriptions = new ArrayList<>(subscriptionDefinition.subscriptions());
+        List<Subscription> subscriptions = subscriptionDefinition.subscriptions();
 
         return subscriptions;
     }

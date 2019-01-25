@@ -7,6 +7,7 @@ import software.amazon.awssdk.services.iam.model.Role;
 import java.util.Optional;
 
 public interface DeploymentHelper extends Operation<DeploymentArguments> {
+    String GREENGRASS_SERVICE_ROLE_NAME = "Greengrass_ServiceRole";
     String CORE_SUB_NAME = "core";
 
     DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName);

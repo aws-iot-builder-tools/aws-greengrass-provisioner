@@ -69,7 +69,7 @@ public class BasicPythonBuilder implements PythonBuilder {
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
 
-        File tempFile = ioHelper.getTempFile("python-lambda-build", "zip");
+        File tempFile = Try.of(() -> ioHelper.getTempFile("python-lambda-build", "zip")).get();
 
         // Get the directories, longest named directories first
         List<Path> addedDirectories = addedFiles
@@ -90,7 +90,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         // "Touch" the file to fix this issue
         possibleBrokenPythonDirectories.stream()
                 .map(path -> path.resolve(INIT_PY).toFile())
-                .forEach(this::touch);
+                .forEach(this::touchAndIgnoreExceptions);
 
         ZipUtil.pack(functionConf.getBuildDirectory().toFile(), tempFile);
 
@@ -98,42 +98,39 @@ public class BasicPythonBuilder implements PythonBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        Try.of(() -> {
-            for (String dependency : functionConf.getDependencies()) {
-                loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
-                List<String> programAndArguments = new ArrayList<>();
-                programAndArguments.add("pip");
-                programAndArguments.add("install");
-                programAndArguments.add("--upgrade");
-                programAndArguments.add(dependency);
-                programAndArguments.add("-t");
-                programAndArguments.add(".");
+        for (String dependency : functionConf.getDependencies()) {
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
+            List<String> programAndArguments = new ArrayList<>();
+            programAndArguments.add("pip");
+            programAndArguments.add("install");
+            programAndArguments.add("--upgrade");
+            programAndArguments.add(dependency);
+            programAndArguments.add("-t");
+            programAndArguments.add(".");
 
-                ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-                processBuilder.directory(functionConf.getBuildDirectory().toFile());
+            ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+            processBuilder.directory(functionConf.getBuildDirectory().toFile());
 
-                List<String> stdoutStrings = new ArrayList<>();
-                List<String> stderrStrings = new ArrayList<>();
+            List<String> stdoutStrings = new ArrayList<>();
+            List<String> stderrStrings = new ArrayList<>();
 
-                Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+            Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
 
-                if (!exitVal.isPresent() || exitVal.get() != 0) {
-                    log.error("Failed to install Python dependency.  Make sure Python and pip are installed and on your path.");
-                    System.exit(1);
-                }
+            if (!exitVal.isPresent() || exitVal.get() != 0) {
+                log.error("Failed to install Python dependency.  Make sure Python and pip are installed and on your path.");
+                System.exit(1);
             }
-
-            return null;
-        })
-                .get();
+        }
     }
 
-    private void touch(File file) {
-        Try.of(() -> {
-            new FileOutputStream(file).close();
-            return null;
-        })
-                .get();
+    private void touchAndIgnoreExceptions(File file) {
+        Try.of(() -> touch(file)).get();
+    }
+
+    private Void touch(File file) throws IOException {
+        new FileOutputStream(file).close();
+
+        return null;
     }
 
     private List<Path> getDirectorySnapshot(FunctionConf functionConf) {
@@ -164,18 +161,20 @@ public class BasicPythonBuilder implements PythonBuilder {
             return Optional.of("Python handler file [" + handlerFile.toPath() + "] does not exist");
         }
 
-        return (Optional<String>) Try.of(() -> {
-            // Use a regex to find what the function should look like
-            String pattern = "^def\\s+" + handlerFunctionName + "\\s*\\(.*";
-
-            if (Files.lines(handlerFile.toPath())
-                    .noneMatch(line -> line.matches(pattern))) {
-                return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build.");
-            }
-
-            return Optional.empty();
-        })
+        return Try.of(() -> innerVerifyHandlerExists(handlerFunctionName, handlerFile))
                 .recover(IOException.class, throwable -> Optional.of(throwable.getMessage()))
                 .get();
+    }
+
+    private Optional<String> innerVerifyHandlerExists(String handlerFunctionName, File handlerFile) throws IOException {
+        // Use a regex to find what the function should look like
+        String pattern = "^def\\s+" + handlerFunctionName + "\\s*\\(.*";
+
+        if (Files.lines(handlerFile.toPath())
+                .noneMatch(line -> line.matches(pattern))) {
+            return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build.");
+        }
+
+        return Optional.empty();
     }
 }

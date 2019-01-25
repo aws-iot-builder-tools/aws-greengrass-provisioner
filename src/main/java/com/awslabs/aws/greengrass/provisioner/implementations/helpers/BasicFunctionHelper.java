@@ -61,68 +61,78 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private File getFunctionConfPath(String functionName) {
-        return Try.of(() -> {
-            if (functionName.startsWith(HTTPS)) {
-                // This is a git repo, fetch it
-                String tempFunctionName = functionName.substring(HTTPS.length());
+        return Try.of(() -> innerGetFunctionConfPath(functionName)).get();
+    }
 
-                String[] components = tempFunctionName.split("/");
+    private File innerGetFunctionConfPath(String functionName) throws IOException {
+        if (functionName.startsWith(HTTPS)) {
+            return getFunctionFromGit(functionName);
+        } else {
+            return getLocalFunction(functionName);
+        }
+    }
 
-                if (components.length < 3) {
-                    throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (1)");
-                }
+    private File getLocalFunction(String functionName) throws IOException {
+        String sourceDirectory = String.join("/", FUNCTIONS, functionName);
+        Path sourcePath = new File(sourceDirectory).toPath();
 
-                String last = components[components.length - 1];
+        if (gradleBuilder.isGradleFunction(sourcePath)) {
+            // Build Gradle based applications in place
+            return sourcePath.resolve(FUNCTION_CONF).toFile();
+        }
 
-                String repoName;
-                String directoryName;
-                String cloneName;
-
-                if (last.contains(":")) {
-                    String[] repoAndDirectory = last.split(":");
-
-                    if (repoAndDirectory.length != 2) {
-                        throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (2)");
-                    }
-
-                    repoName = repoAndDirectory[0];
-                    directoryName = repoAndDirectory[1];
-                    cloneName = functionName.replaceAll(":[^:]*$", "");
-                } else {
-                    repoName = last;
-                    directoryName = ".";
-                    cloneName = functionName;
-                }
-
-                Path tempDir = runGitClone(repoName, directoryName, cloneName);
-
-                File functionConf = tempDir.resolve(directoryName).resolve(FUNCTION_CONF).toFile();
-
-                if (!functionConf.exists()) {
-                    throw new RuntimeException("This function and repo doesn't contain a function.conf");
-                }
-
-                return functionConf;
-            } else {
-                String sourceDirectory = String.join("/", FUNCTIONS, functionName);
-                Path sourcePath = new File(sourceDirectory).toPath();
-
-                if (gradleBuilder.isGradleFunction(sourcePath)) {
-                    // Build Gradle based applications in place
-                    return sourcePath.resolve(FUNCTION_CONF).toFile();
-                }
-
-                // Build all non-Gradle based applications in the temp directory
-                Path tempPath = Files.createTempDirectory(functionName);
-                File tempFile = tempPath.toFile();
-                tempFile.deleteOnExit();
+        // Build all non-Gradle based applications in the temp directory
+        Path tempPath = Files.createTempDirectory(functionName);
+        File tempFile = tempPath.toFile();
+        tempFile.deleteOnExit();
 
 
-                FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
+        FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
 
-                return tempPath.resolve(FUNCTION_CONF).toFile();
+        return tempPath.resolve(FUNCTION_CONF).toFile();
+    }
+
+    private File getFunctionFromGit(String functionName) throws IOException {
+        // This is a git repo, fetch it
+        String tempFunctionName = functionName.substring(HTTPS.length());
+
+        String[] components = tempFunctionName.split("/");
+
+        if (components.length < 3) {
+            throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (1)");
+        }
+
+        String last = components[components.length - 1];
+
+        String repoName;
+        String directoryName;
+        String cloneName;
+
+        if (last.contains(":")) {
+            String[] repoAndDirectory = last.split(":");
+
+            if (repoAndDirectory.length != 2) {
+                throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (2)");
             }
-        }).get();
+
+            repoName = repoAndDirectory[0];
+            directoryName = repoAndDirectory[1];
+            cloneName = functionName.replaceAll(":[^:]*$", "");
+        } else {
+            repoName = last;
+            directoryName = ".";
+            cloneName = functionName;
+        }
+
+        Path tempDir = runGitClone(repoName, directoryName, cloneName);
+
+        File functionConf = tempDir.resolve(directoryName).resolve(FUNCTION_CONF).toFile();
+
+        if (!functionConf.exists()) {
+            throw new RuntimeException("This function and repo doesn't contain a function.conf");
+        }
+
+        return functionConf;
     }
 
     private Path runGitClone(String repoName, String directoryName, String cloneName) throws IOException {
@@ -185,63 +195,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
             Path functionPath = getFunctionPath(enabledFunctionConf);
 
-            FunctionConf functionConf = Try.of(() -> {
-                FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
-
-                // Load function config file and use function.defaults.conf as the fallback for missing values
-                Config config = ConfigFactory.parseFile(enabledFunctionConf);
-                Config functionDefaults = ggVariables.getFunctionDefaults();
-                config = config.withFallback(functionDefaults);
-
-                // Add the default environment values to the config so they can be used for resolution
-                //   (eg. "${AWS_IOT_THING_NAME}" used in the function configuration)
-                for (Map.Entry<String, String> entry : defaultEnvironment.entrySet()) {
-                    config = config.withValue(entry.getKey(), ConfigValueFactory.fromAnyRef(entry.getValue()));
-                }
-
-                config = config.resolve();
-
-                functionConfBuilder.buildDirectory(functionPath);
-                functionConfBuilder.language(Language.valueOf(config.getString("conf.language")));
-                functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
-                functionConfBuilder.functionName(config.getString("conf.functionName"));
-                functionConfBuilder.groupName(deploymentConf.getGroupName());
-                functionConfBuilder.handlerName(config.getString("conf.handlerName"));
-                functionConfBuilder.aliasName(config.getString("conf.aliasName"));
-                functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
-                functionConfBuilder.pinned(config.getBoolean("conf.pinned"));
-                functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
-                functionConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
-                functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
-                functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
-                functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
-                functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
-                functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
-                functionConfBuilder.greengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
-                functionConfBuilder.uid(config.getInt("conf.uid"));
-                functionConfBuilder.gid(config.getInt("conf.gid"));
-
-                setLocalDeviceResourcesConfig(functionConfBuilder, config);
-                setLocalVolumeResourcesConfig(functionConfBuilder, config);
-                setLocalSageMakerResourcesConfig(functionConfBuilder, config);
-                setLocalS3ResourcesConfig(functionConfBuilder, config);
-
-                List<String> connectedShadows = getConnectedShadows(functionConfBuilder, config);
-                functionConfBuilder.connectedShadows(connectedShadows);
-
-                // Use the environment variables from the deployment and then add the environment variables from the function
-                functionConfBuilder.environmentVariables(deploymentConf.getEnvironmentVariables());
-                setEnvironmentVariables(functionConfBuilder, config);
-                addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
-
-                File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
-
-                if (cfTemplate.exists()) {
-                    functionConfBuilder.cfTemplate(cfTemplate);
-                }
-
-                return functionConfBuilder.build();
-            }).get();
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath)).get();
 
             enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
@@ -256,6 +210,64 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
 
         return enabledFunctionConfObjects;
+    }
+
+    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath) {
+        FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
+
+        // Load function config file and use function.defaults.conf as the fallback for missing values
+        Config config = ConfigFactory.parseFile(enabledFunctionConf);
+        Config functionDefaults = ggVariables.getFunctionDefaults();
+        config = config.withFallback(functionDefaults);
+
+        // Add the default environment values to the config so they can be used for resolution
+        //   (eg. "${AWS_IOT_THING_NAME}" used in the function configuration)
+        for (Map.Entry<String, String> entry : defaultEnvironment.entrySet()) {
+            config = config.withValue(entry.getKey(), ConfigValueFactory.fromAnyRef(entry.getValue()));
+        }
+
+        config = config.resolve();
+
+        functionConfBuilder.buildDirectory(functionPath);
+        functionConfBuilder.language(Language.valueOf(config.getString("conf.language")));
+        functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
+        functionConfBuilder.functionName(config.getString("conf.functionName"));
+        functionConfBuilder.groupName(deploymentConf.getGroupName());
+        functionConfBuilder.handlerName(config.getString("conf.handlerName"));
+        functionConfBuilder.aliasName(config.getString("conf.aliasName"));
+        functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
+        functionConfBuilder.pinned(config.getBoolean("conf.pinned"));
+        functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
+        functionConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
+        functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
+        functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
+        functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
+        functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
+        functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
+        functionConfBuilder.greengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
+        functionConfBuilder.uid(config.getInt("conf.uid"));
+        functionConfBuilder.gid(config.getInt("conf.gid"));
+
+        setLocalDeviceResourcesConfig(functionConfBuilder, config);
+        setLocalVolumeResourcesConfig(functionConfBuilder, config);
+        setLocalSageMakerResourcesConfig(functionConfBuilder, config);
+        setLocalS3ResourcesConfig(functionConfBuilder, config);
+
+        List<String> connectedShadows = getConnectedShadows(functionConfBuilder, config);
+        functionConfBuilder.connectedShadows(connectedShadows);
+
+        // Use the environment variables from the deployment and then add the environment variables from the function
+        functionConfBuilder.environmentVariables(deploymentConf.getEnvironmentVariables());
+        setEnvironmentVariables(functionConfBuilder, config);
+        addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
+
+        File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
+
+        if (cfTemplate.exists()) {
+            functionConfBuilder.cfTemplate(cfTemplate);
+        }
+
+        return functionConfBuilder.build();
     }
 
     private void addConnectedShadowsToEnvironment(FunctionConf.FunctionConfBuilder functionConfBuilder, List<String> connectedShadows) {
@@ -512,44 +524,52 @@ public class BasicFunctionHelper implements FunctionHelper {
             log.error("Errors detected in Lambda functions");
 
             errors.stream()
-                    .forEach(error -> {
-                        log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
-                        log.error("  Error [" + error.getError().get() + "]");
-                    });
+                    .forEach(this::logErrorInLambdaFunction);
 
             System.exit(1);
         }
 
         // Convert the alias ARNs into variables to be put in the environment of each function
         Map<String, String> environmentVariablesForLocalLambdas = lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .map(lambdaFunctionArnInfoAndFunctionConf -> {
-                    FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
-                    String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
-                    String aliasArn = lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getQualifiedArn();
-
-                    return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
-                })
-                .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
+                .map(lambdaFunctionArnInfoAndFunctionConf -> getNameToAliasEntry(lambdaFunctionArnInfoAndFunctionConf))
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
 
         // Put the environment variables into each environment
         lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .forEach(lambdaFunctionArnInfoAndFunctionConf -> {
-                    FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
-                    Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
-                    environmentVariables.putAll(environmentVariablesForLocalLambdas);
-                    functionConf.setEnvironmentVariables(environmentVariables);
-                });
+                .forEach(lambdaFunctionArnInfoAndFunctionConf -> setEnvironmentVariables(environmentVariablesForLocalLambdas, lambdaFunctionArnInfoAndFunctionConf));
 
         Map<Function, FunctionConf> functionToConfMap = new HashMap<>();
 
         // Build the function models
         lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .forEach(lambdaFunctionArnInfoAndFunctionConf -> {
-                    FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
-                    functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn(), functionConf), functionConf);
-                });
+                .forEach(lambdaFunctionArnInfoAndFunctionConf -> putFunctionConfIntoFunctionConfMap(functionToConfMap, lambdaFunctionArnInfoAndFunctionConf));
 
         return functionToConfMap;
+    }
+
+    public void putFunctionConfIntoFunctionConfMap(Map<Function, FunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+        functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn(), functionConf), functionConf);
+    }
+
+    public void setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+        Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
+        environmentVariables.putAll(environmentVariablesForLocalLambdas);
+        functionConf.setEnvironmentVariables(environmentVariables);
+    }
+
+    public AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+        String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
+        String aliasArn = lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getQualifiedArn();
+
+        return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
+    }
+
+    public void logErrorInLambdaFunction(LambdaFunctionArnInfoAndFunctionConf error) {
+        log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
+        log.error("  Error [" + error.getError().get() + "]");
     }
 
     public List<Callable<LambdaFunctionArnInfoAndFunctionConf>> getCallableBuildSteps(List<BuildableFunction> buildableFunctions) {

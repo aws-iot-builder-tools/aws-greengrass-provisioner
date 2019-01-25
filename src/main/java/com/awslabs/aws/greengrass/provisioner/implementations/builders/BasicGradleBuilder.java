@@ -75,21 +75,25 @@ public class BasicGradleBuilder implements GradleBuilder {
         }
 
         // Guidance from: https://discuss.gradle.org/t/how-to-execute-a-gradle-task-from-java-code/7421
-        ProjectConnection connection = GradleConnector.newConnector()
+        Try.withResources(() -> getProjectConnection(gradleBuildPath))
+                .of(this::runBuild)
+                .get();
+    }
+
+    public Void runBuild(ProjectConnection projectConnection) {
+        // Build with gradle and send the output to stdout
+        BuildLauncher build = projectConnection.newBuild();
+        build.forTasks("build");
+        build.setStandardOutput(System.out);
+        build.run();
+
+        return null;
+    }
+
+    public ProjectConnection getProjectConnection(Optional<File> gradleBuildPath) {
+        return GradleConnector.newConnector()
                 .forProjectDirectory(gradleBuildPath.get())
                 .connect();
-
-        Try.of(() -> {
-            // Build with gradle and send the output to stdout
-            BuildLauncher build = connection.newBuild();
-            build.forTasks("build");
-            build.setStandardOutput(System.out);
-            build.run();
-
-            return null;
-        })
-                .andFinally(() -> connection.close())
-                .get();
     }
 
     @Override

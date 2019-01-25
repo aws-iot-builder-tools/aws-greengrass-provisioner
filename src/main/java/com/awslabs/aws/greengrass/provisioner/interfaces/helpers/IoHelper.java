@@ -1,6 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
+import com.jcraft.jsch.JSch;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import io.vavr.control.Try;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -9,23 +12,36 @@ import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateRespons
 
 import java.io.*;
 import java.net.URL;
-import java.nio.channels.Channels;
-import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
+import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.UUID;
+import java.util.concurrent.Callable;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
+    default void writeFile(File file, byte[] contents) {
+        Try.withResources(() -> new FileOutputStream(file))
+                .of(fileOutputStream -> writeFile(fileOutputStream, contents))
+                .get();
+    }
+
+    default Void writeFile(FileOutputStream fileOutputStream, byte[] contents) throws IOException {
+        fileOutputStream.write(contents);
+
+        return null;
+    }
+
     default void writeFile(String filename, byte[] contents) {
         Try.withResources(() -> new FileOutputStream(filename))
-                .of(out -> {
-                    out.write(contents);
-                    return null;
-                });
+                .of(fileOutputStream -> writeFile(fileOutputStream, contents))
+                .get();
 
         makeWritable(filename);
     }
@@ -50,32 +66,22 @@ public interface IoHelper {
 
     default byte[] readFile(URL url) {
         return Try.withResources(() -> url.openStream())
-                .of(inputStream -> {
-                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                    byte[] buffer = new byte[8192];
-
-                    int len = inputStream.read(buffer);
-
-                    while (len != -1) {
-                        baos.write(buffer, 0, len);
-                        len = inputStream.read(buffer);
-                    }
-
-                    return baos.toByteArray();
-                })
+                .of(this::getByteArrayFromInputStream)
                 .get();
     }
 
-    default void download(String url, File file) {
-        Try.of(() -> {
-            // From: http://stackoverflow.com/a/921400
-            URL website = new URL(url);
-            ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-            return null;
-        })
-                .get();
+    default byte[] getByteArrayFromInputStream(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+
+        int len = inputStream.read(buffer);
+
+        while (len != -1) {
+            baos.write(buffer, 0, len);
+            len = inputStream.read(buffer);
+        }
+
+        return baos.toByteArray();
     }
 
     default String download(String url) {
@@ -115,17 +121,20 @@ public interface IoHelper {
     }
 
     default Object deserializeObject(byte[] bytes, JsonHelper jsonHelper) {
-        return Try.of(() -> jsonHelper.fromJson(KeysAndCertificate.class, bytes))
-                .onFailure(exception -> Try.of(() -> {
-                    // Try again
-                    ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-                    ObjectInputStream ois = new ObjectInputStream(bais);
-                    Object object = ois.readObject();
-                    ois.close();
-
-                    return object;
-                }))
+        return Try.of(() -> (Object) jsonHelper.fromJson(KeysAndCertificate.class, bytes))
+                // Try to deserialize in a different way if this fails (for legacy credentials)
+                .recover(exception -> Try.of(() -> deserializeObjectFromObjectInputStream(bytes)).get())
                 .get();
+    }
+
+    default Object deserializeObjectFromObjectInputStream(byte[] bytes) throws IOException, ClassNotFoundException {
+        // Try again
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        ObjectInputStream ois = new ObjectInputStream(bais);
+        Object object = ois.readObject();
+        ois.close();
+
+        return object;
     }
 
     default String calcSHA1(URL url) {
@@ -223,19 +232,50 @@ public interface IoHelper {
      * @param suffix
      * @return
      */
-    default File getTempFile(String prefix, String suffix) {
-        return Try.of(() -> {
-            File innerTempFile = File.createTempFile(prefix, suffix);
-            innerTempFile.deleteOnExit();
-            return innerTempFile;
-        }).get();
+    default File getTempFile(String prefix, String suffix) throws IOException {
+        File innerTempFile = File.createTempFile(prefix, suffix);
+        innerTempFile.deleteOnExit();
+        return innerTempFile;
     }
 
+    /**
+     * Sleep and convert InterruptedExceptions to RuntimeExceptions
+     *
+     * @param milliseconds
+     */
     default void sleep(int milliseconds) {
-        Try.of(() -> {
-            Thread.sleep(milliseconds);
-            return null;
-        })
+        Try.of(() -> sleepWithCheckedException(milliseconds))
                 .get();
     }
+
+    default Void sleepWithCheckedException(int milliseconds) throws InterruptedException {
+        Thread.sleep(milliseconds);
+        return null;
+    }
+
+    List<String> getPrivateKeyFilesForSsh() throws IOException;
+
+    Void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
+
+    Void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
+
+    Void download(String url, File file) throws IOException;
+
+    Void download(String url, File file, Optional<String> optionalReferer) throws IOException;
+
+    JSch getJschWithPrivateKeysLoaded();
+
+    Callable<Session> getSshSessionTask(String hostname,
+                                        String user,
+                                        String connectedMessage,
+                                        String timeoutMessage,
+                                        String refusedMessage,
+                                        String errorMessage);
+
+    String runCommand(Session session, String command) throws JSchException, IOException;
+
+    String runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException;
+
+    Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
 }
+
