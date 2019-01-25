@@ -37,13 +37,11 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String DAEMON_SEARCH_STRING = "bin/daemon";
     private static final String PROXY_SEARCH_STRING = "tmp/greenlight/proxy/proxy";
     private static final String TAIL_FOLLOW_COMMAND = "tail -F " + FULL_RUNTIME_LOG_PATH;
-    private static final String PASS = "PASS";
-    private static final String FAIL = "FAIL";
     private static final int SSH_TIMEOUT_IN_MINUTES = 45;
     private static final String DEVICE_POOL_ID = "DevicePool";
-    private static final String windowsDeviceTesterUrl = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.0.181213011814.zip";
-    private static final String linuxDeviceTesterUrl = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.0.181213011814.zip";
-    private static final String macDeviceTesterUrl = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.0.181213011814.zip";
+    private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.0.181213011814.zip";
+    private static final String LINUX_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.0.181213011814.zip";
+    private static final String MAC_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.0.181213011814.zip";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to device under test";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, device under test may not be ready yet...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, device under test may not be ready yet...";
@@ -87,9 +85,9 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         Optional<String> optionalUrlForDeviceTester = Optional.empty();
 
-        if (SystemUtils.IS_OS_WINDOWS) optionalUrlForDeviceTester = Optional.of(windowsDeviceTesterUrl);
-        if (SystemUtils.IS_OS_MAC) optionalUrlForDeviceTester = Optional.of(macDeviceTesterUrl);
-        if (SystemUtils.IS_OS_LINUX) optionalUrlForDeviceTester = Optional.of(linuxDeviceTesterUrl);
+        if (SystemUtils.IS_OS_WINDOWS) optionalUrlForDeviceTester = Optional.of(WINDOWS_DEVICE_TESTER_URL);
+        if (SystemUtils.IS_OS_MAC) optionalUrlForDeviceTester = Optional.of(MAC_DEVICE_TESTER_URL);
+        if (SystemUtils.IS_OS_LINUX) optionalUrlForDeviceTester = Optional.of(LINUX_DEVICE_TESTER_URL);
 
         if (!optionalUrlForDeviceTester.isPresent()) {
             throw new RuntimeException("Could not determine host operating system");
@@ -107,7 +105,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         File deviceTesterDirectory = null;
 
-        // Steps required
         // Download and extract the tester or use the existing one
         if (testArguments.deviceTesterLocation != null) {
             // It is downloaded already
@@ -134,13 +131,12 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         // Connect to the device under test via SSH
         Session session = null;
-        Session tailSession = null;
 
         try {
             session = getSshSession(testArguments, true);
-            Session finalSession = session;
-            tailSession = getSshSession(testArguments, false);
-            Session finalTailSession = tailSession;
+           
+            // Create a final version of this variable so it can be used in lambdas
+            final Session finalSession = session;
 
             // Clear out the GGQ directory
             if (testArguments.clean) {
@@ -256,19 +252,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             // Remove the existing runtime.log
             Try.of(() -> ioHelper.runCommand(finalSession, String.join(" ", "sudo rm -f", FULL_RUNTIME_LOG_PATH))).get();
 
-            /*
-            // Tail the runtime logs and store them in memory locally
-            java.util.List<String> logs = new ArrayList<>();
-
-            new Thread(() ->
-                    Try.of(() ->
-                            ioHelper.runCommand(finalSession,
-                                    String.join(" ", "sudo", TAIL_FOLLOW_COMMAND),
-                                    Optional.of(logs::add)))
-                            .get())
-                    .start();
-                    */
-
             // Start device tester
             Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, deviceTesterProcessBuilder, true,
                     Optional.of(stdoutLogMessage -> handleLogMessage(stdoutLogMessage, testStatus, reportLocations)),
@@ -319,29 +302,8 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
             reportLocations.stream().findFirst().ifPresent(path ->
                     Try.of(() -> moveParentDirectory(path, outputDirectory)));
-
-            /*
-            reportLocations.stream().forEach(file ->
-                    Try.of(() -> moveReport(groupName, file, outputDirectory)).get());
-
-            // Put the individual logs in the requested location (only for logs that exist)
-
-            // Get the logs for each test by extracting a sub-list of the logs, filter out empty logs
-            Map<String, java.util.List<String>> testLogs = testLogIndex.stream()
-                    .map(tuple -> new AbstractMap.SimpleEntry<>(tuple._1, logs.subList(tuple._2, tuple._3)))
-                    .filter(entry -> !entry.getValue().isEmpty())
-                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-            passingTests.stream().filter(testLogs::containsKey)
-                    .forEach(testName ->
-                            Try.of(() -> saveReportLog(PASS, groupName, testName, outputDirectory, testLogs.get(testName))).get());
-            failingTests.stream().filter(testLogs::containsKey)
-                    .forEach(testName ->
-                            Try.of(() -> saveReportLog(FAIL, groupName, testName, outputDirectory, testLogs.get(testName))).get());
-                            */
         } finally {
             safeDisconnect(session);
-            safeDisconnect(tailSession);
         }
 
         return null;
