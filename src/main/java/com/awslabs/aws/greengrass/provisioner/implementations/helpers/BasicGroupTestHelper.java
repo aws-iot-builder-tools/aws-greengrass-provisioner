@@ -134,7 +134,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         try {
             session = getSshSession(testArguments, true);
-           
+
             // Create a final version of this variable so it can be used in lambdas
             final Session finalSession = session;
 
