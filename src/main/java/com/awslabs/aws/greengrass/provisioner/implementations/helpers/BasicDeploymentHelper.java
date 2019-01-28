@@ -15,9 +15,11 @@ import com.awslabs.aws.greengrass.provisioner.docker.GreengrassDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.NormalDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.NormalDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
-import com.jcraft.jsch.*;
+import com.jcraft.jsch.JSchException;
+import com.jcraft.jsch.Session;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.typesafe.config.*;
@@ -34,17 +36,21 @@ import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 
 import javax.inject.Inject;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-import static com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner.serviceRoleName;
+import static io.vavr.API.*;
+import static io.vavr.Predicates.instanceOf;
 
 @Slf4j
 public class BasicDeploymentHelper implements DeploymentHelper {
@@ -52,6 +58,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     public static final String AWS_AMI_ACCOUNT_ID = "099720109477";
     public static final String UBUNTU_16_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????";
+    private static final String SSH_CONNECTED_MESSAGE = "Connected to EC2 instance";
+    private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
+    private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
+    private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
 
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -105,6 +115,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     ThreadHelper threadHelper;
     @Inject
     DeploymentArgumentHelper deploymentArgumentHelper;
+    @Inject
+    ExceptionHelper exceptionHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -116,20 +128,18 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     @Override
     public DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName) {
-        return Try.of(() -> {
-            File deploymentConfigFile = new File(deploymentConfigFilename);
+        File deploymentConfigFile = new File(deploymentConfigFilename);
 
-            if (!deploymentConfigFile.exists()) {
-                throw new RuntimeException("The specified deployment configuration file [" + deploymentConfigFilename + "] does not exist.");
-            }
+        if (!deploymentConfigFile.exists()) {
+            throw new RuntimeException("The specified deployment configuration file [" + deploymentConfigFilename + "] does not exist.");
+        }
 
-            Config config = ConfigFactory.parseFile(deploymentConfigFile)
-                    .withValue("ACCOUNT_ID", ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
-                    .withFallback(getFallbackConfig())
-                    .resolve();
+        Config config = ConfigFactory.parseFile(deploymentConfigFile)
+                .withValue("ACCOUNT_ID", ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
+                .withFallback(getFallbackConfig())
+                .resolve();
 
-            return buildDeploymentConf(deploymentConfigFilename, config, groupName);
-        }).get();
+        return buildDeploymentConf(deploymentConfigFilename, config, groupName);
     }
 
     private DeploymentConf buildDeploymentConf(String deploymentConfigFilename, Config config, String groupName) {
@@ -157,27 +167,31 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private void setEnvironmentVariables(DeploymentConf.DeploymentConfBuilder deploymentConfBuilder, Config config) {
-        Try.of(() -> {
-            ConfigObject configObject = config.getObject("conf.environmentVariables");
-
-            if (configObject.size() == 0) {
-                log.info("- No environment variables specified for this deployment");
-            }
-
-            Config tempConfig = configObject.toConfig();
-
-            for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
-                deploymentConfBuilder.environmentVariable(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
-            }
-
-            return null;
-        })
-                .recover(ConfigException.Missing.class, throwable -> {
-                    log.info("No environment variables specified in this deployment");
-
-                    return null;
-                })
+        Try.of(() -> innerSetEnvironmentVariables(deploymentConfBuilder, config))
+                .recover(ConfigException.Missing.class, throwable -> logNoEnvironmentVariablesForDeployment())
                 .get();
+    }
+
+    private Void logNoEnvironmentVariablesForDeployment() {
+        log.info("No environment variables specified in this deployment");
+
+        return null;
+    }
+
+    private Void innerSetEnvironmentVariables(DeploymentConf.DeploymentConfBuilder deploymentConfBuilder, Config config) {
+        ConfigObject configObject = config.getObject("conf.environmentVariables");
+
+        if (configObject.size() == 0) {
+            log.info("- No environment variables specified for this deployment");
+        }
+
+        Config tempConfig = configObject.toConfig();
+
+        for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
+            deploymentConfBuilder.environmentVariable(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
+        }
+
+        return null;
     }
 
     private Config getFallbackConfig() {
@@ -201,7 +215,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String initialDeploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
         log.info("Deployment created [" + initialDeploymentId + "]");
 
-        Optional<DeploymentStatus> optionalDeploymentStatus = threadHelper.timeLimitTask(getDeploymentCheckTask(greengrassServiceRole, greengrassRole, groupId, groupVersionId, initialDeploymentId), 5, TimeUnit.MINUTES);
+        Optional<DeploymentStatus> optionalDeploymentStatus = threadHelper.timeLimitTask(getDeploymentStatusCallable(greengrassServiceRole, greengrassRole, groupId, groupVersionId, initialDeploymentId), 5, TimeUnit.MINUTES);
 
         if (!optionalDeploymentStatus.isPresent() || !optionalDeploymentStatus.get().equals(DeploymentStatus.SUCCESSFUL)) {
             throw new RuntimeException("Deployment failed");
@@ -212,64 +226,66 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
-    private Callable<DeploymentStatus> getDeploymentCheckTask(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
-        return () -> {
-            DeploymentStatus deploymentStatus;
+    private Callable<DeploymentStatus> getDeploymentStatusCallable(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
+        return () -> getDeploymentStatus(greengrassServiceRole, greengrassRole, groupId, groupVersionId, initialDeploymentId);
+    }
 
-            String deploymentId = initialDeploymentId;
+    private DeploymentStatus getDeploymentStatus(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
+        DeploymentStatus deploymentStatus;
 
-            while (true) {
-                //////////////////////////////////////////////
-                // Wait for the deployment status to change //
-                //////////////////////////////////////////////
+        String deploymentId = initialDeploymentId;
 
-                deploymentStatus = greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId);
+        while (true) {
+            //////////////////////////////////////////////
+            // Wait for the deployment status to change //
+            //////////////////////////////////////////////
 
-                if (deploymentStatus.equals(DeploymentStatus.NEEDS_NEW_DEPLOYMENT)) {
-                    if (greengrassServiceRole.isPresent() && greengrassRole.isPresent()) {
-                        log.warn("There was a problem with IAM roles, attempting a new deployment");
+            deploymentStatus = greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId);
 
-                        // Disassociate roles
-                        log.warn("Disassociating Greengrass service role");
-                        greengrassHelper.disassociateServiceRoleFromAccount();
-                        log.warn("Disassociating role from group");
-                        greengrassHelper.disassociateRoleFromGroup(groupId);
+            if (deploymentStatus.equals(DeploymentStatus.NEEDS_NEW_DEPLOYMENT)) {
+                if (greengrassServiceRole.isPresent() && greengrassRole.isPresent()) {
+                    log.warn("There was a problem with IAM roles, attempting a new deployment");
 
-                        log.warn("Letting IAM settle...");
+                    // Disassociate roles
+                    log.warn("Disassociating Greengrass service role");
+                    greengrassHelper.disassociateServiceRoleFromAccount();
+                    log.warn("Disassociating role from group");
+                    greengrassHelper.disassociateRoleFromGroup(groupId);
 
-                        ioHelper.sleep(30000);
+                    log.warn("Letting IAM settle...");
 
-                        // Reassociate roles
-                        log.warn("Reassociating Greengrass service role");
-                        associateServiceRoleToAccount(greengrassServiceRole.get());
-                        log.warn("Reassociating Greengrass group role");
-                        associateRoleToGroup(greengrassRole.get(), groupId);
+                    ioHelper.sleep(30000);
 
-                        log.warn("Letting IAM settle...");
+                    // Reassociate roles
+                    log.warn("Reassociating Greengrass service role");
+                    associateServiceRoleToAccount(greengrassServiceRole.get());
+                    log.warn("Reassociating Greengrass group role");
+                    associateRoleToGroup(greengrassRole.get(), groupId);
 
-                        ioHelper.sleep(30000);
+                    log.warn("Letting IAM settle...");
 
-                        log.warn("Trying another deployment");
-                        deploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
-                        log.warn("Deployment created [" + deploymentId + "]");
+                    ioHelper.sleep(30000);
 
-                        log.warn("Letting deployment settle...");
+                    log.warn("Trying another deployment");
+                    deploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
+                    log.warn("Deployment created [" + deploymentId + "]");
 
-                        ioHelper.sleep(30000);
-                    } else {
-                        log.error("Deployment failed due to IAM issue.");
-                        return DeploymentStatus.FAILED;
-                    }
-                } else if (deploymentStatus.equals(DeploymentStatus.BUILDING)) {
-                    ioHelper.sleep(5000);
+                    log.warn("Letting deployment settle...");
+
+                    ioHelper.sleep(30000);
+                } else {
+                    log.error("Deployment failed due to IAM issue.");
+                    return DeploymentStatus.FAILED;
                 }
-
-                if (deploymentStatus.equals(DeploymentStatus.FAILED) ||
-                        deploymentStatus.equals(DeploymentStatus.SUCCESSFUL)) {
-                    return deploymentStatus;
-                }
+            } else if (deploymentStatus.equals(DeploymentStatus.BUILDING)) {
+                ioHelper.sleep(5000);
             }
-        };
+
+            if (deploymentStatus.equals(DeploymentStatus.FAILED) ||
+                    deploymentStatus.equals(DeploymentStatus.SUCCESSFUL)) {
+                return deploymentStatus;
+            }
+        }
     }
 
     @Override
@@ -307,7 +323,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create the role alias //
         ///////////////////////////
 
-        CreateRoleAliasResponse createRoleAliasResponse = iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, serviceRoleName);
+        CreateRoleAliasResponse createRoleAliasResponse = iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, GREENGRASS_SERVICE_ROLE_NAME);
 
         ///////////////////////////////////////////////////
         // Create an AWS Greengrass Group and get its ID //
@@ -721,38 +737,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             String user = "ubuntu";
 
-            JSch jsch = new JSch();
-
-            Optional<String> optionalHomeDirectory = globalDefaultHelper.getHomeDirectory();
-
-            if (optionalHomeDirectory.isPresent()) {
-                Path sshDirectory = new File(String.join("/", optionalHomeDirectory.get(), ".ssh")).toPath();
-
-                Try.of(() -> {
-                    List<String> privateKeyFiles = Files.list(sshDirectory)
-                            .filter(path -> ioHelper.readFileAsString(path.toFile()).contains("BEGIN RSA PRIVATE KEY"))
-                            .map(Path::toString)
-                            .collect(Collectors.toList());
-
-                    for (String privateKeyFile : privateKeyFiles) {
-                        Try.of(() -> {
-                            jsch.addIdentity(privateKeyFile);
-                            return null;
-                        })
-                                .recover(JSchException.class, throwable -> {
-                                    log.error("Issue with private key file [" + privateKeyFile + "], skipping");
-
-                                    return null;
-                                })
-                                .get();
-                    }
-
-                    return null;
-                })
-                        .get();
-            }
-
-            Optional<Session> optionalSession = threadHelper.timeLimitTask(getSshSessionTask(publicIpAddress, user, jsch), 2, TimeUnit.MINUTES);
+            Optional<Session> optionalSession = threadHelper.timeLimitTask(
+                    ioHelper.getSshSessionTask(publicIpAddress,
+                            user,
+                            SSH_CONNECTED_MESSAGE,
+                            SSH_TIMED_OUT_MESSAGE,
+                            SSH_CONNECTION_REFUSED_MESSAGE,
+                            SSH_ERROR_MESSAGE), 2, TimeUnit.MINUTES);
 
             if (!optionalSession.isPresent()) {
                 throw new RuntimeException("Failed to connect and bootstrap the instance via SSH");
@@ -760,7 +751,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             Session session = optionalSession.get();
 
-            threadHelper.timeLimitTask(getCopyAndBootstrapTask(deploymentArguments, publicIpAddress, user, session), 5, TimeUnit.MINUTES);
+            threadHelper.timeLimitTask(getCopyAndBootstrapCallable(deploymentArguments, publicIpAddress, user, session), 5, TimeUnit.MINUTES);
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -784,202 +775,25 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return new DeploymentArguments();
     }
 
-    private Callable<Boolean> getCopyAndBootstrapTask(DeploymentArguments deploymentArguments, String publicIpAddress, String user, Session session) {
-        return () -> {
-            String filename = String.join(".", "gg", deploymentArguments.groupName, "sh");
-            String localFilename = String.join("/", "build", filename);
-            String remoteFilename = filename;
-            log.info("Copying bootstrap script to instance via scp...");
-            sendFile(session, localFilename, remoteFilename);
-            runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-            log.info("Running bootstrap script on instance in screen, connect to the instance [" + user + "@" + publicIpAddress + "] and run 'screen -r' to see the progress");
-            runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"));
-            session.disconnect();
-            return true;
-        };
+    private Callable<Boolean> getCopyAndBootstrapCallable(DeploymentArguments deploymentArguments, String publicIpAddress, String user, Session session) {
+        return () -> copyAndBootstrap(deploymentArguments, publicIpAddress, user, session);
     }
 
-    private Callable<Session> getSshSessionTask(String publicIpAddress, String user, JSch jsch) {
-        return () -> {
-            Optional<Session> optionalSession = Optional.empty();
-
-            while (!optionalSession.isPresent()) {
-                optionalSession = Try.of(() -> {
-                    Session innerSession = jsch.getSession(user, publicIpAddress, 22);
-                    Properties config = new Properties();
-                    config.put("StrictHostKeyChecking", "no");
-                    innerSession.setConfig(config);
-                    innerSession.connect(10000);
-                    log.info("Connected to EC2 instance");
-
-                    return Optional.of(innerSession);
-                })
-                        .recover(JSchException.class, throwable -> {
-                            String message = throwable.getMessage();
-
-                            if (message.contains("timeout")) {
-                                log.warn("SSH connection timed out, instance may still be starting up...");
-
-                                ioHelper.sleep(5000);
-                            }
-
-                            if (message.contains("Connection refused")) {
-                                log.warn("SSH connection refused, instance may still be starting up...");
-
-                                ioHelper.sleep(5000);
-                            }
-
-                            log.error("There was an SSH error [" + message + "]");
-                            return Optional.empty();
-                        })
-                        .get();
-            }
-
-            return optionalSession.get();
-        };
+    private Boolean copyAndBootstrap(DeploymentArguments deploymentArguments, String publicIpAddress, String user, Session session) throws JSchException, IOException {
+        String filename = String.join(".", "gg", deploymentArguments.groupName, "sh");
+        String localFilename = String.join("/", "build", filename);
+        String remoteFilename = filename;
+        log.info("Copying bootstrap script to instance via scp...");
+        ioHelper.sendFile(session, localFilename, remoteFilename);
+        ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
+        log.info("Running bootstrap script on instance in screen, connect to the instance [" + user + "@" + publicIpAddress + "] and run 'screen -r' to see the progress");
+        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"));
+        session.disconnect();
+        return true;
     }
 
     private void runCommandInScreen(Session session, String command) throws JSchException, IOException {
-        runCommand(session, String.join(" ", "screen", "-d", "-m", command));
-    }
-
-    private String runCommand(Session session, String command) throws JSchException, IOException {
-        Channel channel = session.openChannel("exec");
-        ((ChannelExec) channel).setCommand(command);
-
-        StringBuilder stringBuilder = new StringBuilder();
-
-        try (InputStream commandOutput = channel.getInputStream()) {
-            channel.connect();
-            int readByte = commandOutput.read();
-
-            while (readByte != 0xffffffff) {
-                stringBuilder.append((char) readByte);
-                readByte = commandOutput.read();
-            }
-
-        } finally {
-            channel.disconnect();
-        }
-
-        return stringBuilder.toString();
-    }
-
-    private void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException {
-        boolean preserveTimestamp = false;
-
-        // exec 'scp -t rfile' remotely
-        remoteFilename = remoteFilename.replace("'", "'\"'\"'");
-        remoteFilename = "'" + remoteFilename + "'";
-
-        String command = "scp " + (preserveTimestamp ? "-p" : "") + " -t " + remoteFilename;
-
-        Channel channel = session.openChannel("exec");
-        ((ChannelExec) channel).setCommand(command);
-
-        // get I/O streams for remote scp
-        try (OutputStream outputStream = channel.getOutputStream();
-             InputStream inputStream = channel.getInputStream()) {
-            channel.connect();
-
-            if (checkAck(inputStream) != 0) {
-                log.error("Bad acknowledgement while secure copying file, bailing out");
-                return;
-            }
-
-            File localFile = new File(localFilename);
-
-            if (preserveTimestamp) {
-                command = "T " + (localFile.lastModified() / 1000) + " 0";
-                // The access time should be sent here,
-                // but it is not accessible with JavaAPI ;-<
-                command += (" " + (localFile.lastModified() / 1000) + " 0\n");
-
-                outputStream.write(command.getBytes());
-                outputStream.flush();
-
-                if (checkAck(inputStream) != 0) {
-                    return;
-                }
-            }
-
-            // send "C0644 filesize filename", where filename should not include '/'
-            long filesize = localFile.length();
-
-            command = "C0644 " + filesize + " ";
-
-            if (localFilename.lastIndexOf('/') > 0) {
-                command += localFilename.substring(localFilename.lastIndexOf('/') + 1);
-            } else {
-                command += localFilename;
-            }
-
-            command += "\n";
-
-            outputStream.write(command.getBytes());
-            outputStream.flush();
-
-            if (checkAck(inputStream) != 0) {
-                return;
-            }
-
-            byte[] bytes = new byte[1024];
-
-            // send a content of localFilename
-            try (FileInputStream fileInputStream = new FileInputStream(localFilename)) {
-                while (true) {
-                    int length = fileInputStream.read(bytes, 0, bytes.length);
-                    if (length <= 0) break;
-                    outputStream.write(bytes, 0, length); //out.flush();
-                }
-            }
-
-            // send '\0'
-            bytes[0] = 0;
-
-            outputStream.write(bytes, 0, 1);
-            outputStream.flush();
-
-            if (checkAck(inputStream) != 0) {
-                return;
-            }
-        }
-
-        channel.disconnect();
-    }
-
-    int checkAck(InputStream inputStream) throws IOException {
-        int statusByte = inputStream.read();
-
-        // b may be 0 for success,
-        //          1 for error,
-        //          2 for fatal error,
-        //          -1
-
-        if (statusByte == 0) return statusByte;
-        if (statusByte == -1) return statusByte;
-
-        if (statusByte == 1 || statusByte == 2) {
-            StringBuilder stringBuilder = new StringBuilder();
-
-            int nextChar;
-
-            do {
-                nextChar = inputStream.read();
-                stringBuilder.append((char) nextChar);
-            }
-            while (nextChar != '\n');
-
-            if (statusByte == 1) { // error
-                log.error(stringBuilder.toString());
-            }
-
-            if (statusByte == 2) { // fatal error
-                log.error(stringBuilder.toString());
-            }
-        }
-
-        return statusByte;
+        ioHelper.runCommand(session, String.join(" ", "screen", "-d", "-m", command));
     }
 
     private Optional<String> launchEc2Instance(String groupName) {
@@ -1079,28 +893,32 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private Callable<Boolean> getCreateTagsTask(CreateTagsRequest tag_request) {
-        return () -> {
-            Optional<Boolean> status = Optional.empty();
+        return () -> createTags(tag_request);
+    }
 
-            while (!status.isPresent()) {
-                status = Try.of(() -> Optional.of(ec2Client.createTags(tag_request) != null))
-                        .recover(Ec2Exception.class, throwable -> {
-                            if (throwable.getMessage().contains("does not exist")) {
-                                log.warn("Instance may still be starting, trying again...");
+    private Boolean createTags(CreateTagsRequest tag_request) {
+        Optional<Boolean> status = Optional.empty();
 
-                                ioHelper.sleep(5000);
-                                return Optional.empty();
-                            } else {
-                                // Fail
-                                log.error("An exception occurred [" + throwable.getMessage() + "], not launching the instance");
-                                return Optional.of(false);
-                            }
-                        })
-                        .get();
-            }
+        while (!status.isPresent()) {
+            status = Try.of(() -> Optional.of(ec2Client.createTags(tag_request) != null))
+                    .recover(Ec2Exception.class, this::recoverFromEc2Exception)
+                    .get();
+        }
 
-            return status.get();
-        };
+        return status.get();
+    }
+
+    private Optional<Boolean> recoverFromEc2Exception(Ec2Exception throwable) {
+        if (throwable.getMessage().contains("does not exist")) {
+            log.warn("Instance may still be starting, trying again...");
+
+            ioHelper.sleep(5000);
+            return Optional.empty();
+        }
+
+        // Fail
+        log.error("An exception occurred [" + throwable.getMessage() + "], not launching the instance");
+        return Optional.of(false);
     }
 
     /**
@@ -1112,8 +930,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private Role createServiceRole(DeploymentConf deploymentConf) {
         List<String> serviceRolePolicies = Arrays.asList("arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy",
                 "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess");
-        log.info("Creating Greengrass service role [" + serviceRoleName + "]");
-        Role greengrassServiceRole = iamHelper.createRoleIfNecessary(serviceRoleName, deploymentConf.getCoreRoleAssumeRolePolicy());
+        log.info("Creating Greengrass service role [" + GREENGRASS_SERVICE_ROLE_NAME + "]");
+        Role greengrassServiceRole = iamHelper.createRoleIfNecessary(GREENGRASS_SERVICE_ROLE_NAME, deploymentConf.getCoreRoleAssumeRolePolicy());
 
         serviceRolePolicies.stream()
                 .forEach(policy -> iamHelper.attachRolePolicy(greengrassServiceRole, policy));
@@ -1251,14 +1069,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Building script [" + ggShScriptName + "]");
             ByteArrayOutputStream ggScriptTemplate = new ByteArrayOutputStream();
 
-            Try.of(() -> {
-                ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
-                ggScriptTemplate.write("PAYLOAD:\n".getBytes());
-                ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
-
-                return null;
-            })
-                    .get();
+            Try.of(() -> writePayload(ggdPipDependencies, ggScriptTemplate)).get();
 
             log.info("Writing script [" + ggShScriptName + "]");
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
@@ -1280,6 +1091,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
     }
 
+    public Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
+        ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
+        ggScriptTemplate.write("PAYLOAD:\n".getBytes());
+        ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
+
+        return null;
+    }
+
     public void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) throws InterruptedException {
         if (deploymentArguments.pushContainer != true) {
             return;
@@ -1291,20 +1110,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
         try (DockerClient dockerClient = normalDockerClientProvider.get()) {
-            Try.of(() -> {
-                dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
-                return null;
-            })
+            Try.of(() -> tagImage(deploymentArguments, imageId, shortEcrEndpointAndRepo, dockerClient))
                     .get();
 
-            Try.of(() -> {
-                dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
-                return null;
-            })
-                    .recover(DockerException.class, throwable -> {
-                        log.error("Docker push failed [" + throwable.getMessage() + "]");
-                        throw new RuntimeException(throwable);
-                    })
+            Try.of(() -> push(shortEcrEndpointAndRepo, dockerClient))
+                    .onFailure(throwable -> Match(throwable).of(
+                            Case($(instanceOf(DockerException.class)), this::logDockerPushFailedAndThrow),
+                            Case($(), exceptionHelper::rethrowAsRuntimeException)))
                     .get();
         }
 
@@ -1341,6 +1153,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             ioHelper.makeExecutable(dockerShScriptName);
         }
         */
+    }
+
+    public Void logDockerPushFailedAndThrow(DockerException x) {
+        log.error("Docker push failed [" + x.getMessage() + "]");
+        throw new RuntimeException(x);
+    }
+
+    public Void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+        dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
+        return null;
+    }
+
+    public Void tagImage(DeploymentArguments deploymentArguments, String imageId, String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+        dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
+        return null;
     }
 
     private void waitForStacksToLaunch(List<String> cloudFormationStacksLaunched) {

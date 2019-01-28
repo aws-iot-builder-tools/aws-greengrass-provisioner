@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import java.io.IOException;
 import java.io.InputStream;
 
 public interface ResourceHelper {
@@ -9,5 +10,5 @@ public interface ResourceHelper {
 
     String resourceToString(String filename);
 
-    String resourceToTempFile(String filename);
+    String resourceToTempFile(String filename) throws IOException;
 }

@@ -111,21 +111,21 @@ public class BasicMavenBuilder implements MavenBuilder {
     }
 
     private Void installCddBaseline() {
-        String tempFile = resourceHelper.resourceToTempFile(FOUNDATION_CDDBASELINE_JAVA_JAR);
+        String tempFile = Try.of(() -> resourceHelper.resourceToTempFile(FOUNDATION_CDDBASELINE_JAVA_JAR)).get();
         buildPropertiesAndRunMaven(tempFile, COM_AWSLABS, CDDBASELINEJAVA, CDD_BASELINE_VERSION_0_3, JAR, Optional.empty(), INSTALL);
 
         return null;
     }
 
     private Void installGreengrassJavaSdkJar() {
-        String tempFile = resourceHelper.resourceToTempFile(FOUNDATION_GREENGRASS_JAVA_SDK_1_2_JAR);
+        String tempFile = Try.of(() -> resourceHelper.resourceToTempFile(FOUNDATION_GREENGRASS_JAVA_SDK_1_2_JAR)).get();
         buildPropertiesAndRunMaven(tempFile, COM_AMAZONAWS, GREENGRASS_LAMBDA, VERSION_1_2, JAR, Optional.empty(), INSTALL);
 
         return null;
     }
 
     private Void installCddBaselineDependencies() {
-        String tempFile = resourceHelper.resourceToTempFile(FOUNDATION_CDDBASELINE_DEPENDENCIES_JAVA_POM);
+        String tempFile = Try.of(() -> resourceHelper.resourceToTempFile(FOUNDATION_CDDBASELINE_DEPENDENCIES_JAVA_POM)).get();
         buildPropertiesAndRunMaven(tempFile, COM_AWSLABS, CDDBASELINEJAVADEPENDENCIES, CDD_BASELINE_DEPENDENCIES_VERSION_0_3, POM, Optional.empty(), INSTALL);
 
         return null;
@@ -200,46 +200,48 @@ public class BasicMavenBuilder implements MavenBuilder {
         invoker.setOutputHandler(invocationOutputHandler);
         invoker.setErrorHandler(invocationErrorHandler);
 
-        Try.of(() -> {
-            if (functionName.isPresent()) {
-                loggingHelper.logInfoWithName(log, functionName.get(), "Attempting Maven build of Java function");
-            } else if (pomXmlPath.isPresent()) {
-                loggingHelper.logInfoWithName(log, cleanPath(pomXmlPath.get().getAbsolutePath()), "Attempting Maven build");
-            } else {
-                String name = getInternalName(properties);
-
-                loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Attempting Maven build");
-            }
-
-            InvocationResult result = invoker.execute(request);
-
-            if (result.getExitCode() != 0) {
-                Optional<String> noCompilerString = outputList.stream()
-                        .filter(s -> s.contains(NO_COMPILER_ERROR))
-                        .findFirst();
-
-                if (noCompilerString.isPresent()) {
-                    log.error("No compiler found.  You may need to install the JDK.");
-                    System.exit(1);
-                }
-
-                printDebugInfo(outputList, errorList);
-                throw new RuntimeException("Maven build failed");
-            }
-
-            if (functionName.isPresent()) {
-                loggingHelper.logInfoWithName(log, functionName.get(), "Finished build of Java function");
-            } else if (pomXmlPath.isPresent()) {
-                loggingHelper.logInfoWithName(log, cleanPath(pomXmlPath.get().getAbsolutePath()), "Finished Maven build");
-            } else {
-                String name = getInternalName(properties);
-
-                loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Finished Maven build");
-            }
-
-            return null;
-        })
+        Try.of(() -> invokeMaven(pomXmlPath, functionName, properties, request, invoker, outputList, errorList))
                 .get();
+    }
+
+    public Void invokeMaven(Optional<File> pomXmlPath, Optional<String> functionName, Optional<Map<String, String>> properties, InvocationRequest request, Invoker invoker, List<String> outputList, List<String> errorList) throws MavenInvocationException {
+        if (functionName.isPresent()) {
+            loggingHelper.logInfoWithName(log, functionName.get(), "Attempting Maven build of Java function");
+        } else if (pomXmlPath.isPresent()) {
+            loggingHelper.logInfoWithName(log, cleanPath(pomXmlPath.get().getAbsolutePath()), "Attempting Maven build");
+        } else {
+            String name = getInternalName(properties);
+
+            loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Attempting Maven build");
+        }
+
+        InvocationResult result = invoker.execute(request);
+
+        if (result.getExitCode() != 0) {
+            Optional<String> noCompilerString = outputList.stream()
+                    .filter(s -> s.contains(NO_COMPILER_ERROR))
+                    .findFirst();
+
+            if (noCompilerString.isPresent()) {
+                log.error("No compiler found.  You may need to install the JDK.");
+                System.exit(1);
+            }
+
+            printDebugInfo(outputList, errorList);
+            throw new RuntimeException("Maven build failed");
+        }
+
+        if (functionName.isPresent()) {
+            loggingHelper.logInfoWithName(log, functionName.get(), "Finished build of Java function");
+        } else if (pomXmlPath.isPresent()) {
+            loggingHelper.logInfoWithName(log, cleanPath(pomXmlPath.get().getAbsolutePath()), "Finished Maven build");
+        } else {
+            String name = getInternalName(properties);
+
+            loggingHelper.logInfoWithName(log, "Internal [" + name + "]", "Finished Maven build");
+        }
+
+        return null;
     }
 
     public String getInternalName(Optional<Map<String, String>> properties) {

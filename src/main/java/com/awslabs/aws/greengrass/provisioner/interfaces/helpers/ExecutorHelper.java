@@ -13,21 +13,25 @@ public interface ExecutorHelper {
         // Get an executor
         ExecutorService executorService = getExecutor();
 
-        List<T> results = Try.of(() -> {
-            // Invoke all of the tasks and collect the results
-            return executorService.invokeAll(callables)
-                    .stream()
-                    .map(future -> Try.of(() -> future.get()).get())
-                    .collect(Collectors.toList());
-        })
-                .onFailure(throwable -> {
-                    log.error("Parallel task execution failed [" + throwable.getMessage() + "]");
-                    throw new RuntimeException(throwable);
-                })
+        List<T> results = Try.of(() -> invokeAll(callables, executorService))
+                .onFailure(throwable -> logAndRethrow(log, throwable))
                 .andFinallyTry(() -> executorService.shutdown())
                 .get();
 
         return results;
+    }
+
+    default void logAndRethrow(Logger log, Throwable throwable) {
+        log.error("Parallel task execution failed [" + throwable.getMessage() + "]");
+        throw new RuntimeException(throwable);
+    }
+
+    default <T> List<T> invokeAll(List<Callable<T>> callables, ExecutorService executorService) throws InterruptedException {
+        // Invoke all of the tasks and collect the results
+        return executorService.invokeAll(callables)
+                .stream()
+                .map(future -> Try.of(() -> future.get()).get())
+                .collect(Collectors.toList());
     }
 
     ExecutorService getExecutor();

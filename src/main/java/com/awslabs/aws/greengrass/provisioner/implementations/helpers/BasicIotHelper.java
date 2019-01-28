@@ -41,19 +41,21 @@ public class BasicIotHelper implements IotHelper {
                 .build();
 
         return Try.of(() -> iotClient.createThing(createThingRequest).thingArn())
-                .recover(ResourceAlreadyExistsException.class, throwable -> {
-                    if (throwable.getMessage().contains("with different tags")) {
-                        log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
-
-                        DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
-                                .thingName(name)
-                                .build();
-                        return iotClient.describeThing(describeThingRequest).thingArn();
-                    }
-
-                    throw new RuntimeException(throwable);
-                })
+                .recover(ResourceAlreadyExistsException.class, throwable -> recoverFromResourceAlreadyExistsException(name, throwable))
                 .get();
+    }
+
+    private String recoverFromResourceAlreadyExistsException(String name, ResourceAlreadyExistsException throwable) {
+        if (throwable.getMessage().contains("with different tags")) {
+            log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
+
+            DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
+                    .thingName(name)
+                    .build();
+            return iotClient.describeThing(describeThingRequest).thingArn();
+        }
+
+        throw new RuntimeException(throwable);
     }
 
     private String credentialDirectoryForGroupId(String groupId) {
@@ -212,15 +214,17 @@ public class BasicIotHelper implements IotHelper {
                 .build();
 
         return Try.of(() -> iotClient.createRoleAlias(createRoleAliasRequest))
-                .recover(ResourceAlreadyExistsException.class, throwable -> {
-                    // Already exists, delete it and try again
-                    DeleteRoleAliasRequest deleteRoleAliasRequest = DeleteRoleAliasRequest.builder()
-                            .roleAlias(roleAlias)
-                            .build();
-                    iotClient.deleteRoleAlias(deleteRoleAliasRequest);
-
-                    return iotClient.createRoleAlias(createRoleAliasRequest);
-                })
+                .recover(ResourceAlreadyExistsException.class, throwable -> deleteAndRecreateRoleAlias(roleAlias, createRoleAliasRequest))
                 .get();
+    }
+
+    private CreateRoleAliasResponse deleteAndRecreateRoleAlias(String roleAlias, CreateRoleAliasRequest createRoleAliasRequest) {
+        // Already exists, delete it and try again
+        DeleteRoleAliasRequest deleteRoleAliasRequest = DeleteRoleAliasRequest.builder()
+                .roleAlias(roleAlias)
+                .build();
+        iotClient.deleteRoleAlias(deleteRoleAliasRequest);
+
+        return iotClient.createRoleAlias(createRoleAliasRequest);
     }
 }

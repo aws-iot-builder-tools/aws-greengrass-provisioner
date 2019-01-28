@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.docker;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
@@ -22,6 +23,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+
+import static io.vavr.API.*;
+import static io.vavr.Predicates.instanceOf;
 
 @Slf4j
 public abstract class AbstractDockerHelper implements DockerHelper {
@@ -76,30 +80,44 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public void createEcrRepositoryIfNecessary() {
-        Try.of(() -> {
-            DescribeRepositoriesResponse describeRepositoriesResponse = getEcrClient().describeRepositories(
-                    DescribeRepositoriesRequest.builder()
-                            .repositoryNames(ecrRepositoryName.get())
-                            .build());
-
-            if (describeRepositoriesResponse.repositories().size() == 1) {
-                log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
-                return null;
-            }
-
-            log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");
-
-            throw new RuntimeException("More than one matching ECR repository");
-        })
-                .recover(RepositoryNotFoundException.class, throwable -> {
-                    log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
-                    getEcrClient().createRepository(CreateRepositoryRequest.builder()
-                            .repositoryName(ecrRepositoryName.get())
-                            .build());
-
-                    return null;
-                })
+        Try.of(() -> describeRepositories())
+                .onFailure(throwable -> Match(throwable).of(
+                        Case($(instanceOf(RepositoryNotFoundException.class)), ignore -> createEcrRepository()),
+                        Case($(), this::rethrowAsRuntimeException)))
                 .get();
+    }
+
+    private Void describeRepositories() {
+        DescribeRepositoriesResponse describeRepositoriesResponse = getEcrClient().describeRepositories(
+                DescribeRepositoriesRequest.builder()
+                        .repositoryNames(ecrRepositoryName.get())
+                        .build());
+
+        if (describeRepositoriesResponse.repositories().size() == 1) {
+            log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
+            return null;
+        }
+
+        log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");
+
+        throw new RuntimeException("More than one matching ECR repository");
+    }
+
+    private Void rethrowAsRuntimeException(Throwable throwable) {
+        getExceptionHelper().rethrowAsRuntimeException(throwable);
+
+        return null;
+    }
+
+    protected abstract ExceptionHelper getExceptionHelper();
+
+    public Void createEcrRepository() {
+        log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
+        getEcrClient().createRepository(CreateRepositoryRequest.builder()
+                .repositoryName(ecrRepositoryName.get())
+                .build());
+
+        return null;
     }
 
     protected abstract EcrClient getEcrClient();
@@ -269,12 +287,17 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         Container container = optionalContainer.get();
 
         Try.withResources(this::getDockerClient)
-                .of(dockerClient -> {
-                    dockerClient.stopContainer(container.id(), 5);
-                    return null;
-                })
-                .recover(DockerException.class, this::printFailedToStopContainerAndThrow)
-                .recover(InterruptedException.class, this::printFailedToStopContainerAndThrow);
+                .of(dockerClient -> stopContainer(container, dockerClient))
+                .onFailure(throwable -> Match(throwable).of(
+                        Case($(instanceOf(DockerException.class)), this::printFailedToStopContainerAndThrow),
+                        Case($(instanceOf(InterruptedException.class)), this::printFailedToStopContainerAndThrow),
+                        Case($(), this::rethrowAsRuntimeException)))
+                .get();
+    }
+
+    public Void stopContainer(Container container, DockerClient dockerClient) throws DockerException, InterruptedException {
+        dockerClient.stopContainer(container.id(), 5);
+        return null;
     }
 
     private Void printFailedToStopContainerAndThrow(Throwable throwable) {

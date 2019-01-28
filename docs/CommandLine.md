@@ -2,12 +2,13 @@
 
 ## Modes of operation
 
-There are currently three modes of operation for GGP and therefore three sets of command-line options.  Each of the
+There are currently four modes of operation for GGP and therefore three sets of command-line options.  Each of the
 documents below describes the options for the different modes.
 
 - [Deployment](/docs/DeploymentCommandLine.md)
 - [Update Group](/docs/UpdateGroupCommandLine.md)
 - [Query Group](/docs/QueryGroupCommandLine.md)
+- [Test Group](/docs/TestGroupCommandLine.md)
 
 ## Examples
 
@@ -153,4 +154,12 @@ the alias in AWS Lambda.
 
 ```bash
 GGP -g test-group --update-group --remove-function ExistingLambdaName --function-alias PROD
+```
+
+## Test examples
+
+### Test a local ARM32 device with the group name pi, username pi, at IP address 192.168.1.3 and store the results in the temp directory
+
+```bash
+GGP --test-group -g pi -a ARM32 -u pi -o temp --dut 192.168.1.3
 ```

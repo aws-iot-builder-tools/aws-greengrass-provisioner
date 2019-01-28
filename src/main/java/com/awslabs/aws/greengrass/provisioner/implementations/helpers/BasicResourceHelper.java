@@ -48,26 +48,24 @@ public class BasicResourceHelper implements ResourceHelper {
     }
 
     @Override
-    public String resourceToTempFile(String filename) {
-        return Try.of(() -> {
-            InputStream inputStream = getResourceAsStream(filename);
+    public String resourceToTempFile(String filename) throws IOException {
+        InputStream inputStream = getResourceAsStream(filename);
 
-            if (inputStream == null) {
-                throw new Exception("Cannot get resource [" + filename + "] from JAR file.");
-            }
+        if (inputStream == null) {
+            throw new RuntimeException("Cannot get resource [" + filename + "] from JAR file.");
+        }
 
-            int readBytes;
-            byte[] buffer = new byte[8192];
+        int readBytes;
+        byte[] buffer = new byte[8192];
 
-            File tempFile = File.createTempFile("temp", "jar");
-            tempFile.deleteOnExit();
-            FileOutputStream fileOutputStream = new FileOutputStream(tempFile);
+        File tempFile = File.createTempFile("temp", "jar");
+        tempFile.deleteOnExit();
+        FileOutputStream fileOutputStream = new FileOutputStream(tempFile);
 
-            while ((readBytes = inputStream.read(buffer)) > 0) {
-                fileOutputStream.write(buffer, 0, readBytes);
-            }
+        while ((readBytes = inputStream.read(buffer)) > 0) {
+            fileOutputStream.write(buffer, 0, readBytes);
+        }
 
-            return tempFile.toString();
-        }).get();
+        return tempFile.toString();
     }
 }

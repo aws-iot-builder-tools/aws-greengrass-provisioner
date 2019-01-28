@@ -17,6 +17,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Slf4j
 public class BasicNodeBuilder implements NodeBuilder {
@@ -38,8 +39,8 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     @Override
-    public String trimFilenameIfNecessary(String filename) {
-        return filename.replaceFirst("aws-greengrass-core-sdk-js\\/", "");
+    public Function<String, String> getFilenameTrimmer() {
+        return filename -> filename.replaceFirst("aws-greengrass-core-sdk-js\\/", "");
     }
 
     @Override
@@ -56,7 +57,7 @@ public class BasicNodeBuilder implements NodeBuilder {
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
 
-        File tempFile = ioHelper.getTempFile("node-lambda-build", "zip");
+        File tempFile = Try.of(() -> ioHelper.getTempFile("node-lambda-build", "zip")).get();
 
         // Create the deployment package
         ZipUtil.pack(new File(functionConf.getBuildDirectory().toString()), tempFile);
@@ -65,30 +66,26 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        Try.of(() -> {
-            for (String dependency : functionConf.getDependencies()) {
-                loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
-                List<String> programAndArguments = new ArrayList<>();
-                programAndArguments.add("npm");
-                programAndArguments.add("install");
-                programAndArguments.add(dependency);
+        for (String dependency : functionConf.getDependencies()) {
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
+            List<String> programAndArguments = new ArrayList<>();
+            programAndArguments.add("npm");
+            programAndArguments.add("install");
+            programAndArguments.add(dependency);
 
-                ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-                processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
+            ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+            processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
 
-                List<String> stdoutStrings = new ArrayList<>();
-                List<String> stderrStrings = new ArrayList<>();
+            List<String> stdoutStrings = new ArrayList<>();
+            List<String> stderrStrings = new ArrayList<>();
 
-                Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+            Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
 
-                if (!exitVal.isPresent() || exitVal.get() != 0) {
-                    log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
-                    System.exit(1);
-                }
+            if (!exitVal.isPresent() || exitVal.get() != 0) {
+                log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
+                System.exit(1);
             }
-            return null;
-        })
-                .get();
+        }
     }
 
     @Override

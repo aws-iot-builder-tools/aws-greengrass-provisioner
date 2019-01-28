@@ -62,6 +62,7 @@ public class BasicArchiveHelper implements ArchiveHelper {
 
             // Grab the file and write its actual contents to the stream
             BufferedInputStream origin = new BufferedInputStream(virtualTarEntry.getInputStream());
+            
             int count;
             byte data[] = new byte[2048];
 

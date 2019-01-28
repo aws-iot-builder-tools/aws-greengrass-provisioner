@@ -22,21 +22,27 @@ public class BasicThreadHelper implements ThreadHelper {
     public <T> Optional<T> timeLimitTask(Callable<T> callable, int timeout, TimeUnit timeUnit) {
         ExecutorService executor = executorHelper.getExecutor();
 
-        return Try.of(() -> {
-            Future<T> future = executor.submit(callable);
-
-            return Optional.ofNullable(future.get(timeout, timeUnit));
-        })
-                .recover(InterruptedException.class, throwable -> {
-                    log.error("Task interrupted [" + throwable.getMessage() + "]");
-                    return Optional.empty();
-                })
-                .recover(ExecutionException.class, throwable -> {
-                    log.error("Task exception [" + throwable.getMessage() + "]");
-                    return Optional.empty();
-                })
+        return Try.of(() -> submitToExecutor(callable, timeout, timeUnit, executor))
+                .recover(InterruptedException.class, throwable -> logInterruptedMessage(throwable))
+                .recover(ExecutionException.class, throwable -> logExceptionMessage(throwable))
                 .recover(TimeoutException.class, throwable -> Optional.empty())
                 .andFinally(() -> executor.shutdownNow())
                 .get();
+    }
+
+    public <T> Optional<T> logExceptionMessage(ExecutionException throwable) {
+        log.error("Task exception [" + throwable.getMessage() + "]");
+        return Optional.empty();
+    }
+
+    public <T> Optional<T> logInterruptedMessage(InterruptedException throwable) {
+        log.error("Task interrupted [" + throwable.getMessage() + "]");
+        return Optional.empty();
+    }
+
+    public <T> Optional<T> submitToExecutor(Callable<T> callable, int timeout, TimeUnit timeUnit, ExecutorService executor) throws InterruptedException, ExecutionException, TimeoutException {
+        Future<T> future = executor.submit(callable);
+
+        return Optional.ofNullable(future.get(timeout, timeUnit));
     }
 }

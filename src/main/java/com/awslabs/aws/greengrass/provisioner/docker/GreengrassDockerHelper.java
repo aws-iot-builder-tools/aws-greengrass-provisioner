@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.docker;
 
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
@@ -13,6 +14,7 @@ import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
 import io.vavr.control.Try;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import software.amazon.awssdk.regions.Region;
@@ -27,6 +29,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import static io.vavr.API.*;
+import static io.vavr.Predicates.instanceOf;
+
 @Slf4j
 public class GreengrassDockerHelper extends AbstractDockerHelper {
     @Inject
@@ -39,6 +44,9 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
     GGVariables ggVariables;
     @Inject
     IoHelper ioHelper;
+    @Getter
+    @Inject
+    ExceptionHelper exceptionHelper;
 
     @Inject
     public GreengrassDockerHelper() {
@@ -79,118 +87,122 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
         String absoluteCertsPath = String.join("/", "", "greengrass", ggConstants.getCertsDirectoryPrefix());
         String absoluteConfigPath = String.join("/", "", "greengrass", ggConstants.getConfigDirectoryPrefix());
 
-        Path tempDirectory = Try.of(() -> {
-            Path innerTempDirectory = Files.createTempDirectory(groupName);
-
-            Path localCertsPath = innerTempDirectory.resolve(ggConstants.getCertsDirectoryPrefix());
-            Path localConfigPath = innerTempDirectory.resolve(ggConstants.getConfigDirectoryPrefix());
-
-            Files.createDirectory(localCertsPath);
-            Files.createDirectory(localConfigPath);
-
-            String coreCertFilename = String.join("/",
-                    ggConstants.getCertsDirectoryPrefix(),
-                    ggConstants.getCorePublicCertificateName());
-
-            String coreKeyFilename = String.join("/",
-                    ggConstants.getCertsDirectoryPrefix(),
-                    ggConstants.getCorePrivateKeyName());
-
-            String rootCaFilename = String.join("/",
-                    ggConstants.getCertsDirectoryPrefix(),
-                    ggConstants.getRootCaName());
-            String configJsonFilename = String.join("/",
-                    ggConstants.getConfigDirectoryPrefix(),
-                    ggConstants.getConfigFileName());
-
-            Optional<InputStream> coreCertStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreCertFilename);
-            Optional<InputStream> coreKeyStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreKeyFilename);
-            Optional<InputStream> rootCaStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), rootCaFilename);
-            Optional<InputStream> configJsonStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), configJsonFilename);
-
-            List<String> errors = new ArrayList<>();
-
-            if (!coreCertStream.isPresent()) {
-                errors.add("Couldn't extract core certificate from the OEM file");
-            }
-
-            if (!coreKeyStream.isPresent()) {
-                errors.add("Couldn't extract core private key from the OEM file");
-            }
-
-            if (!rootCaStream.isPresent()) {
-                errors.add("Couldn't extract the root CA from the OEM file");
-            }
-
-            if (!configJsonStream.isPresent()) {
-                errors.add("Couldn't extract the config.json from the OEM file");
-            }
-
-            if (errors.size() != 0) {
-                errors.stream()
-                        .forEach(error -> log.error(error));
-                throw new RuntimeException("OEM extraction failed");
-            }
-
-            FileUtils.copyInputStreamToFile(coreCertStream.get(), innerTempDirectory.resolve(coreCertFilename).toFile());
-            FileUtils.copyInputStreamToFile(coreKeyStream.get(), innerTempDirectory.resolve(coreKeyFilename).toFile());
-            FileUtils.copyInputStreamToFile(rootCaStream.get(), innerTempDirectory.resolve(rootCaFilename).toFile());
-            FileUtils.copyInputStreamToFile(configJsonStream.get(), innerTempDirectory.resolve(configJsonFilename).toFile());
-
-            return innerTempDirectory;
-        }).recover(IOException.class, throwable -> {
-            printCouldNotCreateTemporaryCredentialsAndThrow(throwable);
-            return null;
-        })
+        Path tempDirectory = Try.of(() -> getAndPopulateTempDirectory(groupName))
+                .onFailure(throwable -> printCouldNotCreateTemporaryCredentialsAndThrow(throwable))
                 .get();
 
         return Try.withResources(this::getDockerClient)
-                .of(dockerClient -> {
-                    // Is there any existing container with the group name?
-                    Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
-
-                    if (optionalContainer.isPresent()) {
-                        Container container = optionalContainer.get();
-                        String containerId = container.id();
-
-                        return Optional.of(containerId);
-                    }
-
-                    ContainerCreation containerCreation = dockerClient.createContainer(ContainerConfig.builder()
-                            .image(image.id())
-                            .entrypoint("/greengrass-entrypoint.sh")
-                            .exposedPorts("8883")
-                            .build(), groupName);
-
-                    // Copy the certs to the container
-                    dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix()),
-                            containerCreation.id(),
-                            absoluteCertsPath);
-
-                    // Copy the config to the container
-                    dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getConfigDirectoryPrefix()),
-                            containerCreation.id(),
-                            absoluteConfigPath);
-
-                    return Optional.of(containerCreation.id());
-                })
-                .recover(DockerException.class, this::printCouldNotCreateContainerAndThrow)
-                .recover(InterruptedException.class, this::printCouldNotCreateContainerAndThrow)
-                .recover(IOException.class, this::printCouldNotCopyFilesToContainerAndThrow)
+                .of(dockerClient -> getOrCreateContainer(groupName, image, absoluteCertsPath, absoluteConfigPath, tempDirectory, dockerClient))
+                .onFailure(throwable -> Match(throwable).of(
+                        Case($(instanceOf(DockerException.class)), this::printCouldNotCreateContainerAndThrow),
+                        Case($(instanceOf(InterruptedException.class)), this::printCouldNotCreateContainerAndThrow),
+                        Case($(instanceOf(IOException.class)), this::printCouldNotCopyFilesToContainerAndThrow),
+                        Case($(), exceptionHelper::rethrowAsRuntimeException)))
                 .get();
     }
 
-    private Optional<String> printCouldNotCreateContainerAndThrow(Throwable throwable) {
+    public Optional<String> getOrCreateContainer(String groupName, Image image, String absoluteCertsPath, String absoluteConfigPath, Path tempDirectory, DockerClient dockerClient) throws DockerException, InterruptedException, IOException {
+        // Is there any existing container with the group name?
+        Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
+
+        if (optionalContainer.isPresent()) {
+            Container container = optionalContainer.get();
+            String containerId = container.id();
+
+            return Optional.of(containerId);
+        }
+
+        ContainerCreation containerCreation = dockerClient.createContainer(ContainerConfig.builder()
+                .image(image.id())
+                .entrypoint("/greengrass-entrypoint.sh")
+                .exposedPorts("8883")
+                .build(), groupName);
+
+        // Copy the certs to the container
+        dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix()),
+                containerCreation.id(),
+                absoluteCertsPath);
+
+        // Copy the config to the container
+        dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getConfigDirectoryPrefix()),
+                containerCreation.id(),
+                absoluteConfigPath);
+
+        return Optional.of(containerCreation.id());
+    }
+
+    public Path getAndPopulateTempDirectory(String groupName) throws IOException {
+        Path innerTempDirectory = Files.createTempDirectory(groupName);
+
+        Path localCertsPath = innerTempDirectory.resolve(ggConstants.getCertsDirectoryPrefix());
+        Path localConfigPath = innerTempDirectory.resolve(ggConstants.getConfigDirectoryPrefix());
+
+        Files.createDirectory(localCertsPath);
+        Files.createDirectory(localConfigPath);
+
+        String coreCertFilename = String.join("/",
+                ggConstants.getCertsDirectoryPrefix(),
+                ggConstants.getCorePublicCertificateName());
+
+        String coreKeyFilename = String.join("/",
+                ggConstants.getCertsDirectoryPrefix(),
+                ggConstants.getCorePrivateKeyName());
+
+        String rootCaFilename = String.join("/",
+                ggConstants.getCertsDirectoryPrefix(),
+                ggConstants.getRootCaName());
+        String configJsonFilename = String.join("/",
+                ggConstants.getConfigDirectoryPrefix(),
+                ggConstants.getConfigFileName());
+
+        Optional<InputStream> coreCertStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreCertFilename);
+        Optional<InputStream> coreKeyStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreKeyFilename);
+        Optional<InputStream> rootCaStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), rootCaFilename);
+        Optional<InputStream> configJsonStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), configJsonFilename);
+
+        List<String> errors = new ArrayList<>();
+
+        if (!coreCertStream.isPresent()) {
+            errors.add("Couldn't extract core certificate from the OEM file");
+        }
+
+        if (!coreKeyStream.isPresent()) {
+            errors.add("Couldn't extract core private key from the OEM file");
+        }
+
+        if (!rootCaStream.isPresent()) {
+            errors.add("Couldn't extract the root CA from the OEM file");
+        }
+
+        if (!configJsonStream.isPresent()) {
+            errors.add("Couldn't extract the config.json from the OEM file");
+        }
+
+        if (errors.size() != 0) {
+            errors.stream()
+                    .forEach(error -> log.error(error));
+            throw new RuntimeException("OEM extraction failed");
+        }
+
+        FileUtils.copyInputStreamToFile(coreCertStream.get(), innerTempDirectory.resolve(coreCertFilename).toFile());
+        FileUtils.copyInputStreamToFile(coreKeyStream.get(), innerTempDirectory.resolve(coreKeyFilename).toFile());
+        FileUtils.copyInputStreamToFile(rootCaStream.get(), innerTempDirectory.resolve(rootCaFilename).toFile());
+        FileUtils.copyInputStreamToFile(configJsonStream.get(), innerTempDirectory.resolve(configJsonFilename).toFile());
+
+        return innerTempDirectory;
+    }
+
+    private Void printCouldNotCreateContainerAndThrow(Throwable throwable) {
         log.error("Couldn't create container [" + throwable.getMessage() + "]");
         throw new RuntimeException(throwable);
     }
 
-    private Optional<String> printCouldNotCopyFilesToContainerAndThrow(Throwable throwable) {
+    private Void printCouldNotCopyFilesToContainerAndThrow(Throwable throwable) {
         log.error("Couldn't copy files to container [" + throwable.getMessage() + "]");
         throw new RuntimeException(throwable);
     }
 
-    private Optional<String> printCouldNotCreateTemporaryCredentialsAndThrow(Throwable throwable) {
+    private Void printCouldNotCreateTemporaryCredentialsAndThrow(Throwable throwable) {
         log.error("Couldn't create temporary path for credentials");
         throw new RuntimeException(throwable);
     }

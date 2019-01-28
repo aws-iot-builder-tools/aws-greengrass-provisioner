@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 
 import javax.inject.Inject;
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,39 +40,43 @@ public class BasicProcessHelper implements ProcessHelper {
 
     @Override
     public Optional<Integer> getOutputFromProcess(Logger logger, ProcessBuilder pb, boolean waitForExit, Optional<Consumer<String>> stdoutConsumer, Optional<Consumer<String>> stderrConsumer) {
-        return (Optional<Integer>) Try.of(() -> {
-            Process p = pb.start();
-
-            BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));
-            BufferedReader stderr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
-
-            Thread stdoutThread = new Thread(() -> stdout.lines().forEach(stdoutConsumer.orElse(NOOP)));
-            stdoutThread.start();
-
-            Thread stderrThread = new Thread(() -> stderr.lines().forEach(stderrConsumer.orElse(NOOP)));
-            stderrThread.start();
-
-            // Did they want to wait for the process to exit?
-            if (waitForExit) {
-                // Yes, wait for the process to exit
-                p.waitFor();
-
-                // Wait for the processing of the STDOUT stream to finish
-                stdoutThread.join();
-
-                // Wait for the processing of the STDERR stream to finish
-                stderrThread.join();
-
-                return Optional.of(p.exitValue());
-            } else {
-                return Optional.empty();
-            }
-        })
-                .recover(Exception.class, throwable -> {
-                    logger.error(throwable.getMessage());
-
-                    return Optional.empty();
-                })
+        return Try.of(() -> innerGetOutputFromProcess(pb, waitForExit, stdoutConsumer, stderrConsumer))
+                .recover(Exception.class, throwable -> logExceptionMessageAndReturnEmpty(logger, throwable))
                 .get();
+    }
+
+    private Optional<Integer> logExceptionMessageAndReturnEmpty(Logger logger, Exception throwable) {
+        logger.error(throwable.getMessage());
+
+        return Optional.empty();
+    }
+
+    private Optional<Integer> innerGetOutputFromProcess(ProcessBuilder pb, boolean waitForExit, Optional<Consumer<String>> stdoutConsumer, Optional<Consumer<String>> stderrConsumer) throws IOException, InterruptedException {
+        Process p = pb.start();
+
+        BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));
+        BufferedReader stderr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+
+        Thread stdoutThread = new Thread(() -> stdout.lines().forEach(stdoutConsumer.orElse(NOOP)));
+        stdoutThread.start();
+
+        Thread stderrThread = new Thread(() -> stderr.lines().forEach(stderrConsumer.orElse(NOOP)));
+        stderrThread.start();
+
+        // Did they want to wait for the process to exit?
+        if (waitForExit) {
+            // Yes, wait for the process to exit
+            p.waitFor();
+
+            // Wait for the processing of the STDOUT stream to finish
+            stdoutThread.join();
+
+            // Wait for the processing of the STDERR stream to finish
+            stderrThread.join();
+
+            return Optional.of(p.exitValue());
+        } else {
+            return Optional.empty();
+        }
     }
 }

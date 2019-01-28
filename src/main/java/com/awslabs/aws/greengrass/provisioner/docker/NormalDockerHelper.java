@@ -2,8 +2,10 @@ package com.awslabs.aws.greengrass.provisioner.docker;
 
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.NormalDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.ecr.EcrClient;
 
@@ -18,6 +20,9 @@ public class NormalDockerHelper extends AbstractDockerHelper {
     EcrClient ecrClient;
     @Inject
     ProgressHandler progressHandler;
+    @Getter
+    @Inject
+    ExceptionHelper exceptionHelper;
 
     @Inject
     public NormalDockerHelper() {

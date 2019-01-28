@@ -1,20 +1,23 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.jcraft.jsch.JSchException;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
+import io.vavr.control.Try;
 
 import javax.inject.Inject;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class BasicGlobalDefaultHelper implements GlobalDefaultHelper {
     public static final String USER_HOME = "user.home";
     public static final String GLOBAL_DEFAULTS_DIRECTORY = ".ggprovisioner";
-
-    @Inject
-    public BasicGlobalDefaultHelper() {
-    }
 
     @Override
     public Optional<Config> getGlobalDefaults(String filename) {

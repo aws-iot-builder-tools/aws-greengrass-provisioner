@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner;
 
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.Operation;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.ProvisionException;
@@ -9,20 +10,14 @@ import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @Slf4j
 public class AwsGreengrassProvisioner implements Runnable {
-    public static final String serviceRoleName = "Greengrass_ServiceRole";
     private static Optional<Injector> optionalInjector = Optional.empty();
     @Inject
-    GroupQueryHelper groupQueryHelper;
-    @Inject
-    GroupUpdateHelper groupUpdateHelper;
-    @Inject
-    DeploymentHelper deploymentHelper;
+    Set<Operation> operations;
     private String[] args;
 
     @Inject
@@ -32,26 +27,32 @@ public class AwsGreengrassProvisioner implements Runnable {
     public static void main(String[] args) {
         SdkErrorHandler sdkErrorHandler = getSdkErrorHandler();
 
-        Try.of(() -> {
-            AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
+        Try.of(() -> runProvisioner(args))
+                .onFailure(throwable -> handleProvisionerFailure(sdkErrorHandler, throwable))
+                .get();
+    }
 
-            awsGreengrassProvisioner.setArgs(args);
+    public static void handleProvisionerFailure(SdkErrorHandler sdkErrorHandler, Throwable throwable) {
+        // Sometimes dependency injection exceptions mask the actual SDK exception
+        if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
+            throwable = throwable.getCause();
+        }
 
-            awsGreengrassProvisioner.run();
+        if (throwable instanceof SdkClientException) {
+            sdkErrorHandler.handleSdkError((SdkClientException) throwable);
+        }
 
-            return null;
-        }).onFailure(throwable -> {
-            // Sometimes dependency injection exceptions mask the actual SDK exception
-            if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
-                throwable = throwable.getCause();
-            }
+        throw new RuntimeException(throwable);
+    }
 
-            if (throwable instanceof SdkClientException) {
-                sdkErrorHandler.handleSdkError((SdkClientException) throwable);
-            }
+    public static Void runProvisioner(String[] args) {
+        AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
 
-            throw new RuntimeException(throwable);
-        });
+        awsGreengrassProvisioner.setArgs(args);
+
+        awsGreengrassProvisioner.run();
+
+        return null;
     }
 
     public static SdkErrorHandler getSdkErrorHandler() {
@@ -71,23 +72,23 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     public void run() {
-        List<Operation> operations =
-                Arrays.asList(deploymentHelper, groupUpdateHelper, groupQueryHelper);
-
         Try.of(() -> operations.stream()
                 // Find an operation with arguments that match
                 .filter(operation -> operation.matches(args))
                 .findFirst()
                 // Execute the operation
-                .map(operation -> operation.execute(log, args)))
+                .map(operation -> operation.execute(args)))
                 // If the operation fails then log the error
                 .onFailure(throwable -> log.error(throwable.getMessage()))
                 // If the operation succeeds make sure the result isn't empty. An empty result means that nothing was done.
-                .onSuccess(success -> {
-                    if (!success.isPresent()) {
-                        log.error("No operation specified");
-                    }
-                });
+                .onSuccess(success -> logIfNoOperationSpecified(success))
+                .get();
+    }
+
+    public void logIfNoOperationSpecified(Optional<Boolean> success) {
+        if (!success.isPresent()) {
+            log.error("No operation specified");
+        }
     }
 
     public void setArgs(String[] args) {
