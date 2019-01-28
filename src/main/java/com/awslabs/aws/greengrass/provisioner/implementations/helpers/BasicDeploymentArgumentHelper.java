@@ -2,7 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.docker.NormalDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
@@ -21,7 +21,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
     @Inject
-    NormalDockerHelper normalDockerHelper;
+    EcrDockerHelper ecrDockerHelper;
     @Inject
     GGConstants ggConstants;
 
@@ -157,13 +157,13 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.buildContainer) {
-            if (!normalDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
+            if (!ecrDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
                 throw new RuntimeException("No dockerfile exists for architecture [" + deploymentArguments.architecture.toString() + "]");
             }
         }
 
         if (deploymentArguments.buildContainer || deploymentArguments.dockerLaunch) {
-            if (!normalDockerHelper.isDockerAvailable()) {
+            if (!ecrDockerHelper.isDockerAvailable()) {
                 throw new RuntimeException("Docker is not available, cannot continue");
             }
         }

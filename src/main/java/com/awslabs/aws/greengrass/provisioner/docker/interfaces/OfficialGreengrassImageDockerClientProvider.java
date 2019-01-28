@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.ecr.model.AuthorizationData;
@@ -11,19 +12,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
-public class GreengrassDockerClientProvider implements DockerClientProvider {
+public class OfficialGreengrassImageDockerClientProvider implements DockerClientProvider {
     @Inject
-    public GreengrassDockerClientProvider() {
+    GGConstants ggConstants;
+
+    @Inject
+    public OfficialGreengrassImageDockerClientProvider() {
     }
 
     @Override
     public String getRegistryUrl() {
-        return "https://216483018798.dkr.ecr.us-west-2.amazonaws.com";
+        return "https://" + ggConstants.getOfficialGreengrassEcrEndpoint();
     }
 
     @Override
     public AuthorizationData getAuthorizationData() {
-        Optional<List<String>> optionalRegistryIds = Optional.of(Arrays.asList(new String[]{"216483018798"}));
+        Optional<List<String>> optionalRegistryIds = Optional.of(Arrays.asList(new String[]{ggConstants.getOfficialGreengrassAccountId()}));
         GetAuthorizationTokenRequest.Builder getAuthorizationTokenRequestBuilder = GetAuthorizationTokenRequest.builder();
         optionalRegistryIds.ifPresent(getAuthorizationTokenRequestBuilder::registryIds);
         GetAuthorizationTokenRequest getAuthorizationTokenRequest = getAuthorizationTokenRequestBuilder.build();

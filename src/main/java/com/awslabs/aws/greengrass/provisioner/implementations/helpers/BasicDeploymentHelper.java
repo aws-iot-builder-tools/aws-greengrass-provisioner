@@ -11,10 +11,10 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
-import com.awslabs.aws.greengrass.provisioner.docker.GreengrassDockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.NormalDockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassDockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.NormalDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
@@ -98,13 +98,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     ArchiveHelper archiveHelper;
     @Inject
-    NormalDockerHelper normalDockerHelper;
+    EcrDockerHelper ecrDockerHelper;
     @Inject
-    GreengrassDockerHelper greengrassDockerHelper;
+    OfficialGreengrassImageDockerHelper officialGreengrassImageDockerHelper;
     @Inject
-    NormalDockerClientProvider normalDockerClientProvider;
+    EcrDockerClientProvider ecrDockerClientProvider;
     @Inject
-    GreengrassDockerClientProvider greengrassDockerClientProvider;
+    OfficialGreengrassImageDockerClientProvider officialGreengrassImageDockerClientProvider;
     @Inject
     BasicProgressHandler basicProgressHandler;
     @Inject
@@ -650,12 +650,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (deploymentArguments.buildContainer == true) {
             log.info("Configuring container build");
 
-            normalDockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
-            normalDockerHelper.setEcrImageName(Optional.ofNullable(deploymentArguments.ecrImageNameString));
-            String imageName = normalDockerHelper.getImageName();
+            ecrDockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
+            ecrDockerHelper.setEcrImageName(Optional.ofNullable(deploymentArguments.ecrImageNameString));
+            String imageName = ecrDockerHelper.getImageName();
             String currentDirectory = System.getProperty(USER_DIR);
 
-            File dockerfile = greengrassDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture);
+            File dockerfile = officialGreengrassImageDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture);
             String dockerfileTemplate = ioHelper.readFileAsString(dockerfile);
             dockerfileTemplate = dockerfileTemplate.replaceAll("GROUP_NAME", deploymentArguments.groupName);
 
@@ -665,7 +665,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             ioHelper.writeFile(tempDockerfile.toString(), dockerfileTemplate.getBytes());
             tempDockerfile.deleteOnExit();
 
-            try (DockerClient dockerClient = greengrassDockerClientProvider.get()) {
+            try (DockerClient dockerClient = officialGreengrassImageDockerClientProvider.get()) {
                 log.info("Building container");
 
                 String imageId = dockerClient.build(new File(currentDirectory).toPath(),
@@ -696,8 +696,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.dockerLaunch) {
             log.info("Launching Docker container");
-            greengrassDockerHelper.pullImage(ggConstants.getOfficialGreengrassDockerImage());
-            greengrassDockerHelper.createAndStartContainer(ggConstants.getOfficialGreengrassDockerImage(), deploymentArguments.groupName);
+            officialGreengrassImageDockerHelper.pullImage(ggConstants.getOfficialGreengrassDockerImage());
+            officialGreengrassImageDockerHelper.createAndStartContainer(ggConstants.getOfficialGreengrassDockerImage(), deploymentArguments.groupName);
         }
 
         ///////////////////////////////////////////////////////
@@ -1104,12 +1104,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             return;
         }
 
-        String ecrEndpoint = normalDockerHelper.getEcrProxyEndpoint();
-        normalDockerHelper.createEcrRepositoryIfNecessary();
+        String ecrEndpoint = ecrDockerHelper.getEcrProxyEndpoint();
+        ecrDockerHelper.createEcrRepositoryIfNecessary();
         String shortEcrEndpoint = ecrEndpoint.substring("https://".length()); // Remove leading https://
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
-        try (DockerClient dockerClient = normalDockerClientProvider.get()) {
+        try (DockerClient dockerClient = ecrDockerClientProvider.get()) {
             Try.of(() -> tagImage(deploymentArguments, imageId, shortEcrEndpointAndRepo, dockerClient))
                     .get();
 
@@ -1161,7 +1161,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     public Void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
-        dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, normalDockerClientProvider.getRegistryAuthSupplier().authFor(""));
+        dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, ecrDockerClientProvider.getRegistryAuthSupplier().authFor(""));
         return null;
     }
 

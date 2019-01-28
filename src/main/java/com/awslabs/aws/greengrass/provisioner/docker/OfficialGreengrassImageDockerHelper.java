@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.docker;
 
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.GreengrassDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
@@ -33,9 +33,9 @@ import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
 
 @Slf4j
-public class GreengrassDockerHelper extends AbstractDockerHelper {
+public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
     @Inject
-    GreengrassDockerClientProvider greengrassDockerClientProvider;
+    OfficialGreengrassImageDockerClientProvider officialGreengrassImageDockerClientProvider;
     @Inject
     ProgressHandler progressHandler;
     @Inject
@@ -49,7 +49,7 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
     ExceptionHelper exceptionHelper;
 
     @Inject
-    public GreengrassDockerHelper() {
+    public OfficialGreengrassImageDockerHelper() {
     }
 
     @Override
@@ -59,12 +59,12 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
 
     @Override
     DockerClientProvider getDockerClientProvider() {
-        return greengrassDockerClientProvider;
+        return officialGreengrassImageDockerClientProvider;
     }
 
     @Override
     protected DockerClient getDockerClient() {
-        return greengrassDockerClientProvider.get();
+        return officialGreengrassImageDockerClientProvider.get();
     }
 
     @Override
@@ -209,6 +209,6 @@ public class GreengrassDockerHelper extends AbstractDockerHelper {
 
     @Override
     public String getEcrProxyEndpoint() {
-        return "https://216483018798.dkr.ecr.us-west-2.amazonaws.com";
+        return "https://" + ggConstants.getOfficialGreengrassEcrEndpoint();
     }
 }

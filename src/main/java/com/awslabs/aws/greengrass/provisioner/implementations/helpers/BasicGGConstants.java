@@ -39,7 +39,11 @@ public class BasicGGConstants implements GGConstants {
     @Getter
     private final String configDirectoryPrefix = "config";
     @Getter
-    private final String officialGreengrassDockerImage = "216483018798.dkr.ecr.us-west-2.amazonaws.com/aws-greengrass-docker/amazonlinux:latest";
+    private final String officialGreengrassAccountId = "216483018798";
+    @Getter(lazy = true)
+    private final String officialGreengrassEcrEndpoint = buildOfficialGreengrassEcrEndpoint();
+    @Getter(lazy = true)
+    private final String officialGreengrassDockerImage = buildOfficialGreengrassDockerImageString();
     @Getter
     private final String defaultsConf = "defaults.conf";
     @Getter
@@ -57,6 +61,18 @@ public class BasicGGConstants implements GGConstants {
 
     @Inject
     public BasicGGConstants() {
+    }
+
+    private String buildOfficialGreengrassEcrEndpoint() {
+        return String.join(".",
+                getOfficialGreengrassAccountId(),
+                "dkr.ecr.us-west-2.amazonaws.com");
+    }
+
+    private String buildOfficialGreengrassDockerImageString() {
+        return String.join("/",
+                getOfficialGreengrassEcrEndpoint(),
+                "aws-greengrass-docker/amazonlinux:latest");
     }
 
     @Override

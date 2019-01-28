@@ -8,12 +8,12 @@ import software.amazon.awssdk.services.ecr.model.GetAuthorizationTokenResponse;
 import javax.inject.Inject;
 import java.util.List;
 
-public class NormalDockerClientProvider implements DockerClientProvider {
+public class EcrDockerClientProvider implements DockerClientProvider {
     @Inject
     EcrClient ecrClient;
 
     @Inject
-    public NormalDockerClientProvider() {
+    public EcrDockerClientProvider() {
     }
 
     @Override
