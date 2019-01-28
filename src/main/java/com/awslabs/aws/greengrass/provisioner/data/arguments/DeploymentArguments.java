@@ -8,7 +8,7 @@ public class DeploymentArguments extends Arguments {
     private final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
     @Getter
     private final String requiredOptionName = SHORT_DEPLOYMENT_CONFIG_OPTION;
-   private final String LONG_BUILD_CONTAINER_OPTION = "--build-container";
+    private final String LONG_BUILD_CONTAINER_OPTION = "--build-container";
     private final String SHORT_BUILD_CONTAINER_OPTION = "-c";
     private final String LONG_PUSH_CONTAINER_OPTION = "--push-container";
     private final String SHORT_PUSH_CONTAINER_OPTION = "-p";
