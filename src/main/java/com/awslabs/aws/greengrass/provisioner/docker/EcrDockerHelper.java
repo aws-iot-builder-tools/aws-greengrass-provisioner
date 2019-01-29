@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.docker;
 
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.NormalDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
@@ -12,9 +12,9 @@ import software.amazon.awssdk.services.ecr.EcrClient;
 import javax.inject.Inject;
 
 @Slf4j
-public class NormalDockerHelper extends AbstractDockerHelper {
+public class EcrDockerHelper extends AbstractDockerHelper {
     @Inject
-    NormalDockerClientProvider normalDockerClientProvider;
+    EcrDockerClientProvider ecrDockerClientProvider;
 
     @Inject
     EcrClient ecrClient;
@@ -25,7 +25,7 @@ public class NormalDockerHelper extends AbstractDockerHelper {
     ExceptionHelper exceptionHelper;
 
     @Inject
-    public NormalDockerHelper() {
+    public EcrDockerHelper() {
     }
 
     @Override
@@ -35,12 +35,12 @@ public class NormalDockerHelper extends AbstractDockerHelper {
 
     @Override
     DockerClientProvider getDockerClientProvider() {
-        return normalDockerClientProvider;
+        return ecrDockerClientProvider;
     }
 
     @Override
     protected DockerClient getDockerClient() {
-        return normalDockerClientProvider.get();
+        return ecrDockerClientProvider.get();
     }
 
     protected EcrClient getEcrClient() {
@@ -49,6 +49,6 @@ public class NormalDockerHelper extends AbstractDockerHelper {
 
     @Override
     public String getEcrProxyEndpoint() {
-        return normalDockerClientProvider.getAuthorizationData().proxyEndpoint();
+        return ecrDockerClientProvider.getAuthorizationData().proxyEndpoint();
     }
 }
