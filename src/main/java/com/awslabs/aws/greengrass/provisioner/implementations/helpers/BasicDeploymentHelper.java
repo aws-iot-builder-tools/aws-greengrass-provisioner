@@ -426,11 +426,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .collect(Collectors.toList());
 
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-        // Check if Docker launching was specified with functions running in the Greengrass container //
-        ////////////////////////////////////////////////////////////////////////////////////////////////
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Check if launching or building a Docker container and functions are running in the Greengrass container //
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        if (deploymentArguments.dockerLaunch && !functionsRunningInGreengrassContainer.isEmpty()) {
+        if ((deploymentArguments.dockerLaunch || deploymentArguments.buildContainer) && !functionsRunningInGreengrassContainer.isEmpty()) {
             log.error("The following functions are marked to run in the Greengrass container:");
 
             functionsRunningInGreengrassContainer.stream()
