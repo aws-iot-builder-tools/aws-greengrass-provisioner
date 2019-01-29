@@ -68,7 +68,9 @@ Redeployments of an existing group will happen without re-running the bootstrap 
 GGP -g test-group -a X86_64 -d deployments/python-hello-world.conf -c
 ```
 
-This will create a local Docker image with the tag `greengrass:test-group`
+This will create a local Docker image with the tag `greengrass:test-group`. This container is
+based on the official Greengrass Docker image and currently only supports X86_64. It must be
+run in privileged mode.
 
 ## Query examples
 
