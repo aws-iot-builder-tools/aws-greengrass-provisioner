@@ -4,6 +4,7 @@ set -e
 set -x
 
 rm -f AwsGreengrassProvisioner.jar
+rm -rf build out .gradle
 
 # Get the dependencies and build the code
 docker build -t build-aws-greengrass-provisioner -f Dockerfile.build .
