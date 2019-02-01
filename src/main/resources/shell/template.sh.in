@@ -304,6 +304,34 @@ if [ -d "${SYSTEMD_DESTINATION_PATH}" ]; then
     fi
 fi
 
+grep -q libsofthsm2.so /greengrass/config/config.json
+
+if [ $? -eq 0 ]; then
+  echo "HSI with SoftHSM2 in use"
+
+  if [ "$INSTALLER" == "apt-get" ]; then
+    # Find libsofthsm2.so, ignore the one in the greengrass directory
+    $INSTALLER install -y softhsm2 libsofthsm2-dev pkcs11-dump
+
+    LIBSOFTHSM_LOCATION=`dpkg -L libsofthsm2 | grep libsofthsm2.so | head -n 1`
+    ln -sf $LIBSOFTHSM_LOCATION /greengrass/libsofthsm2.so
+
+    # NOTE: This symlink is not necessary yet
+    # LIBP11KIT_LOCATION=`dpkg -L libp11-kit0 | grep libp11-kit.so.0 | head -n 1`
+    # ln -sf $LIBP11KIT_LOCATION /greengrass/libp11-kit.so.0
+
+    SOFTHSMCONF_LOCATION=`strings /greengrass/libsofthsm2.so | grep '^[a-zA-Z0-9./]*conf$'`
+    mkdir -p /greengrass/softhsm2/tokens
+    echo "directories.tokendir = /greengrass/softhsm2/tokens" > $SOFTHSMCONF_LOCATION
+    echo "objectstore.backend = file" >> $SOFTHSMCONF_LOCATION
+    softhsm2-util --init-token --slot 0 --label greengrass --so-pin 12345 --pin 1234
+    openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in /greengrass/certs/core.key -out hash.private.pem
+    softhsm2-util --import hash.private.pem --slot 0 --label iotkey --id 0000 --pin 1234
+  else
+    echo "HSI with SoftHSM2 support is only available in Ubuntu/Debian currently, this deployment will fail. Please try this on an Ubuntu system instead."
+  fi
+fi
+
 # At this point everything has been deployed, mark the script as deployed
 mv $SCRIPT_NAME $SCRIPT_NAME.DEPLOYED
 

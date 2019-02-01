@@ -23,6 +23,7 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
     private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
+    private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
 
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
@@ -52,6 +53,8 @@ public class DeploymentArguments extends Arguments {
     public boolean ec2Launch;
     @Parameter(names = {LONG_DOCKER_LAUNCH_OPTION}, description = "Launch an this deployment in a Docker container locally")
     public boolean dockerLaunch;
+    @Parameter(names = {LONG_HSI_SOFTHSM2_OPTION}, description = "Use Greengrass Hardware Security Integration (HSI) with SoftHSM2")
+    public boolean hsiSoftHsm2;
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
     @Parameter(names = "--help", help = true)

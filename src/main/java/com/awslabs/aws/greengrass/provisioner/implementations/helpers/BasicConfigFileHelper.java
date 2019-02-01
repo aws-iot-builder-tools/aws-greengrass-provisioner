@@ -12,6 +12,7 @@ import java.util.Map;
 
 public class BasicConfigFileHelper implements ConfigFileHelper {
     public static final String CERTS_URI = "file://certs/";
+    public static final String PKCS11_SOFTHSM2_PATH = "pkcs11:object=iotkey;type=private";
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -31,10 +32,14 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         Map SecretsManagerMap = new HashMap();
         Map IoTCertificateMap = new HashMap();
         Map MQTTServerCertificate = new HashMap();
+        Map PKCS11Map = new HashMap();
 
-        coreThingMap.put("caPath", caPath);
-        coreThingMap.put("certPath", certPath);
-        coreThingMap.put("keyPath", keyPath);
+        if (!deploymentArguments.hsiSoftHsm2) {
+            coreThingMap.put("caPath", caPath);
+            coreThingMap.put("certPath", certPath);
+            coreThingMap.put("keyPath", keyPath);
+        }
+
         coreThingMap.put("thingArn", coreThingArn);
         coreThingMap.put("iotHost", iotHost);
         coreThingMap.put("ggHost", ggVariables.getGgHost(region));
@@ -53,17 +58,28 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
 
         cryptoMap.put("principals", principalsMap);
 
+        IoTCertificateMap.put("certificatePath", CERTS_URI + certPath);
+
         principalsMap.put("SecretsManager", SecretsManagerMap);
         principalsMap.put("IoTCertificate", IoTCertificateMap);
         principalsMap.put("MQTTServerCertificate", MQTTServerCertificate);
 
-        SecretsManagerMap.put("privateKeyPath", CERTS_URI + keyPath);
+        if (deploymentArguments.hsiSoftHsm2) {
+            SecretsManagerMap.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
+            IoTCertificateMap.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
+            MQTTServerCertificate.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
 
-        IoTCertificateMap.put("privateKeyPath", CERTS_URI + keyPath);
-        IoTCertificateMap.put("certificatePath", CERTS_URI + certPath);
+            PKCS11Map.put("P11Provider", "/greengrass/libsofthsm2.so");
+            PKCS11Map.put("slotLabel", "greengrass");
+            PKCS11Map.put("slotUserPin", "1234");
 
-        // Avoids "private key for MqttCertificate is not set" error/warning
-        MQTTServerCertificate.put("privateKeyPath", CERTS_URI + keyPath);
+            cryptoMap.put("PKCS11", PKCS11Map);
+        } else {
+            // Avoids "private key for MqttCertificate is not set" error/warning
+            SecretsManagerMap.put("privateKeyPath", CERTS_URI + keyPath);
+            IoTCertificateMap.put("privateKeyPath", CERTS_URI + keyPath);
+            MQTTServerCertificate.put("privateKeyPath", CERTS_URI + keyPath);
+        }
 
         cryptoMap.put("caPath", CERTS_URI + caPath);
 

@@ -93,6 +93,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
         deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
+        deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
 
         if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch) {
             throw new RuntimeException("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
@@ -108,6 +109,15 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
         }
 
+        if (deploymentArguments.hsiSoftHsm2 && deploymentArguments.dockerLaunch) {
+            throw new RuntimeException("HSI with SoftHSM2 is not supported in Docker yet");
+        }
+
+        if (deploymentArguments.hsiSoftHsm2) {
+            // Force script output with HSI SoftHSM2
+            deploymentArguments.scriptOutput = true;
+        }
+
         if (deploymentArguments.dockerLaunch) {
             // Force OEM file output with Docker launch
             deploymentArguments.oemOutput = true;
@@ -121,6 +131,9 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.groupName = Nomen.est().separator("-").space("-").adjective().pokemon().get();
             // Filter out dot characters, sometimes the library uses the value "jr." which is not allowed in a group name
             deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("\\.", "");
+            // Filter out normal apostrophes, and special apostrophes (from "farfetch’d")
+            deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("'", "");
+            deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("’", "");
             log.info("No group name specified, group name auto-generated [" + deploymentArguments.groupName + "]");
         }
 
