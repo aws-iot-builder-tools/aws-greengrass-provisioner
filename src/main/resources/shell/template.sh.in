@@ -326,7 +326,14 @@ if [ $? -eq 0 ]; then
     echo "objectstore.backend = file" >> $SOFTHSMCONF_LOCATION
     softhsm2-util --init-token --slot 0 --label greengrass --so-pin 12345 --pin 1234
     openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in /greengrass/certs/core.key -out hash.private.pem
-    softhsm2-util --import hash.private.pem --slot 0 --label iotkey --id 0000 --pin 1234
+
+    SOFTHSM2_UTIL_VERSION=`softhsm2-util --version`
+
+    if [ "$SOFTHSM2_UTIL_VERSION" == "2.0.0" ]; then
+      softhsm2-util --import hash.private.pem --slot 0 --label iotkey --id 0000 --pin 1234
+    else
+      softhsm2-util --import hash.private.pem --token greengrass --label iotkey --id 0000 --pin 1234
+    fi
   else
     echo "HSI with SoftHSM2 support is only available in Ubuntu/Debian currently, this deployment will fail. Please try this on an Ubuntu system instead."
   fi
