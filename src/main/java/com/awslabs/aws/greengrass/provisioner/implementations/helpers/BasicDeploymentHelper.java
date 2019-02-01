@@ -11,10 +11,10 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
-import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
-import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
@@ -696,8 +696,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.dockerLaunch) {
             log.info("Launching Docker container");
-            officialGreengrassImageDockerHelper.pullImage(ggConstants.getOfficialGreengrassDockerImage());
-            officialGreengrassImageDockerHelper.createAndStartContainer(ggConstants.getOfficialGreengrassDockerImage(), deploymentArguments.groupName);
+            String officialGreengrassDockerImage = ggConstants.getOfficialGreengrassDockerImage();
+            officialGreengrassImageDockerHelper.pullImage(officialGreengrassDockerImage);
+            officialGreengrassImageDockerHelper.createAndStartContainer(officialGreengrassDockerImage, deploymentArguments.groupName);
         }
 
         ///////////////////////////////////////////////////////
