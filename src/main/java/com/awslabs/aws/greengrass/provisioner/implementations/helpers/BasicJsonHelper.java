@@ -13,11 +13,16 @@ public class BasicJsonHelper implements JsonHelper {
 
     @Override
     public String toJson(Object object) {
-        return new GsonBuilder().setPrettyPrinting().create().toJson(object);
+        return new GsonBuilder()
+                .disableHtmlEscaping()
+                .setPrettyPrinting()
+                .create()
+                .toJson(object);
     }
 
     @Override
     public <T> T fromJson(Class<T> clazz, byte[] json) {
-        return new Gson().fromJson(new String(json), clazz);
+        return new Gson()
+                .fromJson(new String(json), clazz);
     }
 }
