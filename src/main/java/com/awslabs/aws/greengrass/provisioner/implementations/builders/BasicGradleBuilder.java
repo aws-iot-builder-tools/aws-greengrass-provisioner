@@ -20,14 +20,6 @@ import java.util.Optional;
 @Slf4j
 public class BasicGradleBuilder implements GradleBuilder {
     public static final String BUILD_GRADLE = "build.gradle";
-    @Inject
-    ProcessHelper processHelper;
-    @Inject
-    LoggingHelper loggingHelper;
-    @Inject
-    ResourceHelper resourceHelper;
-    @Inject
-    ExecutorHelper executorHelper;
 
     @Inject
     public BasicGradleBuilder() {
