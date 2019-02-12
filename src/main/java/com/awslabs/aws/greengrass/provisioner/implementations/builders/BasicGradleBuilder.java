@@ -2,10 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ExecutorHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
 import org.gradle.tooling.BuildLauncher;
@@ -72,7 +68,7 @@ public class BasicGradleBuilder implements GradleBuilder {
                 .get();
     }
 
-    public Void runBuild(ProjectConnection projectConnection) {
+    private Void runBuild(ProjectConnection projectConnection) {
         // Build with gradle and send the output to stdout
         BuildLauncher build = projectConnection.newBuild();
         build.forTasks("build");
@@ -82,7 +78,7 @@ public class BasicGradleBuilder implements GradleBuilder {
         return null;
     }
 
-    public ProjectConnection getProjectConnection(Optional<File> gradleBuildPath) {
+    private ProjectConnection getProjectConnection(Optional<File> gradleBuildPath) {
         return GradleConnector.newConnector()
                 .forProjectDirectory(gradleBuildPath.get())
                 .connect();
