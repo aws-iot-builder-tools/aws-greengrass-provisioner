@@ -65,22 +65,27 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (updateArguments.addSubscription || updateArguments.removeSubscription) {
             addOrRemoveSubscription(updateArguments, optionalGroupInformation.get());
+            return null;
         }
 
         if (updateArguments.addDevice != null) {
             addDevice(updateArguments, optionalGroupInformation.get());
+            return null;
         }
 
         if (updateArguments.removeDevice != null) {
             removeDevice(updateArguments, optionalGroupInformation.get());
+            return null;
         }
 
         if (updateArguments.addFunction != null) {
             addFunction(updateArguments, optionalGroupInformation.get());
+            return null;
         }
 
         if (updateArguments.removeFunction != null) {
             removeFunction(updateArguments, optionalGroupInformation.get());
+            return null;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
