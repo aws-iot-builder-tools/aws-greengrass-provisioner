@@ -918,7 +918,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetFunctionDefinitionVersionResponse getFunctionDefinitionVersionResponse = greengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
 
         FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersionResponse.definition();
-        List<Function> functions = functionDefinition.functions();
+
+        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
+        List<Function> functions = new ArrayList<>(functionDefinition.functions());
 
         return functions;
     }
@@ -937,7 +939,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetDeviceDefinitionVersionResponse getDeviceDefinitionVersionResponse = greengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
 
         DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResponse.definition();
-        List<Device> devices = deviceDefinition.devices();
+
+        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
+        List<Device> devices = new ArrayList<>(deviceDefinition.devices());
 
         return devices;
     }
@@ -956,7 +960,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetSubscriptionDefinitionVersionResponse getSubscriptionDefinitionVersionResponse = greengrassClient.getSubscriptionDefinitionVersion(getSubscriptionDefinitionVersionRequest);
 
         SubscriptionDefinitionVersion subscriptionDefinition = getSubscriptionDefinitionVersionResponse.definition();
-        List<Subscription> subscriptions = subscriptionDefinition.subscriptions();
+
+        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
+        List<Subscription> subscriptions = new ArrayList<>(subscriptionDefinition.subscriptions());
 
         return subscriptions;
     }
