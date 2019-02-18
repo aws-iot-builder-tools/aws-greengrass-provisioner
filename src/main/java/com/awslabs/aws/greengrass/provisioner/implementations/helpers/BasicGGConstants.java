@@ -72,7 +72,7 @@ public class BasicGGConstants implements GGConstants {
     private String buildOfficialGreengrassDockerImageString() {
         return String.join("/",
                 getOfficialGreengrassEcrEndpoint(),
-                "aws-greengrass-docker/amazonlinux:latest");
+                "aws-iot-greengrass:latest");
     }
 
     @Override
