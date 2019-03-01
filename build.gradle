@@ -1,6 +1,6 @@
 plugins {
     // Processes Lombok annotations during build
-    id 'io.franzbecker.gradle-lombok' version '2.0'
+    id 'io.franzbecker.gradle-lombok' version '2.1'
 
     // Creates fat JAR
     id 'com.github.johnrengelman.shadow' version '4.0.4'
@@ -9,10 +9,10 @@ plugins {
     id 'de.undercouch.download' version '3.4.3'
 
     // Adds dependencyUpdates task
-    id 'com.github.ben-manes.versions' version '0.20.0'
+    id 'com.github.ben-manes.versions' version '0.21.0'
 }
 
-def gradleDependencyVersion = '5.2'
+def gradleDependencyVersion = '5.2.1'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -38,13 +38,13 @@ def slf4jVersion = '1.7.25'
 def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
-def dockerClientVersion = '8.15.0'
-def awsSdk2Version = '2.4.6'
+def dockerClientVersion = '8.15.1'
+def awsSdk2Version = '2.4.17'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.8.1'
 def junitVersion = '4.12'
 def mockitoVersion = '1.10.19'
-def lombokVersion = '1.18.4'
+def lombokVersion = '1.18.6'
 def vavrVersion = '0.9.2'
 def httpClientVersion = '4.5.7'
 
