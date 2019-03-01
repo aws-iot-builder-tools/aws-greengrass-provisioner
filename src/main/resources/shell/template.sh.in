@@ -244,26 +244,29 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     $PIP install mxnet
     $PIP install opencv-python
 
-    NODEJS=`which node`
-    NODEJS_MISSING=$?
+fi
 
-    if [ $NODEJS_MISSING -eq 1 ]; then
-        echo "Node is missing"
-        GIT=`which git`
-        GIT_MISSING=$?
+EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs6.10"
+NODEJS_6_10=`which nodejs6.10`
+NODEJS_6_10_MISSING=$?
 
-        if [ $GIT_MISSING -eq 1 ]; then
-            echo "git is missing, not installing node"
-        else
-            git clone https://github.com/tj/n.git
-            pushd .
-            cd n
-            env "PATH=$PATH" make install
-            env "PATH=$PATH" n 6.10.3
-            NODEJS=`which node`
-            ln -s $NODEJS `dirname $NODEJS`/nodejs6.10
-            popd
-        fi
+if [ $NODEJS_6_10_MISSING -eq 1 ]; then
+    # Install NodeJS
+    echo "Node is missing"
+    GIT=`which git`
+    GIT_MISSING=$?
+
+    if [ $GIT_MISSING -eq 1 ]; then
+        echo "git is missing, not installing node"
+    else
+        git clone https://github.com/tj/n.git
+        pushd .
+        cd n
+        env "PATH=$PATH" make install
+        env "PATH=$PATH" n 6.10.3
+        NODEJS=`which node`
+        ln -s $NODEJS `dirname $NODEJS`/nodejs6.10
+        popd
     fi
 fi
 
