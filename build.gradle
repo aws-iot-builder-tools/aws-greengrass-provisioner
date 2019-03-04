@@ -3,7 +3,7 @@ plugins {
     id 'io.franzbecker.gradle-lombok' version '2.1'
 
     // Creates fat JAR
-    id 'com.github.johnrengelman.shadow' version '4.0.4'
+    id 'com.github.johnrengelman.shadow' version '5.0.0'
 
     // Downloads binary dependencies
     id 'de.undercouch.download' version '3.4.3'
@@ -39,7 +39,7 @@ def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerClientVersion = '8.15.1'
-def awsSdk2Version = '2.4.17'
+def awsSdk2Version = '2.5.1'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.8.1'
 def junitVersion = '4.12'
