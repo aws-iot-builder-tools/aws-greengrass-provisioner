@@ -82,7 +82,7 @@ task downloadPythonSdk(type: Copy, dependsOn: extractPythonSdk) {
     into "$buildDirFoundation"
 }
 
-def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.3.0.tar.gz'
+def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.3.1.tar.gz'
 def nodeSdkZip = 'aws-greengrass-core-sdk-js.zip'
 
 task fetchGreengrassNodeSdk(type: Download) {
@@ -97,11 +97,11 @@ task extractNodeSdk(type: Copy, dependsOn: fetchGreengrassNodeSdk) {
 }
 
 task downloadNodeSdk(type: Copy, dependsOn: extractNodeSdk) {
-    from "$buildDirTemp/aws_greengrass_core_sdk_js/sdk/$nodeSdkZip"
+    from "$buildDirTemp/aws-greengrass-core-sdk-js-1.3.1/sdk/$nodeSdkZip"
     into "$buildDirFoundation"
 }
 
-def javaSdkTarGz = 'aws-greengrass-core-sdk-java-1.3.0.tar.gz'
+def javaSdkTarGz = 'aws-greengrass-core-sdk-java-1.3.1.tar.gz'
 def javaSdkJar = 'GreengrassJavaSDK-1.3.jar'
 
 task fetchGreengrassJavaSdk(type: Download) {
@@ -116,7 +116,7 @@ task extractJavaSdk(type: Copy, dependsOn: fetchGreengrassJavaSdk) {
 }
 
 task downloadJavaSdk(type: Copy, dependsOn: extractJavaSdk) {
-    from "$buildDirTemp/aws_greengrass_core_sdk_java/sdk/$javaSdkJar"
+    from "$buildDirTemp/aws-greengrass-core-sdk-java/sdk/$javaSdkJar"
     into "$buildDirFoundation"
     rename { String filename -> return filename + ".zip" }
 }

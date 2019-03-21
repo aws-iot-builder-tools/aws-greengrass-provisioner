@@ -39,11 +39,6 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     @Override
-    public Function<String, String> getFilenameTrimmer() {
-        return filename -> filename.replaceFirst("aws-greengrass-core-sdk-js\\/", "");
-    }
-
-    @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
