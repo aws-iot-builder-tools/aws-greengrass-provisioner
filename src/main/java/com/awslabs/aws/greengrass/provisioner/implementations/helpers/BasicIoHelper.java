@@ -200,6 +200,10 @@ public class BasicIoHelper implements IoHelper {
             return Optional.empty();
         }
 
+        if (message.contains("Auth fail")) {
+            throw new RuntimeException("Authentication error occurred, the SSH key may be missing or incorrect. Giving up.");
+        }
+
         if (throwable.getCause() instanceof UnknownHostException) {
             throw new RuntimeException(String.format("Host [%s] could not be resolved, is the hostname correct?", hostname));
         }
