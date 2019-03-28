@@ -852,7 +852,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .handle(Ec2Exception.class)
                 .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
                 .withDelay(Duration.ofSeconds(5))
-                .withMaxRetries(3);
+                .withMaxRetries(3)
+                .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
+                .onRetriesExceeded(failure -> log.error("Security group never became visible. Cannot continue."));
 
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
