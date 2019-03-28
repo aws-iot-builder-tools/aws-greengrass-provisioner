@@ -41,9 +41,12 @@ public class BasicIoHelper implements IoHelper {
 
         Path sshDirectory = new File(String.join("/", optionalHomeDirectory.get(), ".ssh")).toPath();
 
-        return Files.list(sshDirectory)
-                .filter(path -> readFileAsString(path.toFile()).contains("BEGIN RSA PRIVATE KEY"))
-                .map(Path::toString)
+        // Recursively get all of the files in the directory, only look at regular files, and make sure they look like private keys
+        return Files.walk(sshDirectory)
+                .filter(Files::isRegularFile)
+                .map(Path::toFile)
+                .filter(file -> readFileAsString(file).contains("BEGIN RSA PRIVATE KEY"))
+                .map(File::toString)
                 .collect(Collectors.toList());
     }
 

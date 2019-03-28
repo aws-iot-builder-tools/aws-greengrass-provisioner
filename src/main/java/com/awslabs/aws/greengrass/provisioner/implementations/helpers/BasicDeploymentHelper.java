@@ -25,6 +25,8 @@ import com.spotify.docker.client.exceptions.DockerException;
 import com.typesafe.config.*;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
@@ -40,6 +42,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -844,12 +847,20 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         ec2Client.createSecurityGroup(createSecurityGroupRequest);
 
+        // Sometimes the security group isn't immediately visible so we need retries
+        RetryPolicy<Object> securityGroupRetryPolicy = new RetryPolicy<>()
+                .handle(Ec2Exception.class)
+                .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(3);
+
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
                 .ipPermissions(sshPermission)
                 .build();
 
-        ec2Client.authorizeSecurityGroupIngress(authorizeSecurityGroupIngressRequest);
+        Failsafe.with(securityGroupRetryPolicy).run(() ->
+                ec2Client.authorizeSecurityGroupIngress(authorizeSecurityGroupIngressRequest));
 
         RunInstancesRequest run_request = RunInstancesRequest.builder()
                 .imageId(image.imageId())
