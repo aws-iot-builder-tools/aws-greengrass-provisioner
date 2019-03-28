@@ -13,7 +13,11 @@ fi
 
 PWD=$(pwd)
 
-TAG=`git symbolic-ref --short HEAD`
+if git symbolic-ref --short HEAD > /dev/null 2>&1 ; then
+  TAG=`git symbolic-ref --short HEAD`
+else
+  TAG=latest
+fi
 
 docker pull timmattison/aws-greengrass-provisioner:$TAG
 
