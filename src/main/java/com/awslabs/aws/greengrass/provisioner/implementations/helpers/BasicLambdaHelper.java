@@ -11,6 +11,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.LambdaClient;
@@ -19,6 +21,7 @@ import software.amazon.awssdk.services.lambda.model.*;
 
 import javax.inject.Inject;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Optional;
 
 @Slf4j
@@ -133,22 +136,19 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .code(functionCode)
                 .build();
 
-        boolean created = false;
-        int counter = 0;
+        // Sometimes the Lambda IAM role isn't immediately visible so we need retries
+        RetryPolicy<Object> lambdaIamRoleRetryPolicy = new RetryPolicy<>()
+                .handle(InvalidParameterValueException.class)
+                .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(10)
+                .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
+                .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            while (!created) {
-                counter++;
-
-                if (counter > 10) {
-                    throw new RuntimeException("Something went wrong with the Lambda IAM role, try again later");
-                }
-
-                created = Try.of(() -> lambdaClient.createFunction(createFunctionRequest) != null)
-                        .recover(InvalidParameterValueException.class, this::waitForIamRoleToBeAvailableToLambda)
-                        .get();
-            }
+            Failsafe.with(lambdaIamRoleRetryPolicy).run(() ->
+                    lambdaClient.createFunction(createFunctionRequest));
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");
