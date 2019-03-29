@@ -18,3 +18,4 @@ build
 .gradle
 *.swp
 /out
+*.jar
