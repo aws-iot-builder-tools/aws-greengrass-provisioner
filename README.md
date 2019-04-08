@@ -29,6 +29,10 @@ For brevity this application will be referred to as GGP in the docs.
 If you only want to use this tool you can simply read the "Want to get started quickly?" section.  You only need to
 clone this repo if you want to build the JAR file or modify the code.
 
+# Looking for the deploy.sh script so you can run GGP with Docker?
+
+[deploy.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/deploy.sh) was moved so that there was only one version of it floating around across the repos.
+
 # Want to know about the concepts behind GGP?
 
 Check out the [Concepts](/docs/Concepts.md) docs to understand GGP's deployment and function concepts.
