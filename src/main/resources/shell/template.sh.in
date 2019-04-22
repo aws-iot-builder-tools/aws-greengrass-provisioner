@@ -217,7 +217,20 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
         PIP_PACKAGES=
     fi
 
-    $INSTALLER update -y
+    COUNTER=0
+
+    until $INSTALLER update -y || (( COUNTER++ >= 3 ));
+    do
+      echo "Package manager update failed, trying again"
+      sleep 2
+    done
+
+    if [ "$COUNTER" -gt 3 ];
+    then
+      echo "Failed to run package manager update, can't continue"
+      exit 1
+    fi
+
     $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES git
     $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
     $INSTALLER install -y mosh
