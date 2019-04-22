@@ -57,10 +57,10 @@ import static io.vavr.Predicates.instanceOf;
 
 @Slf4j
 public class BasicDeploymentHelper implements DeploymentHelper {
-    public static final String USER_DIR = "user.dir";
+    private static final String USER_DIR = "user.dir";
 
-    public static final String AWS_AMI_ACCOUNT_ID = "099720109477";
-    public static final String UBUNTU_16_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????";
+    private static final String AWS_AMI_ACCOUNT_ID = "099720109477";
+    private static final String UBUNTU_16_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to EC2 instance";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
@@ -424,7 +424,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////////////////////////////////////////////
 
         List<String> functionsRunningInGreengrassContainer = functionConfs.stream()
-                .filter(functionConf -> functionConf.isGreengrassContainer())
+                .filter(FunctionConf::isGreengrassContainer)
                 .map(FunctionConf::getFunctionName)
                 .collect(Collectors.toList());
 
@@ -436,7 +436,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if ((deploymentArguments.dockerLaunch || deploymentArguments.buildContainer) && !functionsRunningInGreengrassContainer.isEmpty()) {
             log.error("The following functions are marked to run in the Greengrass container:");
 
-            functionsRunningInGreengrassContainer.stream()
+            functionsRunningInGreengrassContainer
                     .forEach(name -> log.error("  " + name));
 
             log.error("When running in Docker all functions must be running without the Greengrass container.");
@@ -650,7 +650,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Start the Docker container build if necessary //
         ///////////////////////////////////////////////////
 
-        if (deploymentArguments.buildContainer == true) {
+        if (deploymentArguments.buildContainer) {
             log.info("Configuring container build");
 
             ecrDockerHelper.setEcrRepositoryName(Optional.ofNullable(deploymentArguments.ecrRepositoryNameString));
@@ -677,13 +677,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
                 dockerClient.tag(imageId, imageName);
                 pushContainerIfNecessary(deploymentArguments, imageId);
-            } catch (DockerException e) {
-                log.error("Container build failed");
-                throw new RuntimeException(e);
-            } catch (InterruptedException e) {
-                log.error("Container build failed");
-                throw new RuntimeException(e);
-            } catch (IOException e) {
+            } catch (DockerException | InterruptedException | IOException e) {
                 log.error("Container build failed");
                 throw new RuntimeException(e);
             }
@@ -715,7 +709,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .instanceIds(instanceId)
                     .build();
 
-            DescribeInstancesResponse describeInstancesResponse = ec2Client.describeInstances(describeInstancesRequest);
+            // Describe instances retry policy
+            RetryPolicy<DescribeInstancesResponse> describeInstancesRetryPolicy = new RetryPolicy<DescribeInstancesResponse>()
+                    .handle(Ec2Exception.class)
+                    .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                    .withDelay(Duration.ofSeconds(5))
+                    .withMaxRetries(3)
+                    .onRetry(failure -> log.warn("Waiting for the instance to become visible..."))
+                    .onRetriesExceeded(failure -> log.error("Instance never became visible. Cannot continue."));
+
+            DescribeInstancesResponse describeInstancesResponse = Failsafe.with(describeInstancesRetryPolicy).get(() ->
+                    ec2Client.describeInstances(describeInstancesRequest));
 
             Optional<Reservation> optionalReservation = describeInstancesResponse.reservations().stream().findFirst();
 
@@ -818,7 +822,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         DescribeKeyPairsResponse describeKeyPairsResponse = ec2Client.describeKeyPairs();
-        Optional<KeyPairInfo> optionalKeyPairInfo = describeKeyPairsResponse.keyPairs().stream().sorted(Comparator.comparing(KeyPairInfo::keyName)).findFirst();
+
+        // Find the first keypair
+        Optional<KeyPairInfo> optionalKeyPairInfo = describeKeyPairsResponse.keyPairs().stream().min(Comparator.comparing(KeyPairInfo::keyName));
 
         if (!optionalKeyPairInfo.isPresent()) {
             log.error("No SSH keys found in your account, not launching the instance");
@@ -848,7 +854,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ec2Client.createSecurityGroup(createSecurityGroupRequest);
 
         // Sometimes the security group isn't immediately visible so we need retries
-        RetryPolicy<Object> securityGroupRetryPolicy = new RetryPolicy<>()
+        RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
                 .handle(Ec2Exception.class)
                 .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
                 .withDelay(Duration.ofSeconds(5))
@@ -861,10 +867,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .ipPermissions(sshPermission)
                 .build();
 
-        Failsafe.with(securityGroupRetryPolicy).run(() ->
+        Failsafe.with(securityGroupRetryPolicy).get(() ->
                 ec2Client.authorizeSecurityGroupIngress(authorizeSecurityGroupIngressRequest));
 
-        RunInstancesRequest run_request = RunInstancesRequest.builder()
+        RunInstancesRequest runInstancesRequest = RunInstancesRequest.builder()
                 .imageId(image.imageId())
                 .instanceType(InstanceType.T2_MICRO)
                 .maxCount(1)
@@ -873,9 +879,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .securityGroups(securityGroupName)
                 .build();
 
-        RunInstancesResponse response = ec2Client.runInstances(run_request);
+        RunInstancesResponse runInstancesResponse = ec2Client.runInstances(runInstancesRequest);
 
-        Optional<String> optionalInstanceId = response.instances().stream().findFirst().map(Instance::instanceId);
+        Optional<String> optionalInstanceId = runInstancesResponse.instances().stream().findFirst().map(Instance::instanceId);
 
         if (!optionalInstanceId.isPresent()) {
             log.error("Couldn't find an instance ID, this should never happen, not launching the instance");
@@ -889,12 +895,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .value(instanceTagName)
                 .build();
 
-        CreateTagsRequest tag_request = CreateTagsRequest.builder()
+        CreateTagsRequest createTagsRequest = CreateTagsRequest.builder()
                 .tags(tag)
                 .resources(instanceId)
                 .build();
 
-        Optional<Boolean> optionalSuccess = threadHelper.timeLimitTask(getCreateTagsTask(tag_request), 2, TimeUnit.MINUTES);
+        Optional<Boolean> optionalSuccess = threadHelper.timeLimitTask(getCreateTagsTask(createTagsRequest), 2, TimeUnit.MINUTES);
 
         if (!optionalSuccess.isPresent() || optionalSuccess.get().equals(Boolean.FALSE)) {
             log.error("Failed to find the instance in EC2, it was not launched");
@@ -906,15 +912,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return Optional.of(instanceId);
     }
 
-    private Callable<Boolean> getCreateTagsTask(CreateTagsRequest tag_request) {
-        return () -> createTags(tag_request);
+    private Callable<Boolean> getCreateTagsTask(CreateTagsRequest createTagsRequest) {
+        return () -> createTags(createTagsRequest);
     }
 
-    private Boolean createTags(CreateTagsRequest tag_request) {
+    private Boolean createTags(CreateTagsRequest createTagsRequest) {
         Optional<Boolean> status = Optional.empty();
 
         while (!status.isPresent()) {
-            status = Try.of(() -> Optional.of(ec2Client.createTags(tag_request) != null))
+            status = Try.of(() -> Optional.of(ec2Client.createTags(createTagsRequest) != null))
                     .recover(Ec2Exception.class, this::recoverFromEc2Exception)
                     .get();
         }
@@ -947,23 +953,23 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Creating Greengrass service role [" + GREENGRASS_SERVICE_ROLE_NAME + "]");
         Role greengrassServiceRole = iamHelper.createRoleIfNecessary(GREENGRASS_SERVICE_ROLE_NAME, deploymentConf.getCoreRoleAssumeRolePolicy());
 
-        serviceRolePolicies.stream()
+        serviceRolePolicies
                 .forEach(policy -> iamHelper.attachRolePolicy(greengrassServiceRole, policy));
 
         associateServiceRoleToAccount(greengrassServiceRole);
         return greengrassServiceRole;
     }
 
-    public void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
-        if (deploymentArguments.scriptOutput == true) {
+    private void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
+        if (deploymentArguments.scriptOutput) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
 
-        if (deploymentArguments.oemOutput == true) {
+        if (deploymentArguments.oemOutput) {
             oemVirtualTarEntries = Optional.of(new ArrayList<>());
         }
 
-        if (deploymentArguments.ggdOutput == true) {
+        if (deploymentArguments.ggdOutput) {
             ggdVirtualTarEntries = Optional.of(new ArrayList<>());
         }
 
@@ -1105,7 +1111,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
     }
 
-    public Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
+    private Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
         ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
         ggScriptTemplate.write("PAYLOAD:\n".getBytes());
         ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
@@ -1113,8 +1119,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
-    public void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) throws InterruptedException {
-        if (deploymentArguments.pushContainer != true) {
+    private void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) throws InterruptedException {
+        if (!deploymentArguments.pushContainer) {
             return;
         }
 
@@ -1169,17 +1175,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         */
     }
 
-    public Void logDockerPushFailedAndThrow(DockerException x) {
+    private Void logDockerPushFailedAndThrow(DockerException x) {
         log.error("Docker push failed [" + x.getMessage() + "]");
         throw new RuntimeException(x);
     }
 
-    public Void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+    private Void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
         dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, ecrDockerClientProvider.getRegistryAuthSupplier().authFor(""));
         return null;
     }
 
-    public Void tagImage(DeploymentArguments deploymentArguments, String imageId, String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+    private Void tagImage(DeploymentArguments deploymentArguments, String imageId, String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
         dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
         return null;
     }
@@ -1187,14 +1193,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private void waitForStacksToLaunch(List<String> cloudFormationStacksLaunched) {
         log.info("Waiting for your stacks to launch...");
 
-        cloudFormationStacksLaunched.stream()
+        cloudFormationStacksLaunched
                 .forEach(cloudFormationHelper::waitForStackToLaunch);
     }
 
-    public Optional<ByteArrayOutputStream> getByteArrayOutputStream
+    private Optional<ByteArrayOutputStream> getByteArrayOutputStream
             (Optional<List<VirtualTarEntry>> virtualTarEntries) {
-        Optional<ByteArrayOutputStream> baos;
-
         return Try.of(() -> archiveHelper.tar(virtualTarEntries))
                 .get();
     }
