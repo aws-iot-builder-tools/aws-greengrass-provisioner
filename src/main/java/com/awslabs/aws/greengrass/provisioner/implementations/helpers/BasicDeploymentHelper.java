@@ -715,7 +715,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .instanceIds(instanceId)
                     .build();
 
-            DescribeInstancesResponse describeInstancesResponse = ec2Client.describeInstances(describeInstancesRequest);
+            // Describe instances retry policy
+            RetryPolicy<DescribeInstancesResponse> describeInstancesRetryPolicy = new RetryPolicy<DescribeInstancesResponse>()
+                    .handle(Ec2Exception.class)
+                    .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                    .withDelay(Duration.ofSeconds(5))
+                    .withMaxRetries(3)
+                    .onRetry(failure -> log.warn("Waiting for the instance to become visible..."))
+                    .onRetriesExceeded(failure -> log.error("Instance never became visible. Cannot continue."));
+
+            DescribeInstancesResponse describeInstancesResponse = Failsafe.with(describeInstancesRetryPolicy).get(() ->
+                    ec2Client.describeInstances(describeInstancesRequest));
 
             Optional<Reservation> optionalReservation = describeInstancesResponse.reservations().stream().findFirst();
 
@@ -848,7 +858,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ec2Client.createSecurityGroup(createSecurityGroupRequest);
 
         // Sometimes the security group isn't immediately visible so we need retries
-        RetryPolicy<Object> securityGroupRetryPolicy = new RetryPolicy<>()
+        RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
                 .handle(Ec2Exception.class)
                 .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
                 .withDelay(Duration.ofSeconds(5))
@@ -861,7 +871,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .ipPermissions(sshPermission)
                 .build();
 
-        Failsafe.with(securityGroupRetryPolicy).run(() ->
+        Failsafe.with(securityGroupRetryPolicy).get(() ->
                 ec2Client.authorizeSecurityGroupIngress(authorizeSecurityGroupIngressRequest));
 
         RunInstancesRequest run_request = RunInstancesRequest.builder()
