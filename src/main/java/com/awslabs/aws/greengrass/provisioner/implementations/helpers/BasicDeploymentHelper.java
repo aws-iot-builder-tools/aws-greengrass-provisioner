@@ -1233,7 +1233,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private URL getArchitectureUrl(DeploymentArguments deploymentArguments) {
         Optional<Architecture> architecture = getArchitecture(deploymentArguments);
-        Optional<URL> architectureUrlOptional = architecture.map(Architecture::getResourceUrl).orElse(Optional.empty());
+        Optional<URL> architectureUrlOptional = architecture.flatMap(Architecture::getResourceUrl);
 
         if (architecture.isPresent() && !architectureUrlOptional.isPresent()) {
             log.error("The GG software for your architecture [" + architecture.get().getFilename() + "] is not available, please download it from the Greengrass console and put it in the [" + architecture.get().getDIST() + "] directory");
