@@ -77,6 +77,13 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
     @Override
     public Void execute(TestArguments testArguments) {
+        if (true) {
+            // Always true branch to silence the complain^H^H^H^Hiler.
+            log.error("GGP only supports Greengrass 1.8.1, Device Tester has not been updated to support Greengrass 1.8.1 yet.");
+            log.error("If you know that's no longer the case please leave a comment on Github - https://github.com/awslabs/aws-greengrass-provisioner/issues/73");
+            throw new RuntimeException("Device Tester does not support Greengrass 1.8.1 yet");
+        }
+
         LocalDateTime testStartLocalDateTime = LocalDateTime.now();
 
         if (testArguments.deviceUnderTest == null) {
