@@ -32,7 +32,7 @@ public class AwsGreengrassProvisioner implements Runnable {
                 .get();
     }
 
-    public static void handleProvisionerFailure(SdkErrorHandler sdkErrorHandler, Throwable throwable) {
+    private static void handleProvisionerFailure(SdkErrorHandler sdkErrorHandler, Throwable throwable) {
         // Sometimes dependency injection exceptions mask the actual SDK exception
         if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
             throwable = throwable.getCause();
@@ -42,10 +42,15 @@ public class AwsGreengrassProvisioner implements Runnable {
             sdkErrorHandler.handleSdkError((SdkClientException) throwable);
         }
 
-        throw new RuntimeException(throwable);
+        // Print out the stack trace and log the error message as the final line of output
+        throwable.printStackTrace();
+        log.error(throwable.getMessage());
+
+        // Make sure the JVM actually exits
+        System.exit(1);
     }
 
-    public static Void runProvisioner(String[] args) {
+    private static Void runProvisioner(String[] args) {
         AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
 
         awsGreengrassProvisioner.setArgs(args);
@@ -63,7 +68,7 @@ public class AwsGreengrassProvisioner implements Runnable {
         return getInjector().getInstance(AwsGreengrassProvisioner.class);
     }
 
-    public static Injector getInjector() {
+    private static Injector getInjector() {
         if (!optionalInjector.isPresent()) {
             optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule()));
         }
@@ -81,17 +86,17 @@ public class AwsGreengrassProvisioner implements Runnable {
                 // If the operation fails then log the error
                 .onFailure(throwable -> log.error(throwable.getMessage()))
                 // If the operation succeeds make sure the result isn't empty. An empty result means that nothing was done.
-                .onSuccess(success -> logIfNoOperationSpecified(success))
+                .onSuccess(this::logIfNoOperationSpecified)
                 .get();
     }
 
-    public void logIfNoOperationSpecified(Optional<Boolean> success) {
+    private void logIfNoOperationSpecified(Optional<Boolean> success) {
         if (!success.isPresent()) {
             log.error("No operation specified");
         }
     }
 
-    public void setArgs(String[] args) {
+    private void setArgs(String[] args) {
         this.args = args;
     }
 }
