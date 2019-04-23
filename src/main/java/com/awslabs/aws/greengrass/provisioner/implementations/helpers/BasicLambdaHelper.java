@@ -137,7 +137,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         // Sometimes the Lambda IAM role isn't immediately visible so we need retries
-        RetryPolicy<Object> lambdaIamRoleRetryPolicy = new RetryPolicy<>()
+        RetryPolicy<CreateFunctionResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<CreateFunctionResponse>()
                 .handle(InvalidParameterValueException.class)
                 .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
                 .withDelay(Duration.ofSeconds(5))
@@ -147,7 +147,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            Failsafe.with(lambdaIamRoleRetryPolicy).run(() ->
+            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
                     lambdaClient.createFunction(createFunctionRequest));
         }
 
