@@ -12,7 +12,7 @@ plugins {
     id 'com.github.ben-manes.versions' version '0.21.0'
 }
 
-def gradleDependencyVersion = '5.4'
+def gradleDependencyVersion = '5.4.1'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -39,7 +39,7 @@ def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerClientVersion = '8.15.2'
-def awsSdk2Version = '2.5.29'
+def awsSdk2Version = '2.5.32'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.9'
 def junitVersion = '4.12'
