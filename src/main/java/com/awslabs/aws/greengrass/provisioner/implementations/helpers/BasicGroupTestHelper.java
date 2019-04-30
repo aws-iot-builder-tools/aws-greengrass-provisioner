@@ -10,6 +10,7 @@ import io.vavr.collection.List;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import software.amazon.awssdk.services.greengrass.model.GetGroupVersionResponse;
 import software.amazon.awssdk.services.greengrass.model.GroupInformation;
@@ -308,10 +309,13 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             String groupName = testArguments.groupName;
             String outputDirectory = String.join("/", testArguments.outputDirectory,
                     String.join("-", groupName, testStartLocalDateTime.toString()));
-            new File(outputDirectory).mkdirs();
 
             reportLocations.stream().findFirst().ifPresent(path ->
-                    Try.of(() -> moveParentDirectory(path, outputDirectory)));
+                    Try.of(() -> moveParentDirectory(path, outputDirectory))
+                            .onFailure(throwable -> {
+                                throwable.printStackTrace();
+                            })
+                            .get());
         } finally {
             safeDisconnect(session);
         }
@@ -320,15 +324,23 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private Void moveParentDirectory(String path, String outputDirectory) throws IOException {
+        new File(outputDirectory).mkdirs();
+
         File parentFile = new File(path).getParentFile();
         File resultsDirectory = new File(String.join("/", outputDirectory, "results"));
-        log.info("Moving results to [{}]", resultsDirectory.getAbsolutePath());
-        Files.move(parentFile.toPath(), resultsDirectory.toPath());
+
+        log.info("Moving results from [{}] to [{}]", parentFile, resultsDirectory);
+
+        if (ioHelper.isRunningInDocker()) {
+            log.warn("Since IDT is running in Docker these files should be copied to the host system as well");
+        }
+
+        FileUtils.copyDirectory(parentFile, resultsDirectory);
 
         return null;
     }
 
-    public void killRemoteProcessesBySearchString(Session finalSession, String searchString) {
+    private void killRemoteProcessesBySearchString(Session finalSession, String searchString) {
         Try.of(() -> ioHelper.runCommand(finalSession, "ps ax | grep '" + searchString + "' | awk '{ print $1 }' | xargs sudo kill -9")).get();
     }
 
@@ -354,42 +366,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         return optionalSession.get();
     }
-
-    private Void moveReport(String groupName, String sourcePath, String outputDirectory) throws IOException {
-        File sourceFile = new File(sourcePath);
-        File destinationFile = new File(String.join("-",
-                String.join("/", outputDirectory, sourceFile.getName()),
-                groupName));
-
-        log.info("Moving report [{}] to [{}]", sourcePath, destinationFile);
-
-        Files.move(sourceFile.toPath(), destinationFile.toPath());
-
-        return null;
-    }
-
-    /*
-    private Void saveReportLog(String status, String groupName, String testName, String outputDirectory, java.util.List<String> logLines) throws IOException {
-        File destinationFile = new File(String.join("-",
-                String.join("/", outputDirectory, status),
-                groupName,
-                testName,
-                RUNTIME_LOG));
-
-        int suffix = 0;
-
-        while (destinationFile.exists()) {
-            // Make sure we don't overwrite any existing files
-            destinationFile = new File(String.join("-", destinationFile.getAbsolutePath(), String.valueOf(suffix)));
-        }
-
-        log.info("Saving [{}] report log for [{}] to [{}]", status, testName, destinationFile);
-
-        Files.write(destinationFile.toPath(), logLines);
-
-        return null;
-    }
-    */
 
     private File extractDeviceTester(File deviceTesterZip) throws IOException {
         File deviceTesterDirectory = Files.createTempDirectory(UUID.randomUUID().toString()).toFile();
