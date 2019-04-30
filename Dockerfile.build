@@ -16,8 +16,6 @@ RUN ./gradlew resolveDependencies
 # Fetch binaries
 RUN ./gradlew downloadAll
 
-# Run downloadAll to fetch binary dependencies
-# RUN ./gradlew downloadAll
 
 COPY src /build/src
 RUN ./gradlew build
