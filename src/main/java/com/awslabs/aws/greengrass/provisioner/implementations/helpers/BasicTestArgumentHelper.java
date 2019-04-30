@@ -14,6 +14,7 @@ import java.util.List;
 @Slf4j
 public class BasicTestArgumentHelper implements TestArgumentHelper {
     public static final String DTOUTPUT = "/dtoutput";
+    public static final String DT_ZIP = "/devicetester_greengrass_linux_1.2.190419180823.zip";
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
     @Inject
@@ -56,6 +57,7 @@ public class BasicTestArgumentHelper implements TestArgumentHelper {
 
         if (ioHelper.isRunningInDocker()) {
             testArguments.outputDirectory = DTOUTPUT;
+            testArguments.deviceTesterLocation = DT_ZIP;
             log.warn("Forcing output directory to " + DTOUTPUT + " because it looks like we're running in Docker");
         }
 
