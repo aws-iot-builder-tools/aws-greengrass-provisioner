@@ -32,6 +32,13 @@ public class BasicIoHelper implements IoHelper {
     GlobalDefaultHelper globalDefaultHelper;
 
     @Override
+    public boolean isRunningInDocker() {
+        String proc1CgroupContents = Try.of(() -> readFileAsString(new File("/proc/1/cgroup"))).getOrElse("");
+
+        return proc1CgroupContents.contains(":/docker/");
+    }
+
+    @Override
     public List<String> getPrivateKeyFilesForSsh() throws IOException {
         Optional<String> optionalHomeDirectory = globalDefaultHelper.getHomeDirectory();
 
