@@ -22,6 +22,7 @@ import static io.vavr.API.*;
 
 @Slf4j
 public class BasicDeviceTesterHelper implements DeviceTesterHelper {
+    public static final String TIME = "time";
     private static final String KEY_PATTERN = "[a-zA-Z]+=";
     private static final List<DeviceTesterLogMessageType> IGNORED_MESSAGE_TYPES = List.of(
             DeviceTesterLogMessageType.CHECKING_GGC_VERSION,
@@ -42,12 +43,14 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
             DeviceTesterLogMessageType.CREATING_GREENGRASS_GROUP,
             DeviceTesterLogMessageType.FINISHED_DEPLOYING_GROUP,
             DeviceTesterLogMessageType.RESTARTING_GREENGRASS,
-            DeviceTesterLogMessageType.RESTARTING_GREENGRASS_SUCCESSFUL);
+            DeviceTesterLogMessageType.RESTARTING_GREENGRASS_SUCCESSFUL,
+            DeviceTesterLogMessageType.EMPTY);
     private static final List<DeviceTesterLogMessageType> INFO_MESSAGE_TYPES = List.of(
             DeviceTesterLogMessageType.ALL_TESTS_FINISHED,
             DeviceTesterLogMessageType.REPORT_GENERATED);
     private static final List<DeviceTesterLogMessageType> WARN_MESSAGE_TYPES = List.of(
-            DeviceTesterLogMessageType.CLEANING_UP_RESOURCES_FAILED);
+            DeviceTesterLogMessageType.CLEANING_UP_RESOURCES_FAILED,
+            DeviceTesterLogMessageType.FAIL_TO_RESTORE_GREENGRASS);
     private static final List<DeviceTesterLogMessageType> ERROR_MESSAGE_TYPES = List.of(
             DeviceTesterLogMessageType.ERRORS_WHEN_CLEANING_UP_RESOURCES,
             DeviceTesterLogMessageType.UNKNOWN_FAILURE,
@@ -55,18 +58,16 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
             DeviceTesterLogMessageType.TEST_TIMED_OUT,
             DeviceTesterLogMessageType.COULD_NOT_FIND_GREENGRASS_RELEASE,
             DeviceTesterLogMessageType.XML_SYNTAX_ERROR,
-            DeviceTesterLogMessageType.STATUS_CODE_ERROR);
+            DeviceTesterLogMessageType.STATUS_CODE_ERROR,
+            DeviceTesterLogMessageType.CREDENTIALS_NOT_FOUND,
+            DeviceTesterLogMessageType.TEST_EXITED_UNSUCCESSFULLY,
+            DeviceTesterLogMessageType.FAIL_TO_REMOVE_GREENGRASS,
+            DeviceTesterLogMessageType.COMMAND_ON_REMOTE_HOST_FAILED_TO_START);
 
     @Override
     public DeviceTesterLogMessageType getLogMessageType(String logMessage) {
         Map<String, String> values = extractValuesFromLogMessage(logMessage);
-        Option<String> optionalMessage = values.get(MESSAGE_FIELD_NAME);
-
-        if (optionalMessage.isEmpty()) {
-            throw new RuntimeException("Could not find msg field in log message");
-        }
-
-        String message = optionalMessage.get();
+        String message = values.get(MESSAGE_FIELD_NAME).get();
 
         // Find the first message type that matches this string
         Optional<DeviceTesterLogMessageType> optionalDeviceTesterLogMessageType = Arrays.stream(DeviceTesterLogMessageType.values())
@@ -221,7 +222,7 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
         }
 
         // Add a final entry to the list so we can easily find the end of the last value
-        startAndEndLocations = startAndEndLocations.append(new Tuple2(logMessage.length() - 1, 0));
+        startAndEndLocations = startAndEndLocations.append(new Tuple2(logMessage.length(), 0));
 
         // Create a list of the locations that's easier to work with (key start, key end, value end)
         List<Tuple3<Integer, Integer, Integer>> finalLocations = List.empty();
@@ -243,8 +244,12 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
                 .map(tuple3 -> tupleToKeyValue(logMessage, tuple3))
                 .toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue);
 
+        if (values.get(MESSAGE_FIELD_NAME).isEmpty()) {
+            values = values.put(MESSAGE_FIELD_NAME, "");
+        }
+
         // Is there a time value?
-        Option<String> optionalTime = values.get("time");
+        Option<String> optionalTime = values.get(TIME);
 
         if (optionalTime.isEmpty()) {
             // No, just return everything as is
@@ -260,14 +265,20 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
         // Convert to a date and back to a string to get better formatting
         // time = LocalDateTime.parse(time).toString();
 
-        values.put("time", time);
+        values = values.put(TIME, time);
 
         return values;
     }
 
     private AbstractMap.SimpleEntry<String, String> tupleToKeyValue(String logMessage, Tuple3<Integer, Integer, Integer> tuple3) {
-        String key = logMessage.substring(tuple3._1, tuple3._2 - 1);
-        String value = logMessage.substring(tuple3._2, tuple3._3 - 1);
+        int keyStart = tuple3._1;
+        int keyEnd = tuple3._2 - 1;
+
+        int valueStart = tuple3._2;
+        int valueEnd = (tuple3._3 == logMessage.length()) ? tuple3._3 : tuple3._3 - 1;
+
+        String key = logMessage.substring(keyStart, keyEnd);
+        String value = logMessage.substring(valueStart, valueEnd);
 
         return new AbstractMap.SimpleEntry<>(key, value);
     }

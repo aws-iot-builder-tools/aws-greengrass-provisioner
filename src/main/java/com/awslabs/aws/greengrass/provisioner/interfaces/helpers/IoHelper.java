@@ -253,6 +253,8 @@ public interface IoHelper {
         return null;
     }
 
+    boolean isRunningInDocker();
+
     List<String> getPrivateKeyFilesForSsh() throws IOException;
 
     Void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;

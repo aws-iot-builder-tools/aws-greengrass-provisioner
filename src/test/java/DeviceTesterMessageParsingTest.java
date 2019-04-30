@@ -90,6 +90,18 @@ public class DeviceTesterMessageParsingTest {
 
     private static String STATUS_CODE_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-01-16T11:35:19-05:00\" level=info msg=\tstatus code: 400, request id: b4f783c9-19ac-11e9-8858-5b08ca276463 executionId=65dd3611-19ab-11e9-83ea-9801a78f161d suiteId=GGQ groupId=tes testCaseId=tes_test_1 deviceId=DUT";
 
+    private static String CREDENTIALS_NOT_FOUND_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-08T14:30:21Z\" level=error msg=aws credentials not found: EnvAccessKeyNotFound: AWS_ACCESS_KEY_ID or AWS_ACCESS_KEY not found in environment testCaseId=ggc_version_check_test_1 deviceId=DUT executionId=d6bba8c9-5a0a-11e9-b94f-0242ac110002 suiteId=GGQ groupId=version";
+
+    private static String TEST_EXITED_UNSUCCESSFULLY_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-08T14:45:57Z\" level=error msg=Test exited unsuccessfully executionId=0495e067-5a0d-11e9-b72c-0242ac110003 testCaseId=ggc_version_check_test_1 error=exit status 1";
+
+    private static String EMPTY_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-08T14:45:57Z\" level=info msg=";
+
+    private static String FAIL_TO_REMOVE_GREENGRASS_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-29T13:57:51-04:00\" level=info msg=Fail to remove Greengrass at /greengrass: [Error: 101] InternalError: failed to run command async with stdio: read tcp 10.95.232.31:51563->3.82.230.146:22: read: operation timed out executionId=98b2397b-6aa6-11e9-8cc9-9801a78f161d suiteId=GGQ groupId= testCaseId=dcm_test_1 deviceId=DUT";
+
+    private static String FAIL_TO_RESTORE_GREENGRASS_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-29T15:39:45-04:00\" level=info msg=Fail to restore Greengrass to initial state: [Error: 101] InternalError: failed to restore pre-installed greengrass to its initial state: failed to run command async with stdio: read tcp 10.95.232.31:56949->3.82.230.146:22: read: operation timed out deviceId=DUT executionId=1f819844-6ab3-11e9-a2d5-9801a78f161d suiteId=GGQ groupId= testCaseId=tes_test_1";
+
+    private static String COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-30T17:40:38Z\" level=error msg=panic: Async command on remote host failed to start with error: EOF groupId= testCaseId=shadow_sync_test_1 deviceId=DUT executionId=c875296d-6b6d-11e9-99df-0242ac110002 suiteId=GGQ";
+
     private static List<String> CHECKING_GGC_VERSION_STRINGS = List.of(CHECKING_GGC_VERSION_1);
     private static List<String> RUNNING_STRINGS = List.of(RUNNING_1, RUNNING_2);
     private static List<String> FINISHED_STRINGS = List.of(FINISHED_1, FINISHED_2);
@@ -125,6 +137,12 @@ public class DeviceTesterMessageParsingTest {
     private static List<String> COULD_NOT_FIND_GREENGRASS_RELEASE_STRINGS = List.of(COULD_NOT_FIND_GREENGRASS_RELEASE_1);
     private static List<String> CLEANING_UP_RESOURCES_FAILED_STRINGS = List.of(CLEANING_UP_RESOURCES_FAILED_1);
     private static List<String> STATUS_CODE_ERROR_STRINGS = List.of(STATUS_CODE_ERROR_1);
+    private static List<String> CREDENTIALS_NOT_FOUND_STRINGS = List.of(CREDENTIALS_NOT_FOUND_ERROR_1);
+    private static List<String> TEST_EXITED_UNSUCCESSFULLY_STRINGS = List.of(TEST_EXITED_UNSUCCESSFULLY_ERROR_1);
+    private static List<String> FAIL_TO_REMOVE_GREENGRASS_STRINGS = List.of(FAIL_TO_REMOVE_GREENGRASS_ERROR_1);
+    private static List<String> FAIL_TO_RESTORE_GREENGRASS_STRINGS = List.of(FAIL_TO_RESTORE_GREENGRASS_ERROR_1);
+    private static List<String> COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS = List.of(COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1);
+    private static List<String> EMPTY_STRINGS = List.of(EMPTY_1);
 
     private static List<String> ALL_STRINGS = List.of(
             CHECKING_GGC_VERSION_STRINGS,
@@ -161,7 +179,13 @@ public class DeviceTesterMessageParsingTest {
             RUNNING_GREENGRASS_ALREADY_INSTALLED_STRINGS,
             COULD_NOT_FIND_GREENGRASS_RELEASE_STRINGS,
             CLEANING_UP_RESOURCES_FAILED_STRINGS,
-            STATUS_CODE_ERROR_STRINGS)
+            STATUS_CODE_ERROR_STRINGS,
+            CREDENTIALS_NOT_FOUND_STRINGS,
+            TEST_EXITED_UNSUCCESSFULLY_STRINGS,
+            FAIL_TO_REMOVE_GREENGRASS_STRINGS,
+            FAIL_TO_RESTORE_GREENGRASS_STRINGS,
+            COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS,
+            EMPTY_STRINGS)
             .flatMap(List::toStream);
 
     private BasicDeviceTesterHelper basicDeviceTesterHelper;

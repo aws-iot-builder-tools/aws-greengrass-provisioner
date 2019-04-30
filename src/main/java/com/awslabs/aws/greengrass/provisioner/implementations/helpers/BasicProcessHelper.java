@@ -1,9 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.AwsCredentialsProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import io.vavr.control.Try;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
 
 import javax.inject.Inject;
 import java.io.BufferedReader;
@@ -11,12 +14,20 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+@Slf4j
 public class BasicProcessHelper implements ProcessHelper {
+    private static final String AWS_SECRET_KEY = "AWS_SECRET_KEY";
+    private static final String AWS_ACCESS_KEY_ID = "AWS_ACCESS_KEY_ID";
+    private static final String AWS_SECRET_ACCESS_KEY = "AWS_SECRET_ACCESS_KEY";
+    private static final String AWS_ACCESS_KEY = "AWS_ACCESS_KEY";
     private static final Consumer<String> NOOP = s -> {
     };
+    @Inject
+    public AwsCredentialsProvider awsCredentialsProvider;
 
     @Inject
     public BasicProcessHelper() {
@@ -34,6 +45,15 @@ public class BasicProcessHelper implements ProcessHelper {
         output.addAll(programAndArguments);
 
         ProcessBuilder processBuilder = new ProcessBuilder(output);
+
+        // Add in the access key ID and secret access key for when we are running processes that need them like IDT
+        Map<String, String> environment = processBuilder.environment();
+        AwsCredentials awsCredentials = awsCredentialsProvider.get();
+        // NOTE: Device Tester v1.2 does not work in Docker without AWS_ACCESS_KEY and AWS_SECRET_KEY in the environment
+        environment.put(AWS_ACCESS_KEY, awsCredentials.accessKeyId());
+        environment.put(AWS_ACCESS_KEY_ID, awsCredentials.accessKeyId());
+        environment.put(AWS_SECRET_KEY, awsCredentials.secretAccessKey());
+        environment.put(AWS_SECRET_ACCESS_KEY, awsCredentials.secretAccessKey());
 
         return processBuilder;
     }
