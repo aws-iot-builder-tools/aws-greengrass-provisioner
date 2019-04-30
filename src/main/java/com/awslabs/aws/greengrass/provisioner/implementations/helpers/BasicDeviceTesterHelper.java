@@ -61,7 +61,8 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
             DeviceTesterLogMessageType.STATUS_CODE_ERROR,
             DeviceTesterLogMessageType.CREDENTIALS_NOT_FOUND,
             DeviceTesterLogMessageType.TEST_EXITED_UNSUCCESSFULLY,
-            DeviceTesterLogMessageType.FAIL_TO_REMOVE_GREENGRASS);
+            DeviceTesterLogMessageType.FAIL_TO_REMOVE_GREENGRASS,
+            DeviceTesterLogMessageType.COMMAND_ON_REMOTE_HOST_FAILED_TO_START);
 
     @Override
     public DeviceTesterLogMessageType getLogMessageType(String logMessage) {

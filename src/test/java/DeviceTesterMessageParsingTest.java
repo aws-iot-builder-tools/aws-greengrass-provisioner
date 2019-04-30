@@ -96,9 +96,11 @@ public class DeviceTesterMessageParsingTest {
 
     private static String EMPTY_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-08T14:45:57Z\" level=info msg=";
 
-    private static String FAIL_TO_REMOVE_GREENGRASS_ERROR_1 ="[INFO] BasicGroupTestHelper: time=\"2019-04-29T13:57:51-04:00\" level=info msg=Fail to remove Greengrass at /greengrass: [Error: 101] InternalError: failed to run command async with stdio: read tcp 10.95.232.31:51563->3.82.230.146:22: read: operation timed out executionId=98b2397b-6aa6-11e9-8cc9-9801a78f161d suiteId=GGQ groupId= testCaseId=dcm_test_1 deviceId=DUT";
+    private static String FAIL_TO_REMOVE_GREENGRASS_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-29T13:57:51-04:00\" level=info msg=Fail to remove Greengrass at /greengrass: [Error: 101] InternalError: failed to run command async with stdio: read tcp 10.95.232.31:51563->3.82.230.146:22: read: operation timed out executionId=98b2397b-6aa6-11e9-8cc9-9801a78f161d suiteId=GGQ groupId= testCaseId=dcm_test_1 deviceId=DUT";
 
-    private static String FAIL_TO_RESTORE_GREENGRASS_ERROR_1 ="[INFO] BasicGroupTestHelper: time=\"2019-04-29T15:39:45-04:00\" level=info msg=Fail to restore Greengrass to initial state: [Error: 101] InternalError: failed to restore pre-installed greengrass to its initial state: failed to run command async with stdio: read tcp 10.95.232.31:56949->3.82.230.146:22: read: operation timed out deviceId=DUT executionId=1f819844-6ab3-11e9-a2d5-9801a78f161d suiteId=GGQ groupId= testCaseId=tes_test_1";
+    private static String FAIL_TO_RESTORE_GREENGRASS_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-29T15:39:45-04:00\" level=info msg=Fail to restore Greengrass to initial state: [Error: 101] InternalError: failed to restore pre-installed greengrass to its initial state: failed to run command async with stdio: read tcp 10.95.232.31:56949->3.82.230.146:22: read: operation timed out deviceId=DUT executionId=1f819844-6ab3-11e9-a2d5-9801a78f161d suiteId=GGQ groupId= testCaseId=tes_test_1";
+
+    private static String COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-30T17:40:38Z\" level=error msg=panic: Async command on remote host failed to start with error: EOF groupId= testCaseId=shadow_sync_test_1 deviceId=DUT executionId=c875296d-6b6d-11e9-99df-0242ac110002 suiteId=GGQ";
 
     private static List<String> CHECKING_GGC_VERSION_STRINGS = List.of(CHECKING_GGC_VERSION_1);
     private static List<String> RUNNING_STRINGS = List.of(RUNNING_1, RUNNING_2);
@@ -139,6 +141,7 @@ public class DeviceTesterMessageParsingTest {
     private static List<String> TEST_EXITED_UNSUCCESSFULLY_STRINGS = List.of(TEST_EXITED_UNSUCCESSFULLY_ERROR_1);
     private static List<String> FAIL_TO_REMOVE_GREENGRASS_STRINGS = List.of(FAIL_TO_REMOVE_GREENGRASS_ERROR_1);
     private static List<String> FAIL_TO_RESTORE_GREENGRASS_STRINGS = List.of(FAIL_TO_RESTORE_GREENGRASS_ERROR_1);
+    private static List<String> COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS = List.of(COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1);
     private static List<String> EMPTY_STRINGS = List.of(EMPTY_1);
 
     private static List<String> ALL_STRINGS = List.of(
@@ -181,6 +184,7 @@ public class DeviceTesterMessageParsingTest {
             TEST_EXITED_UNSUCCESSFULLY_STRINGS,
             FAIL_TO_REMOVE_GREENGRASS_STRINGS,
             FAIL_TO_RESTORE_GREENGRASS_STRINGS,
+            COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS,
             EMPTY_STRINGS)
             .flatMap(List::toStream);
 
