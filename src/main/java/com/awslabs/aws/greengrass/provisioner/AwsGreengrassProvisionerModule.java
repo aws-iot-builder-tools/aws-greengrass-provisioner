@@ -16,6 +16,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.spotify.docker.client.ProgressHandler;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
@@ -40,6 +41,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
         bind(EcrClient.class).toProvider(EcrClientProvider.class);
         bind(AwsRegionProviderChain.class).toProvider(DefaultAwsRegionProviderChain::new);
+        bind(DefaultCredentialsProvider.class).toProvider(DefaultCredentialsProvider::create);
 
         bind(GGConstants.class).to(BasicGGConstants.class);
         bind(PolicyHelper.class).to(BasicPolicyHelper.class);
