@@ -21,7 +21,6 @@ wrapper {
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'idea'
-apply plugin: 'com.github.johnrengelman.shadow'
 
 // Use the GGProvisioner main class when the JAR is invoked directly
 mainClassName = 'com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner'
