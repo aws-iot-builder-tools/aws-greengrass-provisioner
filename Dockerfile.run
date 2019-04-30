@@ -2,6 +2,11 @@ FROM openjdk:8
 
 RUN apt-get update -y && apt-get upgrade -y
 
+RUN cd / && \
+    echo "b1eb8b793ee5350dd5f874876de2d68a9784970a  devicetester_greengrass_linux_1.2.190419180823.zip" > /devicetester_greengrass_linux_1.2.190419180823.zip.sha && \
+    wget --referer=https://aws.amazon.com/greengrass/device-tester/ https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.2.190419180823.zip && \
+    shasum -c /devicetester_greengrass_linux_1.2.190419180823.zip.sha
+
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
 ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
