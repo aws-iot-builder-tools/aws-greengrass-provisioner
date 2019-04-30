@@ -221,7 +221,7 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
         }
 
         // Add a final entry to the list so we can easily find the end of the last value
-        startAndEndLocations = startAndEndLocations.append(new Tuple2(logMessage.length() - 1, 0));
+        startAndEndLocations = startAndEndLocations.append(new Tuple2(logMessage.length(), 0));
 
         // Create a list of the locations that's easier to work with (key start, key end, value end)
         List<Tuple3<Integer, Integer, Integer>> finalLocations = List.empty();
@@ -266,8 +266,14 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
     }
 
     private AbstractMap.SimpleEntry<String, String> tupleToKeyValue(String logMessage, Tuple3<Integer, Integer, Integer> tuple3) {
-        String key = logMessage.substring(tuple3._1, tuple3._2 - 1);
-        String value = logMessage.substring(tuple3._2, tuple3._3 - 1);
+        int keyStart = tuple3._1;
+        int keyEnd = tuple3._2 - 1;
+
+        int valueStart = tuple3._2;
+        int valueEnd = (tuple3._3 == logMessage.length()) ? tuple3._3 : tuple3._3 - 1;
+
+        String key = logMessage.substring(keyStart, keyEnd);
+        String value = logMessage.substring(valueStart, valueEnd);
 
         return new AbstractMap.SimpleEntry<>(key, value);
     }
