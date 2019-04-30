@@ -5,7 +5,6 @@ import com.awslabs.aws.greengrass.provisioner.data.DeviceTesterLogMessageType;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.jcraft.jsch.Session;
-import io.vavr.Tuple3;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
@@ -237,7 +236,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
             Instant testStart = Instant.now();
             java.util.HashMap<String, Try> testStatus = new java.util.HashMap<>();
-            java.util.List<Tuple3<String, Integer, Integer>> testLogIndex = new ArrayList<>();
             java.util.List<String> reportLocations = new ArrayList<>();
 
             // Kill any existing proxies left over from previous runs
@@ -282,17 +280,29 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                     .map(Map.Entry::getKey)
                     .collect(Collectors.toList());
 
-            log.info("Tests executed: ");
+            if (testNames.size() == 0) {
+                log.error("No tests executed");
+            } else {
+                log.info("Tests executed: ");
 
-            testNames.stream().forEach(log::info);
+                testNames.stream().forEach(log::info);
+            }
 
-            log.info("Tests passed: ");
+            if (passingTests.size() == 0) {
+                log.error("No tests passed");
+            } else {
+                log.info("Tests passed: ");
 
-            passingTests.stream().forEach(log::info);
+                passingTests.stream().forEach(log::info);
+            }
 
-            log.warn("Tests failed: ");
+            if (failingTests.size() == 0) {
+                log.info("No tests failed");
+            } else {
+                log.warn("Tests failed: ");
 
-            failingTests.stream().forEach(log::warn);
+                failingTests.stream().forEach(log::warn);
+            }
 
             // Move the results to the requested location
             String groupName = testArguments.groupName;
