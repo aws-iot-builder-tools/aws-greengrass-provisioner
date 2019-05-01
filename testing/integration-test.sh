@@ -6,6 +6,8 @@ if [ "$CWD" == "testing" ]; then
   cd ..
 fi
 
+set -e
+
 ./testing/push-to-dockerhub.sh
 ./gradlew build
 
@@ -33,6 +35,8 @@ function RUN_TEST {
     echo "$1 SUCCEEDED"
     CLEAN_BUILD_DIRECTORIES
 }
+
+set +e
 
 CLEAN_BUILD_DIRECTORIES
 
