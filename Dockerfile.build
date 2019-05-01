@@ -1,6 +1,10 @@
 FROM ubuntu:18.04
 
-RUN apt-get update -y && apt-get upgrade -y && apt-get install gradle -y
+# Update package manager
+RUN apt-get update -y && apt-get upgrade -y
+
+# Install JDK so Java functions can be built
+RUN apt-get install -y openjdk-8-jdk-headless
 
 COPY build.gradle /build/
 COPY gradlew /build/
