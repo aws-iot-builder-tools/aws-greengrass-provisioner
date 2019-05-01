@@ -1,6 +1,6 @@
 FROM openjdk:8
 
-RUN apt-get update -y && apt-get upgrade -y
+RUN apt-get update -y && apt-get upgrade -y && apt-get install -y python-pip
 
 RUN cd / && \
     echo "b1eb8b793ee5350dd5f874876de2d68a9784970a  devicetester_greengrass_linux_1.2.190419180823.zip" > /devicetester_greengrass_linux_1.2.190419180823.zip.sha && \
