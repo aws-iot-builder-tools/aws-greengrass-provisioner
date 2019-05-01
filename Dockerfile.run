@@ -17,6 +17,10 @@ RUN apt-get install -y openjdk-8-jdk-headless
 
 # Install pip so Python functions can be built
 RUN apt-get install -y python-pip
+
+# Install NodeJS and npm so Node functions can be built
+RUN apt-get install -y npm
+
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
 ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
