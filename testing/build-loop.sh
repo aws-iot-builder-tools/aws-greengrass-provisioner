@@ -11,7 +11,6 @@ signature1=""
 while [[ true ]]
 do
     # Simple mechanism to see if anything in the directory changed since the last run
-    find . -not -type d -ls | sort | shasum > ../`date +%s`.txt
     signature2=`find . -not -type d -ls | sort | shasum`
 
     if [[ $signature1 != $signature2 ]] ; then
