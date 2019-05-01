@@ -10,10 +10,9 @@ signature1=""
 
 while [[ true ]]
 do
-    # Simple mechanism to see if anything in the src directory changed since the last run
-    # grep -v command makes sure that we ignore parent directory entries otherwise any
-    #   files changed in the parent of the src directory would trigger a rebuild
-    signature2=`ls -laFR src | grep -v "\.\.\/" | sort`
+    # Simple mechanism to see if anything in the directory changed since the last run
+    find . -not -type d -ls | sort | shasum > ../`date +%s`.txt
+    signature2=`find . -not -type d -ls | sort | shasum`
 
     if [[ $signature1 != $signature2 ]] ; then
         until time ./testing/push-to-dockerhub.sh
