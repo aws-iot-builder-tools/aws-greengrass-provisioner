@@ -23,6 +23,7 @@ RUN_IN_DOCKER="./deploy.sh"
 
 CHECK_JAVA_BUILD="-d deployments/cdd-skeleton.conf $GROUP"
 CHECK_PYTHON_BUILD="-d deployments/python-hello-world.conf $GROUP"
+CHECK_PYTHON_BUILD_WITH_DEPENDENCIES="-d deployments/lifx.conf $GROUP"
 CHECK_NODE_BUILD="-d deployments/node-hello-world.conf $GROUP"
 CHECK_COMBINED_BUILD="-d deployments/all-hello-world.conf $GROUP"
 
@@ -42,6 +43,10 @@ RUN_TEST "Docker Java build" "$RUN_IN_DOCKER $CHECK_JAVA_BUILD"
 # Make sure Python builds work
 RUN_TEST "Native Python build" "$RUN_NATIVELY $CHECK_PYTHON_BUILD"
 RUN_TEST "Docker Python build" "$RUN_IN_DOCKER $CHECK_PYTHON_BUILD"
+
+# Make sure Python builds with dependencies work
+RUN_TEST "Native Python build" "$RUN_NATIVELY $CHECK_PYTHON_BUILD_WITH_DEPENDENCIES"
+RUN_TEST "Docker Python build" "$RUN_IN_DOCKER $CHECK_PYTHON_BUILD_WITH_DEPENDENCIES"
 
 # Make sure Node builds work
 RUN_TEST "Native Node build" "$RUN_NATIVELY $CHECK_NODE_BUILD"
