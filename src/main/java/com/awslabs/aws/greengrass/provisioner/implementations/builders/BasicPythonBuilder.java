@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 @Slf4j
 
 public class BasicPythonBuilder implements PythonBuilder {
+    public static final String PIP = "pip";
     private final String DIST_INFO = ".dist-info";
     private final String BIN = "bin";
     private final String INIT_PY = "__init__.py";
@@ -101,7 +102,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         for (String dependency : functionConf.getDependencies()) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
             List<String> programAndArguments = new ArrayList<>();
-            programAndArguments.add("pip");
+            programAndArguments.add(PIP);
             programAndArguments.add("install");
             programAndArguments.add("--upgrade");
             programAndArguments.add(dependency);
@@ -117,10 +118,37 @@ public class BasicPythonBuilder implements PythonBuilder {
             Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
 
             if (!exitVal.isPresent() || exitVal.get() != 0) {
-                log.error("Failed to install Python dependency.  Make sure Python and pip are installed and on your path.");
+                log.error("Something went wrong with pip");
+
+                if (isCorrectPipVersion()) {
+                    log.error("pip version is correct but the Python dependency failed to install");
+                } else {
+                    log.error("pip version appears to be incorrect or pip is missing");
+                }
+
+                log.error("To resolve:");
+                log.error("1) Make sure Python and pip are installed and on your path");
+                log.error("2) Make sure pip version is 19.x (pip --version) and install it with get-pip.py if necessary (https://pip.pypa.io/en/stable/installing/)");
+                log.error("3) Try installing the dependency with pip and see if pip returns any installation errors");
+
                 System.exit(1);
             }
         }
+    }
+
+    private boolean isCorrectPipVersion() {
+        List<String> programAndArguments = new ArrayList<>();
+        programAndArguments.add(PIP);
+        programAndArguments.add("--version");
+
+        ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+
+        String stdoutStrings = "";
+
+        processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::concat), Optional.empty());
+
+        // We expect pip 19.x only!
+        return stdoutStrings.startsWith("pip 19.");
     }
 
     private void touchAndIgnoreExceptions(File file) {
