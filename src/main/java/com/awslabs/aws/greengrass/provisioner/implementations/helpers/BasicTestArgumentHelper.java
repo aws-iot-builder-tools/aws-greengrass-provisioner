@@ -14,9 +14,7 @@ import java.util.List;
 @Slf4j
 public class BasicTestArgumentHelper implements TestArgumentHelper {
     public static final String DTOUTPUT = "/dtoutput";
-    public static final String DT_ZIP = "/devicetester_greengrass_linux_1.2.190419180823.zip";
-    @Inject
-    GlobalDefaultHelper globalDefaultHelper;
+    public static final String DT_ZIP = "/devicetester_greengrass_linux_1.3.0.zip";
     @Inject
     IoHelper ioHelper;
 

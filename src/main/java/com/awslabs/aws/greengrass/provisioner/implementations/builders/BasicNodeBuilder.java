@@ -17,12 +17,11 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Function;
 
 @Slf4j
 public class BasicNodeBuilder implements NodeBuilder {
     @Getter
-    private final SDK sdk = SDK.NODEJS;
+    private final Optional<SDK> sdk = Optional.of(SDK.NODEJS);
     @Getter
     private final String sdkDestinationPath = ".";
     @Inject

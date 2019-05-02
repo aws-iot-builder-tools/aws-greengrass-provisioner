@@ -39,9 +39,9 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String TAIL_FOLLOW_COMMAND = "tail -F " + FULL_RUNTIME_LOG_PATH;
     private static final int SSH_TIMEOUT_IN_MINUTES = 45;
     private static final String DEVICE_POOL_ID = "DevicePool";
-    private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.2.190419180823.zip";
-    private static final String LINUX_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.2.190419180823.zip";
-    private static final String MAC_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.2.190419180823.zip";
+    private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.3.0.zip";
+    private static final String LINUX_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.0.zip";
+    private static final String MAC_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.3.0.zip";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to device under test";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, device under test may not be ready yet...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, device under test may not be ready yet...";

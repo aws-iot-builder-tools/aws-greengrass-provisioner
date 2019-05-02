@@ -10,9 +10,9 @@ RUN apt-get install -y wget libdigest-sha-perl && \
 
 # Fetch and validate Device Tester
 RUN cd / && \
-    echo "b1eb8b793ee5350dd5f874876de2d68a9784970a  devicetester_greengrass_linux_1.2.190419180823.zip" > /devicetester_greengrass_linux_1.2.190419180823.zip.sha && \
-    wget --referer=https://aws.amazon.com/greengrass/device-tester/ https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.2.190419180823.zip && \
-    shasum -c /devicetester_greengrass_linux_1.2.190419180823.zip.sha
+    echo "1ce00229701e84d2c1296e3b0b1bbd36e5a55521  devicetester_greengrass_linux_1.3.0.zip" > /devicetester_greengrass_linux_1.3.0.zip.sha && \
+    wget --referer=https://aws.amazon.com/greengrass/device-tester/ https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.0.zip && \
+    shasum -c /devicetester_greengrass_linux_1.3.0.zip.sha
 
 # Install JDK so Java functions can be built
 RUN apt-get install -y openjdk-8-jdk-headless && \

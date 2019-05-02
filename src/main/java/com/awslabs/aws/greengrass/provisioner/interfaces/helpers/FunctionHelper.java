@@ -8,6 +8,7 @@ import software.amazon.awssdk.services.iam.model.Role;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 public interface FunctionHelper {
     String FUNCTIONS = "functions";
@@ -23,6 +24,12 @@ public interface FunctionHelper {
     List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf);
 
     List<BuildableFunction> getBuildableFunctions(List<FunctionConf> functionConfs, Role lambdaRole);
+
+    Predicate<FunctionConf> getPythonPredicate();
+
+    Predicate<FunctionConf> getNodePredicate();
+
+    Predicate<FunctionConf> getJavaPredicate();
 
     Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions);
 

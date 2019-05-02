@@ -5,7 +5,6 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
 import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
-import software.amazon.awssdk.services.lambda.model.Runtime;
 
 import java.util.Optional;
 
@@ -16,7 +15,7 @@ public interface LambdaHelper {
 
     LambdaFunctionArnInfo buildAndCreateNodeFunctionIfNecessary(FunctionConf functionConf, Role role);
 
-    LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Runtime runtime, Role role, String zipFilePath);
+    LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Role role, String zipFilePath);
 
     PublishVersionResponse publishFunctionVersion(String groupFunctionName);
 

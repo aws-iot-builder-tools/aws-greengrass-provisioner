@@ -31,7 +31,7 @@ public class BasicPythonBuilder implements PythonBuilder {
     private final String BIN = "bin";
     private final String INIT_PY = "__init__.py";
     @Getter
-    private final SDK sdk = SDK.PYTHON;
+    private final Optional<SDK> sdk = Optional.empty();
     @Getter
     private final String sdkDestinationPath = ".";
     @Inject

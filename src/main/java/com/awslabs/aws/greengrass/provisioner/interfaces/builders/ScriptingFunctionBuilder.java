@@ -17,22 +17,29 @@ import java.util.function.Function;
 public interface ScriptingFunctionBuilder extends FunctionBuilder {
     void buildFunctionIfNecessary(FunctionConf functionConf);
 
-    SDK getSdk();
+    Optional<SDK> getSdk();
 
     String getSdkDestinationPath();
 
     default void copySdk(Logger log, FunctionConf functionConf, ResourceHelper resourceHelper, IoHelper ioHelper) {
+        if (!getSdk().isPresent()) {
+            // SDK doesn't require manual installation, skip this
+            return;
+        }
+
+        SDK sdk = getSdk().get();
+
         String buildDirectory = functionConf.getBuildDirectory().toString();
 
-        String sdkFullPath = getSdk().getFullSdkPath();
+        String sdkFullPath = sdk.getFullSdkPath();
 
-        String sdkInnerZipPath = getSdk().getInnerSdkZipPath();
+        String sdkInnerZipPath = sdk.getInnerSdkZipPath();
 
-        Try.of(() -> extractSdkFromJar(log, resourceHelper, ioHelper, buildDirectory, sdkFullPath, sdkInnerZipPath))
+        Try.of(() -> extractSdkFromJar(log, sdk, resourceHelper, ioHelper, buildDirectory, sdkFullPath, sdkInnerZipPath))
                 .get();
     }
 
-    default Void extractSdkFromJar(Logger log, ResourceHelper resourceHelper, IoHelper ioHelper, String buildDirectory, String sdkFullPath, String sdkInnerZipPath) {
+    default Void extractSdkFromJar(Logger log, SDK sdk, ResourceHelper resourceHelper, IoHelper ioHelper, String buildDirectory, String sdkFullPath, String sdkInnerZipPath) {
         // Try to get the SDK from inside the JAR
         Optional<InputStream> optionalInputStream = Optional.ofNullable(resourceHelper.getFileOrResourceAsStream(sdkInnerZipPath));
 
@@ -40,12 +47,12 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
             // Couldn't find the SDK inside the JAR.  Try to get it on the local file system.
             if (!new File(sdkFullPath).exists()) {
                 // Couldn't find it on the local file system, give up
-                log.error("The SDK [" + getSdk().getFullSdkFilename() + "] is missing, please download it from the Greengrass console and put it in the [" + getSdk().getFOUNDATION() + "] directory");
+                log.error("The SDK [" + sdk.getFullSdkFilename() + "] is missing, please download it from the Greengrass console and put it in the [" + sdk.getFOUNDATION() + "] directory");
                 System.exit(1);
             }
 
             // Get the inner SDK ZIP file from the full SDK
-            optionalInputStream = ioHelper.extractTarGz(getSdk().getFullSdkPath(), getSdk().getInnerSdkZipFilename());
+            optionalInputStream = ioHelper.extractTarGz(sdk.getFullSdkPath(), sdk.getInnerSdkZipFilename());
         }
 
         if (!optionalInputStream.isPresent()) {
