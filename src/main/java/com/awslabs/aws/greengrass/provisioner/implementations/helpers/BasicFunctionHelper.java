@@ -229,7 +229,21 @@ public class BasicFunctionHelper implements FunctionHelper {
         config = config.resolve();
 
         functionConfBuilder.buildDirectory(functionPath);
-        functionConfBuilder.language(Language.valueOf(config.getString("conf.language")));
+
+        Language language = Language.valueOf(config.getString("conf.language"));
+
+        if (language.equals(Language.Python)) {
+            log.warn("Legacy Python function forced to Python 2.7");
+            language = Language.PYTHON2_7;
+        } else if (language.equals(Language.Java)) {
+            log.warn("Legacy Java function forced to Java 8");
+            language = Language.JAVA8;
+        } else if (language.equals(Language.Node)) {
+            log.warn("Legacy Node function forced to Node 6.10");
+            language = Language.NODEJS6_10;
+        }
+
+        functionConfBuilder.language(language);
         functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
         functionConfBuilder.functionName(config.getString("conf.functionName"));
         functionConfBuilder.groupName(deploymentConf.getGroupName());
@@ -478,24 +492,24 @@ public class BasicFunctionHelper implements FunctionHelper {
     @Override
     public List<BuildableFunction> getBuildableFunctions(List<FunctionConf> functionConfs, Role lambdaRole) {
         List<BuildableJavaMavenFunction> javaMavenFunctions = functionConfs.stream()
-                .filter(functionConf -> functionConf.getLanguage().equals(Language.Java))
+                .filter(getJavaPredicate())
                 .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
                 .map(functionConf -> new BuildableJavaMavenFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
         List<BuildableJavaGradleFunction> javaGradleFunctions = functionConfs.stream()
-                .filter(functionConf -> functionConf.getLanguage().equals(Language.Java))
+                .filter(getJavaPredicate())
                 .filter(functionConf -> gradleBuilder.isGradleFunction(functionConf))
                 .map(functionConf -> new BuildableJavaGradleFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
         List<BuildablePythonFunction> pythonFunctions = functionConfs.stream()
-                .filter(functionConf -> functionConf.getLanguage().equals(Language.Python))
+                .filter(getPythonPredicate())
                 .map(functionConf -> new BuildablePythonFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
         List<BuildableNodeFunction> nodeFunctions = functionConfs.stream()
-                .filter(functionConf -> functionConf.getLanguage().equals(Language.Node))
+                .filter(getNodePredicate())
                 .map(functionConf -> new BuildableNodeFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
@@ -506,6 +520,29 @@ public class BasicFunctionHelper implements FunctionHelper {
         allFunctions.addAll(nodeFunctions);
 
         return allFunctions;
+    }
+
+    @Override
+    public Predicate<FunctionConf> getPythonPredicate() {
+        Predicate<FunctionConf> python27Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
+        Predicate<FunctionConf> python37Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
+
+        return python27Predicate.or(python37Predicate);
+    }
+
+    @Override
+    public Predicate<FunctionConf> getNodePredicate() {
+        Predicate<FunctionConf> node610Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS6_10);
+        Predicate<FunctionConf> node810Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS8_10);
+
+        return node610Predicate.or(node810Predicate);
+    }
+
+    @Override
+    public Predicate<FunctionConf> getJavaPredicate() {
+        Predicate<FunctionConf> java8Predicate = functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
+
+        return java8Predicate;
     }
 
     @Override

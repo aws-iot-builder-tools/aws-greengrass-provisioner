@@ -55,38 +55,19 @@ def buildDirFoundation = "$buildDir/foundation"
 task downloadGreengrassBinaries(type: Download) {
     // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR
     src(
-            ['https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.8.1/greengrass-linux-aarch64-1.8.1.tar.gz',
-             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.8.1/greengrass-linux-armv7l-1.8.1.tar.gz',
-             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.8.1/greengrass-linux-x86-64-1.8.1.tar.gz']
+            ['https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.0/greengrass-linux-aarch64-1.9.0.tar.gz',
+             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.0/greengrass-linux-armv7l-1.9.0.tar.gz',
+             'https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads/1.9.0/greengrass-linux-x86-64-1.9.0.tar.gz']
     )
     dest "$buildDirDist"
     overwrite false
 }
 
-def pythonSdkTarGz = 'greengrass-core-python-sdk-1.3.0.tar.gz'
-def pythonSdkZip = 'python_sdk_1_3_0.zip'
-
-task fetchGreengrassPythonSdk(type: Download) {
-    src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/python/2.7/$pythonSdkTarGz"
-    dest new File(buildDir, pythonSdkTarGz)
-    overwrite false
-}
-
-task extractPythonSdk(type: Copy, dependsOn: fetchGreengrassPythonSdk) {
-    from tarTree(fetchGreengrassPythonSdk.dest)
-    into buildDirTemp
-}
-
-task downloadPythonSdk(type: Copy, dependsOn: extractPythonSdk) {
-    from "$buildDirTemp/aws_greengrass_core_sdk/sdk/$pythonSdkZip"
-    into "$buildDirFoundation"
-}
-
-def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.3.1.tar.gz'
+def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.4.0.tar.gz'
 def nodeSdkZip = 'aws-greengrass-core-sdk-js.zip'
 
 task fetchGreengrassNodeSdk(type: Download) {
-    src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/nodejs/6.10/$nodeSdkTarGz"
+    src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/nodejs/8.10/$nodeSdkTarGz"
     dest new File(buildDir, nodeSdkTarGz)
     overwrite false
 }
@@ -97,7 +78,7 @@ task extractNodeSdk(type: Copy, dependsOn: fetchGreengrassNodeSdk) {
 }
 
 task downloadNodeSdk(type: Copy, dependsOn: extractNodeSdk) {
-    from "$buildDirTemp/aws-greengrass-core-sdk-js-1.3.1/sdk/$nodeSdkZip"
+    from "$buildDirTemp/aws-greengrass-core-sdk-js-1.4.0/sdk/$nodeSdkZip"
     into "$buildDirFoundation"
 }
 
@@ -123,7 +104,6 @@ task downloadJavaSdk(type: Copy, dependsOn: extractJavaSdk) {
 
 task downloadAll {
     dependsOn downloadGreengrassBinaries
-    dependsOn downloadPythonSdk
     dependsOn downloadNodeSdk
     dependsOn downloadJavaSdk
 }

@@ -8,12 +8,10 @@ import java.util.Optional;
 import static com.google.common.io.Resources.getResource;
 
 public enum SDK {
-    NODEJS("aws-greengrass-core-sdk-js-1.3.1.tar.gz", "e72b12456d788f4938f7131d133b75ba8a80512f", "aws-greengrass-core-sdk-js/sdk", "aws-greengrass-core-sdk-js.zip"),
-    PYTHON("greengrass-core-python-sdk-1.3.0.tar.gz", "b4c3208ea6ea7c90bc3bb4f0aa4063c1c9685b7a", "aws_greengrass_core_sdk/sdk", "python_sdk_1_3_0.zip");
+    NODEJS("aws-greengrass-core-sdk-js-1.4.0.tar.gz", "f2179ec50e9e85011d4dba68db146651712f694b", "aws-greengrass-core-sdk-js/sdk", "aws-greengrass-core-sdk-js.zip");
 
     @Getter
     private final String FOUNDATION = "foundation";
-
     @Getter
     private final String fullSdkFilename;
     @Getter

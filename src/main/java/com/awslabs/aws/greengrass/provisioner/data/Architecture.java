@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 import static com.google.common.io.Resources.getResource;
 
 public enum Architecture {
-    ARM32("greengrass-linux-armv7l-1.8.1.tar.gz", "40e6c95b7783dc8cebb4c05d51658f46d3cc4146"),
-    X86_64("greengrass-linux-x86-64-1.8.1.tar.gz", "28013ce211350da2ca41435041b383f931a8c2ac"),
-    ARM64("greengrass-linux-aarch64-1.8.1.tar.gz", "0f7cd7ab36fe24ac0e87c3906b8c6c82049cfd3e");
+    ARM32("greengrass-linux-armv7l-1.9.0.tar.gz", "e4616805e9e6a14670e6dc6da4d1597e56b6035a"),
+    X86_64("greengrass-linux-x86-64-1.9.0.tar.gz", "cdf4ae25ca0c7807c4b0d49862e95c361f444db0"),
+    ARM64("greengrass-linux-aarch64-1.9.0.tar.gz", "0b84d590dc1eed7678fd13ce1474065f1a3ac419");
 
     @Getter
     private final String DIST = "dist";

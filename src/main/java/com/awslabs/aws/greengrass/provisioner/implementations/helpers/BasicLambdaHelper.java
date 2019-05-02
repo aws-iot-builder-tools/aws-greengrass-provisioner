@@ -16,7 +16,6 @@ import net.jodah.failsafe.RetryPolicy;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.lambda.model.Runtime;
 import software.amazon.awssdk.services.lambda.model.*;
 
 import javax.inject.Inject;
@@ -74,7 +73,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
         }
 
-        return createFunctionIfNecessary(functionConf, Runtime.JAVA8, role, zipFilePath);
+        return createFunctionIfNecessary(functionConf, role, zipFilePath);
     }
 
     @Override
@@ -89,8 +88,8 @@ public class BasicLambdaHelper implements LambdaHelper {
         pythonBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = pythonBuilder.getArchivePath(functionConf);
-        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.PYTHON2_7, role, zipFilePath);
-        return result;
+
+        return createFunctionIfNecessary(functionConf, role, zipFilePath);
     }
 
     @Override
@@ -105,12 +104,11 @@ public class BasicLambdaHelper implements LambdaHelper {
         nodeBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = nodeBuilder.getArchivePath(functionConf);
-        LambdaFunctionArnInfo result = createFunctionIfNecessary(functionConf, Runtime.NODEJS6_10, role, zipFilePath);
-        return result;
+        return createFunctionIfNecessary(functionConf, role, zipFilePath);
     }
 
     @Override
-    public LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Runtime runtime, Role role, String zipFilePath) {
+    public LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Role role, String zipFilePath) {
         String baseFunctionName = functionConf.getFunctionName();
         String groupFunctionName = getFunctionName(functionConf);
 
@@ -130,7 +128,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
                 .functionName(groupFunctionName)
-                .runtime(runtime)
+                .runtime(functionConf.getLanguage().getRuntime())
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .code(functionCode)

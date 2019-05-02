@@ -1,9 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.Architecture;
-import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
-import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
-import com.awslabs.aws.greengrass.provisioner.data.VirtualTarEntry;
+import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
@@ -50,6 +47,7 @@ import java.util.Set;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.vavr.API.*;
@@ -406,6 +404,59 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
 
         List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf);
+
+        // Find Python functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
+
+        List<FunctionConf> legacyPythonFunctions = functionConfs.stream()
+                .filter(legacyPythonPredicate)
+                .collect(Collectors.toList());
+
+        if (legacyPythonFunctions.size() != 0) {
+            log.error("Some Python functions do not have a Python version specified, this should never happen!");
+            legacyPythonFunctions.stream()
+                    .map(functionConf -> functionConf.getFunctionName())
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+
+        // Find Node functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyNodePredicate = functionConf -> functionConf.getLanguage().equals(Language.Node);
+
+        List<FunctionConf> legacyNodeFunctions = functionConfs.stream()
+                .filter(legacyNodePredicate)
+                .collect(Collectors.toList());
+
+        if (legacyNodeFunctions.size() != 0) {
+            log.error("Some Node functions do not have a Node version specified, this should never happen!");
+            legacyNodeFunctions.stream()
+                    .map(functionConf -> functionConf.getFunctionName())
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+
+        // Find Java functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyJavaPredicate = functionConf -> functionConf.getLanguage().equals(Language.Java);
+
+        List<FunctionConf> legacyJavaFunctions = functionConfs.stream()
+                .filter(legacyJavaPredicate)
+                .collect(Collectors.toList());
+
+        if (legacyJavaFunctions.size() != 0) {
+            log.error("Some Java functions do not have a Java version specified, this should never happen!");
+            legacyJavaFunctions.stream()
+                    .map(functionConf -> functionConf.getFunctionName())
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+
+        // Add pip dependency for the Greengrass SDK to all Python functions
+        List<FunctionConf> pythonFunctionConfs = functionConfs.stream()
+                .filter(functionHelper.getPythonPredicate())
+                .collect(Collectors.toList());
+
+        pythonFunctionConfs.stream()
+                .forEach(functionConf -> functionConf.getDependencies().add("greengrasssdk"));
 
         ////////////////////////////////////////////////////
         // Determine if any functions need to run as root //
