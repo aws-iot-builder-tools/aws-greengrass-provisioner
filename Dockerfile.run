@@ -21,6 +21,18 @@ RUN apt-get install -y python-pip
 # Install NodeJS and npm so Node functions can be built
 RUN apt-get install -y npm
 
+# Install latest version of Gradle with sources to speed up Java builds
+RUN apt-get install -y gradle && \
+    mkdir temp && \
+    cd temp && \
+    gradle init && \
+    gradle wrapper --gradle-version 5.4.1 --distribution-type all && \
+    ./gradlew tasks && \
+    cd .. && \
+    rm -rf temp && \
+    apt-get --purge -y remove gradle && \
+    apt-get --purge -y autoremove
+
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
 ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
