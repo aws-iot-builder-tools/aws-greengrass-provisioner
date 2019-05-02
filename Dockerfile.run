@@ -26,7 +26,9 @@ RUN apt-get install -y python-pip && \
 RUN apt-get install -y npm && \
     apt-get -y clean
 
-# Install latest version of Gradle with sources to speed up Java builds
+# Install latest version of Gradle with sources to speed up Java builds. Lambda function developers need sources but we don't so we clear them out.
+#   If we just install the version without sources though it will still attempt to download the distribution each time since it is named differently.
+#   Therefore we download the sources distribution but clean out the components we don't need.
 RUN apt-get install -y gradle && \
     mkdir temp && \
     cd temp && \
@@ -37,7 +39,12 @@ RUN apt-get install -y gradle && \
     rm -rf temp && \
     apt-get --purge -y remove gradle && \
     apt-get --purge -y autoremove && \
-    apt-get -y clean
+    apt-get -y clean && \
+    rm -rf /root/.gradle/wrapper/dists/*/*/*/src \
+           /root/.gradle/wrapper/dists/*/*/*/samples \
+           /root/.gradle/wrapper/dists/*/*/*/media \
+           /root/.gradle/wrapper/dists/*/*/*.zip \
+           /root/.gradle/wrapper/dists/*/*/*/docs
 
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
