@@ -9,7 +9,7 @@ fi
 set -e
 
 ./testing/push-to-dockerhub.sh
-./gradlew build
+./gradlew clean build integrationTest
 
 cd ../aws-greengrass-lambda-functions
 
@@ -21,7 +21,6 @@ function CLEAN_BUILD_DIRECTORIES {
 
 GROUP="-g `uuidgen`"
 RUN_NATIVELY="java -jar ../aws-greengrass-provisioner/build/libs/AwsGreengrassProvisioner.jar"
-RUN_IN_DOCKER="./deploy.sh"
 
 CHECK_JAVA_BUILD="-d deployments/cdd-skeleton.conf $GROUP"
 CHECK_PYTHON_BUILD="-d deployments/python-hello-world.conf $GROUP"
@@ -41,23 +40,18 @@ set +e
 CLEAN_BUILD_DIRECTORIES
 
 # Make sure Java builds work
-RUN_TEST "Docker Java build" "$RUN_IN_DOCKER $CHECK_JAVA_BUILD"
 RUN_TEST "Native Java build" "$RUN_NATIVELY $CHECK_JAVA_BUILD"
 
 # Make sure Python builds work
-RUN_TEST "Docker Python build" "$RUN_IN_DOCKER $CHECK_PYTHON_BUILD"
 RUN_TEST "Native Python build" "$RUN_NATIVELY $CHECK_PYTHON_BUILD"
 
 # Make sure Python builds with dependencies work
-RUN_TEST "Docker Python build" "$RUN_IN_DOCKER $CHECK_PYTHON_BUILD_WITH_DEPENDENCIES"
 RUN_TEST "Native Python build" "$RUN_NATIVELY $CHECK_PYTHON_BUILD_WITH_DEPENDENCIES"
 
 # Make sure Node builds work
-RUN_TEST "Docker Node build" "$RUN_IN_DOCKER $CHECK_NODE_BUILD"
 RUN_TEST "Native Node build" "$RUN_NATIVELY $CHECK_NODE_BUILD"
 
 # Make sure combined builds work
-RUN_TEST "Docker combined build" "$RUN_IN_DOCKER $CHECK_COMBINED_BUILD"
 RUN_TEST "Native combined build" "$RUN_NATIVELY $CHECK_COMBINED_BUILD"
 
 echo ALL INTEGRATION TESTS PASSED

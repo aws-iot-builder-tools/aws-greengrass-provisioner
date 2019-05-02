@@ -47,6 +47,8 @@ def lombokVersion = '1.18.6'
 def vavrVersion = '0.9.2'
 def httpClientVersion = '4.5.8'
 def jodahFailsafeVersion = '2.0.1'
+def testContainersVersion = '1.11.2'
+def hamcrestVersion = '2.1'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirTemp = "$buildDir/temp"
@@ -152,6 +154,28 @@ repositories {
     }
 }
 
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += sourceSets.main.output + configurations.testCompile
+            runtimeClasspath += output + compileClasspath + configurations.testRuntime
+
+            srcDir file('src/integration-test/java')
+        }
+    }
+}
+
+task integrationTest(type: Test) {
+    // Pass all the system properties
+    systemProperties System.getProperties()
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+    mustRunAfter test
+}
+
 dependencies {
     compile "com.google.inject:guice:$guiceVersion"
 
@@ -188,9 +212,11 @@ dependencies {
     // https://mvnrepository.com/artifact/net.jodah/failsafe
     compile "net.jodah:failsafe:$jodahFailsafeVersion"
 
+    compile "org.testcontainers:testcontainers:$testContainersVersion"
 
     testCompile "junit:junit:$junitVersion"
     testCompile "org.mockito:mockito-all:$mockitoVersion"
+    testCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
 }
 
 // From: https://gist.github.com/matthiasbalke/3c9ecccbea1d460ee4c3fbc5843ede4a
@@ -198,10 +224,16 @@ task resolveDependencies {
     doLast {
         project.rootProject.allprojects.each { subProject ->
             subProject.buildscript.configurations.each { configuration ->
-                resolveConfiguration(configuration)
+                // Check to prevent "Resolving configuration 'integrationTestImplementation' directly is not allowed" error
+                if (!configuration.getName().contains("integrationTest")) {
+                    resolveConfiguration(configuration)
+                }
             }
             subProject.configurations.each { configuration ->
-                resolveConfiguration(configuration)
+                // Check to prevent "Resolving configuration 'integrationTestImplementation' directly is not allowed" error
+                if (!configuration.getName().contains("integrationTest")) {
+                    resolveConfiguration(configuration)
+                }
             }
         }
     }
