@@ -39,11 +39,11 @@ public class BasicMavenBuilder implements MavenBuilder {
     public static final String VERSION = "version";
     public static final String PACKAGING = "packaging";
     public static final String JAR = "jar";
-    public static final String VERSION_1_2 = "1.2";
+    public static final String VERSION_1_3_1 = "1.3.1";
     public static final String POM = "pom";
     public static final String CDDBASELINEJAVADEPENDENCIES = "cddbaselinejavadependencies";
     public static final String GREENGRASS_LAMBDA = "greengrass-lambda";
-    public static final String FOUNDATION_GREENGRASS_JAVA_SDK_1_2_JAR = "/foundation/GreengrassJavaSDK-1.2.jar.zip";
+    public static final String FOUNDATION_GREENGRASS_JAVA_SDK_1_3_1_JAR = "/foundation/GreengrassJavaSDK-1.3.1.jar.zip";
     public static final String FOUNDATION_CDDBASELINE_JAVA_JAR = "/foundation/CDDBaseline-0.3.jar.zip";
     public static final String FOUNDATION_CDDBASELINE_DEPENDENCIES_JAVA_POM = "/foundation/CDDBaselineJavaDependencies/pom.xml";
     public static final String MAVEN_HOME_PREFIX = "Maven home: ";
@@ -118,8 +118,8 @@ public class BasicMavenBuilder implements MavenBuilder {
     }
 
     private Void installGreengrassJavaSdkJar() {
-        String tempFile = Try.of(() -> resourceHelper.resourceToTempFile(FOUNDATION_GREENGRASS_JAVA_SDK_1_2_JAR)).get();
-        buildPropertiesAndRunMaven(tempFile, COM_AMAZONAWS, GREENGRASS_LAMBDA, VERSION_1_2, JAR, Optional.empty(), INSTALL);
+        String tempFile = Try.of(() -> resourceHelper.resourceToTempFile(FOUNDATION_GREENGRASS_JAVA_SDK_1_3_1_JAR)).get();
+        buildPropertiesAndRunMaven(tempFile, COM_AMAZONAWS, GREENGRASS_LAMBDA, VERSION_1_3_1, JAR, Optional.empty(), INSTALL);
 
         return null;
     }
