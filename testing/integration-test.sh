@@ -19,7 +19,7 @@ function CLEAN_BUILD_DIRECTORIES {
     sudo find foundation -name "build" -type d -exec rm -rf {} \; 2> /dev/null
 }
 
-GROUP="-g JUNK"
+GROUP="-g `uuidgen`"
 RUN_NATIVELY="java -jar ../aws-greengrass-provisioner/build/libs/AwsGreengrassProvisioner.jar"
 RUN_IN_DOCKER="./deploy.sh"
 
