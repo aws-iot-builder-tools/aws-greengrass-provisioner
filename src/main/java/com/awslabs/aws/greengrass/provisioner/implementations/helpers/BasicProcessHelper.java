@@ -26,6 +26,7 @@ public class BasicProcessHelper implements ProcessHelper {
     private static final String AWS_ACCESS_KEY = "AWS_ACCESS_KEY";
     private static final Consumer<String> NOOP = s -> {
     };
+
     @Inject
     public AwsCredentialsProvider awsCredentialsProvider;
 

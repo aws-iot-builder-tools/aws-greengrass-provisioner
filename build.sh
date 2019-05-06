@@ -3,8 +3,8 @@
 set -e
 set -x
 
+# Make sure we get rid of an old JAR so it can't accidentally be pushed
 rm -f AwsGreengrassProvisioner.jar
-rm -rf build out .gradle
 
 # Get the dependencies and build the code
 docker build -t build-aws-greengrass-provisioner -f Dockerfile.build .
