@@ -3,7 +3,10 @@
 set -e
 set -x
 
+# Make sure we get rid of an old JAR so it can't accidentally be pushed
 rm -f AwsGreengrassProvisioner.jar
+
+# Clean up some additional directories to make it faster for Docker to start
 rm -rf build out .gradle
 
 # Get the dependencies and build the code
