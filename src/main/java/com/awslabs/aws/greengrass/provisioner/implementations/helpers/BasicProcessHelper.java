@@ -28,6 +28,7 @@ public class BasicProcessHelper implements ProcessHelper {
     };
 
     @Inject
+    // Minor hack for integration tests
     public AwsCredentialsProvider awsCredentialsProvider;
 
     @Inject
