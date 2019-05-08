@@ -6,6 +6,7 @@ import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicThrea
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.SingleThreadedExecutorHelper;
 import org.apache.commons.io.FileUtils;
 import org.hamcrest.Matcher;
+import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.junit.rules.ExpectedException;
@@ -140,14 +141,17 @@ public class GreengrassDeploymentsIT {
         String hostAwsCredentialsPath = String.join("/", getHome(), ".aws");
         String containerAwsCredentialsPath = "/root/.aws";
 
-        String hostFoundationPath = String.join("/", "..", "aws-greengrass-lambda-functions", "foundation");
+        String hostFoundationPath = getHostPath("foundation");
         String containerFoundationPath = "/foundation";
 
-        String hostDeploymentsPath = String.join("/", "..", "aws-greengrass-lambda-functions", "deployments");
+        String hostDeploymentsPath = getHostPath("deployments");
         String containerDeploymentsPath = "/deployments";
 
-        String hostFunctionsPath = String.join("/", "..", "aws-greengrass-lambda-functions", "functions");
+        String hostFunctionsPath = getHostPath("functions");
         String containerFunctionsPath = "/functions";
+
+        String hostGgdsPath = getHostPath("ggds");
+        String containerGgdsPath = "/ggds";
 
         String baseCommand = "java -jar AwsGreengrassProvisioner.jar";
         String command = baseCommand.join(" ", arguments);
@@ -157,11 +161,17 @@ public class GreengrassDeploymentsIT {
                 .withCopyFileToContainer(MountableFile.forHostPath(new File(hostFoundationPath).toPath()), containerFoundationPath)
                 .withCopyFileToContainer(MountableFile.forHostPath(new File(hostDeploymentsPath).toPath()), containerDeploymentsPath)
                 .withCopyFileToContainer(MountableFile.forHostPath(new File(hostFunctionsPath).toPath()), containerFunctionsPath)
+                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostGgdsPath).toPath()), containerGgdsPath)
                 .withCommand(command);
 
         genericContainer.start();
 
         return genericContainer;
+    }
+
+    @NotNull
+    private String getHostPath(String foundation) {
+        return String.join("/", "..", "aws-greengrass-lambda-functions", foundation);
     }
 
     private void waitForContainerToFinish(GenericContainer genericContainer) {
