@@ -17,7 +17,8 @@ do
         TAG=`git symbolic-ref --short HEAD`
 
 	if [[ "$TAG" == "master" ]]; then
-            echo "Refusing to automatically build and push to master..."
+            ./build.sh
+            echo "Refusing to automatically push to master..."
 	    sleep 10
         else
             until time ./testing/push-to-dockerhub.sh
