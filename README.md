@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/awslabs/aws-greengrass-provisioner.svg?branch=master)](https://travis-ci.org/awslabs/aws-greengrass-provisioner)
 
-**Note: GGP expects to be used with Greengrass Core 1.9.0 only!**
+**Note: GGP expects to be used with Greengrass Core 1.9.1 only!**
 
 Simplifies provisioning Greengrass Cores and building Greengrass Lambda functions.  GGP configures Greengrass so you don't have to.
 
