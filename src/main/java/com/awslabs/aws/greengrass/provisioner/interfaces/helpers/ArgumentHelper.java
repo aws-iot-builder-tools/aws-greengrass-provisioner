@@ -18,7 +18,9 @@ public interface ArgumentHelper<T extends Arguments> {
 
     default Architecture throwDescriptiveException(String architectureString) {
         StringBuilder stringBuilder = new StringBuilder();
-        stringBuilder.append("[" + architectureString + "] is not a valid architecture.");
+        stringBuilder.append("[");
+        stringBuilder.append(architectureString);
+        stringBuilder.append("] is not a valid architecture.");
         stringBuilder.append("\r\n");
         stringBuilder.append("Valid options are: " + Architecture.getList());
 
