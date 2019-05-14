@@ -237,7 +237,7 @@ public class GreengrassDeploymentsIT {
         AwsGreengrassProvisioner.main(split(LIFX_DEPLOYMENT_COMMAND));
     }
 
-    // Test set 4: Expected success with Python LiFX function (has dependencies to fetch)
+    // Test set 4: Expected success with Node Hello World
     @Test
     public void shouldBuildNodeFunctionWithDocker() {
         runContainer(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
@@ -251,7 +251,7 @@ public class GreengrassDeploymentsIT {
         Assert.assertThat(genericContainer.getCurrentContainerInfo().getState().getExitCode(), is(integerMatcher));
     }
 
-    // Test set 4: Expected success with Python LiFX function (has dependencies to fetch)
+    // Test set 4: Expected success with Node Hello World
     @Test
     public void shouldBuildNodeFunctionWithoutDocker() {
         AwsGreengrassProvisioner.main(split(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND));

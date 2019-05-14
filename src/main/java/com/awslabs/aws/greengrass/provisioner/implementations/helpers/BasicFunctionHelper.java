@@ -239,8 +239,8 @@ public class BasicFunctionHelper implements FunctionHelper {
             log.warn("Legacy Java function forced to Java 8");
             language = Language.JAVA8;
         } else if (language.equals(Language.Node)) {
-            log.warn("Legacy Node function forced to Node 6.10");
-            language = Language.NODEJS6_10;
+            log.warn("Legacy Node function forced to Node 8.10");
+            language = Language.NODEJS8_10;
         }
 
         functionConfBuilder.language(language);

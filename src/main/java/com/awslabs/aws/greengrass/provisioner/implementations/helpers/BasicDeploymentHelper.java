@@ -762,7 +762,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             // Describe instances retry policy
             RetryPolicy<DescribeInstancesResponse> describeInstancesRetryPolicy = new RetryPolicy<DescribeInstancesResponse>()
-                    .handle(Ec2Exception.class)
                     .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
                     .withDelay(Duration.ofSeconds(5))
                     .withMaxRetries(3)
@@ -906,7 +905,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Sometimes the security group isn't immediately visible so we need retries
         RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
-                .handle(Ec2Exception.class)
                 .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(3)

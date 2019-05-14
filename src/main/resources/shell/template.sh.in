@@ -259,11 +259,11 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
 
 fi
 
-EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs6.10"
-NODEJS_6_10=`which nodejs6.10`
-NODEJS_6_10_MISSING=$?
+EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
+NODEJS_8_10=`which nodejs8.10`
+NODEJS_8_10_MISSING=$?
 
-if [ $NODEJS_6_10_MISSING -eq 1 ]; then
+if [ $NODEJS_8_10_MISSING -eq 1 ]; then
     # Install NodeJS
     echo "Node is missing"
     GIT=`which git`
@@ -276,9 +276,9 @@ if [ $NODEJS_6_10_MISSING -eq 1 ]; then
         pushd .
         cd n
         env "PATH=$PATH" make install
-        env "PATH=$PATH" n 6.10.3
+        env "PATH=$PATH" n 8.10.0
         NODEJS=`which node`
-        ln -s $NODEJS `dirname $NODEJS`/nodejs6.10
+        ln -s $NODEJS `dirname $NODEJS`/nodejs8.10
         popd
     fi
 fi
