@@ -154,3 +154,9 @@ Long form: `--hsi-softhsm2`
 Generates a configuration and bootstrap scripts that use Greengrass Hardware Security Integration (HSI) with SoftHSM2. Only
 works on Ubuntu. This can be used to test out HSI but is not for production use as it only simulates hardware security.
 Works with `--ec2-launch`.
+
+## Do not use systemd
+
+Long form: `--no-systemd`
+
+Prevents the bootstrap script from adding Greengrass to systemd.
