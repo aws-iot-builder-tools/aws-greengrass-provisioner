@@ -136,7 +136,6 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Sometimes the Lambda IAM role isn't immediately visible so we need retries
         RetryPolicy<CreateFunctionResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<CreateFunctionResponse>()
-                .handle(InvalidParameterValueException.class)
                 .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(10)
