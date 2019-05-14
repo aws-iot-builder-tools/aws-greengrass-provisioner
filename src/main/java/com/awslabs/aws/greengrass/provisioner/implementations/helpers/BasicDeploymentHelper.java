@@ -949,45 +949,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .resources(instanceId)
                 .build();
 
-        Optional<Boolean> optionalSuccess = threadHelper.timeLimitTask(getCreateTagsTask(createTagsRequest), 2, TimeUnit.MINUTES);
+        RetryPolicy<CreateTagsResponse> createTagsResponseRetryPolicy= new RetryPolicy<CreateTagsResponse>()
+                .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(3)
+                .onRetry(failure -> log.warn("Instance may still be starting, trying again..."))
+                .onRetriesExceeded(failure -> log.error("Failed to find the instance in EC2, it was not launched"));
 
-        if (!optionalSuccess.isPresent() || optionalSuccess.get().equals(Boolean.FALSE)) {
-            log.error("Failed to find the instance in EC2, it was not launched");
-            return Optional.empty();
-        }
+        Failsafe.with(createTagsResponseRetryPolicy).get(() ->
+                ec2Client.createTags(createTagsRequest));
 
         log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
 
         return Optional.of(instanceId);
-    }
-
-    private Callable<Boolean> getCreateTagsTask(CreateTagsRequest createTagsRequest) {
-        return () -> createTags(createTagsRequest);
-    }
-
-    private Boolean createTags(CreateTagsRequest createTagsRequest) {
-        Optional<Boolean> status = Optional.empty();
-
-        while (!status.isPresent()) {
-            status = Try.of(() -> Optional.of(ec2Client.createTags(createTagsRequest) != null))
-                    .recover(Ec2Exception.class, this::recoverFromEc2Exception)
-                    .get();
-        }
-
-        return status.get();
-    }
-
-    private Optional<Boolean> recoverFromEc2Exception(Ec2Exception throwable) {
-        if (throwable.getMessage().contains("does not exist")) {
-            log.warn("Instance may still be starting, trying again...");
-
-            ioHelper.sleep(5000);
-            return Optional.empty();
-        }
-
-        // Fail
-        log.error("An exception occurred [" + throwable.getMessage() + "], not launching the instance");
-        return Optional.of(false);
     }
 
     /**
