@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 import static com.google.common.io.Resources.getResource;
 
 public enum Architecture {
-    ARM32("greengrass-linux-armv7l-1.9.1.tar.gz", "dd61136e491bfa77503ede9ed3d59538c9c30add"),
-    X86_64("greengrass-linux-x86-64-1.9.1.tar.gz", "1a1483daa4b1f2062fba47feff1ecf59cddbc1ec"),
-    ARM64("greengrass-linux-aarch64-1.9.1.tar.gz", "c949da81abbf9f2be43758f4dcc529732b38f691");
+    ARM32("greengrass-linux-armv7l-1.9.1.tar.gz"),
+    X86_64("greengrass-linux-x86-64-1.9.1.tar.gz"),
+    ARM64("greengrass-linux-aarch64-1.9.1.tar.gz");
 
     @Getter
     private final String DIST = "dist";
@@ -22,18 +22,14 @@ public enum Architecture {
     @Getter
     private final String filename;
 
-    @Getter
-    private final String hash;
-
     @Getter(lazy = true)
     private final String resourcePath = innerGetResourcePath();
 
     @Getter(lazy = true)
     private final Optional<URL> resourceUrl = innerGetResourceUrl();
 
-    Architecture(String filename, String hash) {
+    Architecture(String filename) {
         this.filename = filename;
-        this.hash = hash;
     }
 
     public static String getList() {
