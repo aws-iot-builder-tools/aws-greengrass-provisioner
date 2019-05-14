@@ -43,6 +43,8 @@ Launches an EC2 instance, sends the bootstrap script to it, and starts Greengras
 
 If no group name is specified with this option one will be randomly generated.
 
+If an architecture is specified it will attempt to launch an Ubuntu image on the specified platform (ARM64 and X86-64 are supported).
+
 This option will only work on a new group and will refuse to run if the group already exists.  This is to prevent
 Greengrass Cores from running on multiple instances at the same time.  To update an EC2 instance that has been built
 with this option simply omit the `--ec2-launch` option on subsequent runs and make sure the group name is specified.
