@@ -42,6 +42,8 @@ public class GreengrassDeploymentsIT {
     private static final File TEMP_FOUNDATION = new File("foundation");
     private static final File TEMP_CREDENTIALS = new File("credentials");
     private static final String DEPLOYMENT_OPTION = "-d deployments/";
+    private static final String ARM32_OPTION = "-a ARM32";
+    private static final String EC2_LAUNCH_OPTION = "--ec2-launch";
     private static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
     private static final String PYTHON_HELLO_WORLD_DEPLOYMENT = "python-hello-world.conf";
     private static final String LIFX_DEPLOYMENT = "lifx.conf";
@@ -55,6 +57,7 @@ public class GreengrassDeploymentsIT {
     private static final String LIFX_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String ALL_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
+    private static final String EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION, " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
     private static Logger log = LoggerFactory.getLogger(GreengrassDeploymentsIT.class);
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -188,7 +191,7 @@ public class GreengrassDeploymentsIT {
                 2, TimeUnit.MINUTES);
     }
 
-    // Test set 1: Expected failure with invalid deployment name
+    // Test set 1: Expected failure with invalid deployment name in Docker
     @Test
     public void shouldFailWithDocker() {
         runContainer(FAIL_DEPLOYMENT_COMMAND, not(equalTo(0)));
@@ -201,7 +204,7 @@ public class GreengrassDeploymentsIT {
         AwsGreengrassProvisioner.main(split(FAIL_DEPLOYMENT_COMMAND));
     }
 
-    // Test set 2: Expected success with CDD skeleton
+    // Test set 2: Expected success with CDD skeleton with Docker
     @Test
     public void shouldBuildJavaFunctionWithDocker() {
         runContainer(CDD_SKELETON_DEPLOYMENT_COMMAND, equalTo(0));
@@ -213,7 +216,7 @@ public class GreengrassDeploymentsIT {
         AwsGreengrassProvisioner.main(split(CDD_SKELETON_DEPLOYMENT_COMMAND));
     }
 
-    // Test set 3: Expected success with Python Hello World
+    // Test set 3: Expected success with Python Hello World with Docker
     @Test
     public void shouldBuildPythonFunctionWithDocker() {
         runContainer(PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
@@ -225,22 +228,58 @@ public class GreengrassDeploymentsIT {
         AwsGreengrassProvisioner.main(split(PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND));
     }
 
-    // Test set 3: Expected success with Python LiFX function (has dependencies to fetch)
+    // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildPythonFunctionWithDependenciesWithDocker() {
         runContainer(LIFX_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
-    // Test set 3: Expected success with Python LiFX function (has dependencies to fetch)
+    // Test set 4: Expected success with Python LiFX function (has dependencies to fetch)
     @Test
     public void shouldBuildPythonFunctionWithDependenciesWithoutDocker() {
         AwsGreengrassProvisioner.main(split(LIFX_DEPLOYMENT_COMMAND));
     }
 
-    // Test set 4: Expected success with Node Hello World
+    // Test set 5: Expected success with Node Hello World with Docker
     @Test
     public void shouldBuildNodeFunctionWithDocker() {
         runContainer(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+    }
+
+
+    // Test set 5: Expected success with Node Hello World
+    @Test
+    public void shouldBuildNodeFunctionWithoutDocker() {
+        AwsGreengrassProvisioner.main(split(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND));
+    }
+
+    // Test set 6: Expected success with all three languages in one build with Docker
+    @Test
+    public void shouldBuildCombinedFunctionWithDocker() {
+        runContainer(ALL_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+    }
+
+    // Test set 6: Expected success with all three languages in one build
+    @Test
+    public void shouldBuildCombinedFunctionWithoutDocker() {
+        AwsGreengrassProvisioner.main(split(ALL_HELLO_WORLD_DEPLOYMENT_COMMAND));
+    }
+
+    // Test set 7: Expected failure to launch an EC2 instance with ARM32 with Docker
+    @Test
+    public void shouldFailEc2LaunchWithArm32WithDocker() {
+        runContainer(EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, not(equalTo(0)));
+    }
+
+    // Test set 7: Expected failure to launch an EC2 instance with ARM32 with Docker
+    @Test
+    public void shouldFailEc2LaunchWithArm32WithoutDocker() {
+        expectedSystemExit.expectSystemExitWithStatus(1);
+        AwsGreengrassProvisioner.main(split(EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND));
+    }
+
+    private String[] split(String input) {
+        return input.split(" ");
     }
 
     private void runContainer(String nodeHelloWorldDeploymentCommand, Matcher<Integer> integerMatcher) {
@@ -249,27 +288,5 @@ public class GreengrassDeploymentsIT {
 
         System.out.println(genericContainer.getLogs());
         Assert.assertThat(genericContainer.getCurrentContainerInfo().getState().getExitCode(), is(integerMatcher));
-    }
-
-    // Test set 4: Expected success with Node Hello World
-    @Test
-    public void shouldBuildNodeFunctionWithoutDocker() {
-        AwsGreengrassProvisioner.main(split(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND));
-    }
-
-    // Test set 5: Expected success with all three languages in one build
-    @Test
-    public void shouldBuildCombinedFunctionWithDocker() {
-        runContainer(ALL_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
-    }
-
-    // Test set 5: Expected success with all three languages in one build
-    @Test
-    public void shouldBuildCombinedFunctionWithoutDocker() {
-        AwsGreengrassProvisioner.main(split(ALL_HELLO_WORLD_DEPLOYMENT_COMMAND));
-    }
-
-    private String[] split(String input) {
-        return input.split(" ");
     }
 }

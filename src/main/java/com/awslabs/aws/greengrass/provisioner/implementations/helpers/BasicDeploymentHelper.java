@@ -58,12 +58,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String USER_DIR = "user.dir";
 
     private static final String AWS_AMI_ACCOUNT_ID = "099720109477";
-    private static final String UBUNTU_16_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-xenial-16.04-amd64-server-????????";
+    private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-????????";
+    private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-????????";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to EC2 instance";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
-    public static final String DOES_NOT_EXIST = "does not exist";
+    private static final String DOES_NOT_EXIST = "does not exist";
 
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -111,8 +112,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     BasicProgressHandler basicProgressHandler;
     @Inject
     Ec2Client ec2Client;
-    @Inject
-    GlobalDefaultHelper globalDefaultHelper;
     @Inject
     ThreadHelper threadHelper;
     @Inject
@@ -690,7 +689,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.ec2Launch) {
             log.info("Launching EC2 instance");
-            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName);
+            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture);
 
             if (!optionalInstanceId.isPresent()) {
                 // Something went wrong, bail out
@@ -855,12 +854,29 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ioHelper.runCommand(session, String.join(" ", "screen", "-d", "-m", command));
     }
 
-    private Optional<String> launchEc2Instance(String groupName) {
+    private Optional<String> launchEc2Instance(String groupName, Architecture architecture) {
         String instanceTagName = String.join("-", "greengrass", groupName);
+
+        Optional<String> nameFilter = Optional.empty();
+        Optional<InstanceType> instanceType = Optional.empty();
+
+        if (architecture.equals(Architecture.X86_64)) {
+            nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
+            instanceType = Optional.of(InstanceType.T2_MICRO);
+        }
+
+        if (architecture.equals(Architecture.ARM64)) {
+            nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
+            instanceType = Optional.of(InstanceType.A1_MEDIUM);
+        }
+
+        if (!nameFilter.isPresent() || !instanceType.isPresent()) {
+            throw new RuntimeException("Unexpected architecture [" + architecture + "] for EC2 launch");
+        }
 
         DescribeImagesRequest describeImagesRequest = DescribeImagesRequest.builder()
                 .owners(AWS_AMI_ACCOUNT_ID)
-                .filters(Filter.builder().name("name").values(UBUNTU_16_04_LTS_AMI_FILTER).build(),
+                .filters(Filter.builder().name("name").values(nameFilter.get()).build(),
                         Filter.builder().name("state").values("available").build())
                 .build();
 
@@ -922,7 +938,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         RunInstancesRequest runInstancesRequest = RunInstancesRequest.builder()
                 .imageId(image.imageId())
-                .instanceType(InstanceType.T2_MICRO)
+                .instanceType(instanceType.get())
                 .maxCount(1)
                 .minCount(1)
                 .keyName(keyPairInfo.keyName())
@@ -950,7 +966,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .resources(instanceId)
                 .build();
 
-        RetryPolicy<CreateTagsResponse> createTagsResponseRetryPolicy= new RetryPolicy<CreateTagsResponse>()
+        RetryPolicy<CreateTagsResponse> createTagsResponseRetryPolicy = new RetryPolicy<CreateTagsResponse>()
                 .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(3)
@@ -1137,7 +1153,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
         ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
-        ggScriptTemplate.write("PAYLOAD:\n".getBytes());
+        ggScriptTemplate.write("PAYLOAD:\n" .getBytes());
         ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
 
         return null;
@@ -1150,7 +1166,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         String ecrEndpoint = ecrDockerHelper.getEcrProxyEndpoint();
         ecrDockerHelper.createEcrRepositoryIfNecessary();
-        String shortEcrEndpoint = ecrEndpoint.substring("https://".length()); // Remove leading https://
+        String shortEcrEndpoint = ecrEndpoint.substring("https://" .length()); // Remove leading https://
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
         try (DockerClient dockerClient = ecrDockerClientProvider.get()) {
