@@ -63,6 +63,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
+    public static final String DOES_NOT_EXIST = "does not exist";
 
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -430,7 +431,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (legacyNodeFunctions.size() != 0) {
             log.error("Some Node functions do not have a Node version specified, this should never happen!");
             legacyNodeFunctions.stream()
-                    .map(functionConf -> functionConf.getFunctionName())
+                    .map(FunctionConf::getFunctionName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -445,7 +446,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (legacyJavaFunctions.size() != 0) {
             log.error("Some Java functions do not have a Java version specified, this should never happen!");
             legacyJavaFunctions.stream()
-                    .map(functionConf -> functionConf.getFunctionName())
+                    .map(FunctionConf::getFunctionName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -762,7 +763,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             // Describe instances retry policy
             RetryPolicy<DescribeInstancesResponse> describeInstancesRetryPolicy = new RetryPolicy<DescribeInstancesResponse>()
-                    .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                    .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                     .withDelay(Duration.ofSeconds(5))
                     .withMaxRetries(3)
                     .onRetry(failure -> log.warn("Waiting for the instance to become visible..."))
@@ -905,7 +906,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Sometimes the security group isn't immediately visible so we need retries
         RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
-                .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(3)
                 .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
@@ -949,45 +950,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .resources(instanceId)
                 .build();
 
-        Optional<Boolean> optionalSuccess = threadHelper.timeLimitTask(getCreateTagsTask(createTagsRequest), 2, TimeUnit.MINUTES);
+        RetryPolicy<CreateTagsResponse> createTagsResponseRetryPolicy= new RetryPolicy<CreateTagsResponse>()
+                .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(3)
+                .onRetry(failure -> log.warn("Instance may still be starting, trying again..."))
+                .onRetriesExceeded(failure -> log.error("Failed to find the instance in EC2, it was not launched"));
 
-        if (!optionalSuccess.isPresent() || optionalSuccess.get().equals(Boolean.FALSE)) {
-            log.error("Failed to find the instance in EC2, it was not launched");
-            return Optional.empty();
-        }
+        Failsafe.with(createTagsResponseRetryPolicy).get(() ->
+                ec2Client.createTags(createTagsRequest));
 
         log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
 
         return Optional.of(instanceId);
-    }
-
-    private Callable<Boolean> getCreateTagsTask(CreateTagsRequest createTagsRequest) {
-        return () -> createTags(createTagsRequest);
-    }
-
-    private Boolean createTags(CreateTagsRequest createTagsRequest) {
-        Optional<Boolean> status = Optional.empty();
-
-        while (!status.isPresent()) {
-            status = Try.of(() -> Optional.of(ec2Client.createTags(createTagsRequest) != null))
-                    .recover(Ec2Exception.class, this::recoverFromEc2Exception)
-                    .get();
-        }
-
-        return status.get();
-    }
-
-    private Optional<Boolean> recoverFromEc2Exception(Ec2Exception throwable) {
-        if (throwable.getMessage().contains("does not exist")) {
-            log.warn("Instance may still be starting, trying again...");
-
-            ioHelper.sleep(5000);
-            return Optional.empty();
-        }
-
-        // Fail
-        log.error("An exception occurred [" + throwable.getMessage() + "], not launching the instance");
-        return Optional.of(false);
     }
 
     /**
