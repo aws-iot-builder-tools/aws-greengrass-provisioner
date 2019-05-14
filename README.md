@@ -54,7 +54,7 @@ your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
 
 ## Option 1: Use Docker
 
-Copy the [deploy.sh](deploy.sh) script from this repo to your local system and make it executable (`chmod +x deploy.sh`
+Copy the [deploy.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/deploy.sh) script from this repo to your local system and make it executable (`chmod +x deploy.sh`
 on Unix-y systems).  Then run `./deploy.sh` to pull the latest version to your system and run it in a Docker container.
 
 If you plan on running GGP in Docker please remember that it needs to write files to the host operating system.  With
