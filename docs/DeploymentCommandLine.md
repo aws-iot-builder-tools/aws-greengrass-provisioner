@@ -43,6 +43,8 @@ Launches an EC2 instance, sends the bootstrap script to it, and starts Greengras
 
 If no group name is specified with this option one will be randomly generated.
 
+If an architecture is specified it will attempt to launch an Ubuntu image on the specified platform (ARM64 and X86-64 are supported).
+
 This option will only work on a new group and will refuse to run if the group already exists.  This is to prevent
 Greengrass Cores from running on multiple instances at the same time.  To update an EC2 instance that has been built
 with this option simply omit the `--ec2-launch` option on subsequent runs and make sure the group name is specified.
@@ -154,3 +156,9 @@ Long form: `--hsi-softhsm2`
 Generates a configuration and bootstrap scripts that use Greengrass Hardware Security Integration (HSI) with SoftHSM2. Only
 works on Ubuntu. This can be used to test out HSI but is not for production use as it only simulates hardware security.
 Works with `--ec2-launch`.
+
+## Do not use systemd
+
+Long form: `--no-systemd`
+
+Prevents the bootstrap script from adding Greengrass to systemd.

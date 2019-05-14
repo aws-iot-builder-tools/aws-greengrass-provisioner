@@ -101,7 +101,11 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.ec2Launch) {
             // If we are launching an EC2 instance we need to build the scripts
-            deploymentArguments.architectureString = Architecture.X86_64.toString();
+            if (deploymentArguments.architectureString == null) {
+                log.warn("No architecture specified for EC2, defaulting to X86-64");
+                deploymentArguments.architectureString = Architecture.X86_64.toString();
+            }
+
             deploymentArguments.scriptOutput = true;
 
             if (deploymentArguments.buildContainer) {
@@ -142,6 +146,10 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.architectureString != null) {
             deploymentArguments.architecture = getArchitecture(deploymentArguments.architectureString);
+        }
+
+        if (deploymentArguments.ec2Launch && deploymentArguments.architecture.equals(Architecture.ARM32)) {
+            throw new RuntimeException("EC2 launch supports X86 and ARM64 only");
         }
 
         if (deploymentArguments.buildContainer == true) {
