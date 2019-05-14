@@ -430,7 +430,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (legacyNodeFunctions.size() != 0) {
             log.error("Some Node functions do not have a Node version specified, this should never happen!");
             legacyNodeFunctions.stream()
-                    .map(functionConf -> functionConf.getFunctionName())
+                    .map(FunctionConf::getFunctionName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -445,7 +445,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (legacyJavaFunctions.size() != 0) {
             log.error("Some Java functions do not have a Java version specified, this should never happen!");
             legacyJavaFunctions.stream()
-                    .map(functionConf -> functionConf.getFunctionName())
+                    .map(FunctionConf::getFunctionName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
