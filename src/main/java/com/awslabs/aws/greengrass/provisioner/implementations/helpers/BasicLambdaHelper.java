@@ -164,18 +164,6 @@ public class BasicLambdaHelper implements LambdaHelper {
         return lambdaFunctionArnInfo;
     }
 
-    public Boolean waitForIamRoleToBeAvailableToLambda(InvalidParameterValueException throwable) {
-        if (!throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda.")) {
-            throw throwable;
-        }
-
-        log.warn("Waiting for IAM role to be available to AWS Lambda...");
-
-        ioHelper.sleep(5000);
-
-        return false;
-    }
-
     @Override
     public PublishVersionResponse publishFunctionVersion(String groupFunctionName) {
         PublishVersionRequest publishVersionRequest = PublishVersionRequest.builder()
