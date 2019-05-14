@@ -27,7 +27,7 @@ public class OfficialGreengrassImageDockerClientProvider implements DockerClient
 
     @Override
     public AuthorizationData getAuthorizationData() {
-        Optional<List<String>> optionalRegistryIds = Optional.of(Arrays.asList(new String[]{ggConstants.getOfficialGreengrassAccountId()}));
+        Optional<List<String>> optionalRegistryIds = Optional.of(Arrays.asList(ggConstants.getOfficialGreengrassAccountId()));
         GetAuthorizationTokenRequest.Builder getAuthorizationTokenRequestBuilder = GetAuthorizationTokenRequest.builder();
         optionalRegistryIds.ifPresent(getAuthorizationTokenRequestBuilder::registryIds);
         GetAuthorizationTokenRequest getAuthorizationTokenRequest = getAuthorizationTokenRequestBuilder.build();
