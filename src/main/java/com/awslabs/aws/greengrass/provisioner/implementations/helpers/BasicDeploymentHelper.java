@@ -63,6 +63,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
+    public static final String DOES_NOT_EXIST = "does not exist";
 
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -762,7 +763,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             // Describe instances retry policy
             RetryPolicy<DescribeInstancesResponse> describeInstancesRetryPolicy = new RetryPolicy<DescribeInstancesResponse>()
-                    .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                    .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                     .withDelay(Duration.ofSeconds(5))
                     .withMaxRetries(3)
                     .onRetry(failure -> log.warn("Waiting for the instance to become visible..."))
@@ -905,7 +906,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Sometimes the security group isn't immediately visible so we need retries
         RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
-                .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(3)
                 .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
@@ -950,7 +951,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .build();
 
         RetryPolicy<CreateTagsResponse> createTagsResponseRetryPolicy= new RetryPolicy<CreateTagsResponse>()
-                .handleIf(throwable -> throwable.getMessage().contains("does not exist"))
+                .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                 .withDelay(Duration.ofSeconds(5))
                 .withMaxRetries(3)
                 .onRetry(failure -> log.warn("Instance may still be starting, trying again..."))
