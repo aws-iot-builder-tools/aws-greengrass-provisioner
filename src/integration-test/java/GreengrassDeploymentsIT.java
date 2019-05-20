@@ -31,8 +31,8 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 public class GreengrassDeploymentsIT {
-    public static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
-    public static final File NODEJS_SDK_REQUIRED_FOR_TESTING = new File("foundation/aws-greengrass-core-sdk-js.zip");
+    private static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
+    private static final File NODEJS_SDK_REQUIRED_FOR_TESTING = new File("foundation/aws-greengrass-core-sdk-js.zip");
     private static final File MASTER_DEPLOYMENTS = new File("../aws-greengrass-lambda-functions/deployments");
     private static final File MASTER_FUNCTIONS = new File("../aws-greengrass-lambda-functions/functions");
     private static final File MASTER_FOUNDATION = new File("../aws-greengrass-lambda-functions/foundation");
