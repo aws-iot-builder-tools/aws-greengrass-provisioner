@@ -21,7 +21,7 @@ do
             echo "Refusing to automatically push to master..."
 	    sleep 10
         else
-            until time ./testing/push-to-dockerhub.sh
+            until time ./testing/push-to-dockerhub.sh $TAG
         	do
                 echo "Build failed, retrying"
                 sleep 10

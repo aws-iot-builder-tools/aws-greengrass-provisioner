@@ -9,7 +9,14 @@ if [ "$CWD" == "testing" ]; then
   cd ..
 fi
 
-TAG=`git symbolic-ref --short HEAD`
+TAG=$1
+
+if [ -z "$TAG" ];
+then
+  TAG=`git symbolic-ref --short HEAD`
+else
+  echo "Manually specified branch $TAG"
+fi
 
 ./build.sh
 
