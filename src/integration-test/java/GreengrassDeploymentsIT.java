@@ -133,7 +133,11 @@ public class GreengrassDeploymentsIT {
 
         basicProcessHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stringBuilder::append), Optional.empty());
 
-        return stringBuilder.toString();
+        String branch = stringBuilder.toString();
+
+        String filteredBranch = branch.replaceAll("[^A-Za-z0-9._-]", "");
+
+        return filteredBranch;
     }
 
     private String getContainerName() {
