@@ -14,7 +14,7 @@ do
     signature2=`find . -not -type d -ls | sort | shasum`
 
     if [[ $signature1 != $signature2 ]]; then
-        TAG=`git symbolic-ref --short HEAD`
+        TAG=`git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-'`
 
 	if [[ "$TAG" == "master" ]]; then
             ./build.sh

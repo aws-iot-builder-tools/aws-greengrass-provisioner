@@ -13,7 +13,7 @@ TAG=$1
 
 if [ -z "$TAG" ];
 then
-  TAG=`git symbolic-ref --short HEAD`
+  TAG=`git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-'`
 else
   echo "Manually specified branch $TAG"
 fi
