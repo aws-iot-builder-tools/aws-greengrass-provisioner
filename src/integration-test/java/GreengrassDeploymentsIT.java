@@ -47,6 +47,7 @@ public class GreengrassDeploymentsIT {
     private static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
     private static final String PYTHON_HELLO_WORLD_DEPLOYMENT = "python-hello-world.conf";
     private static final String LIFX_DEPLOYMENT = "lifx.conf";
+    private static final String NODE_WEBSERVER_DEPLOYMENT = "web-server-node.conf";
     private static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
     private static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     private static final String FAIL_DEPLOYMENT = "FAKE";
@@ -55,6 +56,7 @@ public class GreengrassDeploymentsIT {
     private static final String FAIL_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, PYTHON_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String LIFX_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", GROUP_OPTION);
+    private static final String NODE_WEBSERVER_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String ALL_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
     private static final String EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION, " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
@@ -250,7 +252,6 @@ public class GreengrassDeploymentsIT {
         runContainer(NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
-
     // Test set 5: Expected success with Node Hello World
     @Test
     public void shouldBuildNodeFunctionWithoutDocker() {
@@ -280,6 +281,18 @@ public class GreengrassDeploymentsIT {
     public void shouldFailEc2LaunchWithArm32WithoutDocker() {
         expectedSystemExit.expectSystemExitWithStatus(1);
         AwsGreengrassProvisioner.main(split(EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND));
+    }
+
+    // Test set 8: Expected success with Node Express function (has dependencies to fetch) with Docker
+    @Test
+    public void shouldBuildNodeFunctionWithDependenciesWithDocker() {
+        runContainer(NODE_WEBSERVER_DEPLOYMENT_COMMAND, equalTo(0));
+    }
+
+    // Test set 8: Expected success with Node Express function (has dependencies to fetch)
+    @Test
+    public void shouldBuildNodeFunctionWithDependenciesWithoutDocker() {
+        AwsGreengrassProvisioner.main(split(NODE_WEBSERVER_DEPLOYMENT_COMMAND));
     }
 
     private String[] split(String input) {

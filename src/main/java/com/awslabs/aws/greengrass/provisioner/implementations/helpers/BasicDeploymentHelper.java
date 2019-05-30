@@ -450,14 +450,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new UnsupportedOperationException();
         }
 
-        // Add pip dependency for the Greengrass SDK to all Python functions
-        List<FunctionConf> pythonFunctionConfs = functionConfs.stream()
-                .filter(functionHelper.getPythonPredicate())
-                .collect(Collectors.toList());
-
-        pythonFunctionConfs.stream()
-                .forEach(functionConf -> functionConf.getDependencies().add("greengrasssdk"));
-
         ////////////////////////////////////////////////////
         // Determine if any functions need to run as root //
         ////////////////////////////////////////////////////
