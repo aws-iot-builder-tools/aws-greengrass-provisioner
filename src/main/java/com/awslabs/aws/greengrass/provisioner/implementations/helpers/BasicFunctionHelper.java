@@ -183,7 +183,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles);
     }
 
-    public List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
+    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
         List<String> enabledFunctions = new ArrayList<>();
 
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
@@ -243,6 +243,10 @@ public class BasicFunctionHelper implements FunctionHelper {
             language = Language.NODEJS8_10;
         }
 
+        if (!config.getStringList("conf.dependencies").isEmpty()) {
+            throw new RuntimeException("Specifying dependencies in function.conf is no longer supported. Use requirements.txt for Python and package.json for NodeJS instead.");
+        }
+
         functionConfBuilder.language(language);
         functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
         functionConfBuilder.functionName(config.getString("conf.functionName"));
@@ -256,7 +260,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
         functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
         functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
-        functionConfBuilder.dependencies(config.getStringList("conf.dependencies"));
         functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
         functionConfBuilder.greengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
         functionConfBuilder.uid(config.getInt("conf.uid"));
@@ -293,7 +296,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    public void detectMissingConfigFiles(DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
+    private void detectMissingConfigFiles(DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
         List<String> missingConfigFunctions = enabledFunctionConfigFiles.stream()
                 .filter(not(File::exists))
                 .map(File::getPath)
@@ -307,7 +310,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    public List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
+    private List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
         List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream().map(functionName -> getFunctionConfPath(functionName)).collect(Collectors.toList());
 
@@ -584,19 +587,19 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionToConfMap;
     }
 
-    public void putFunctionConfIntoFunctionConfMap(Map<Function, FunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+    private void putFunctionConfIntoFunctionConfMap(Map<Function, FunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
         FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
         functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn(), functionConf), functionConf);
     }
 
-    public void setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+    private void setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
         FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
         Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
         environmentVariables.putAll(environmentVariablesForLocalLambdas);
         functionConf.setEnvironmentVariables(environmentVariables);
     }
 
-    public AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+    private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
         FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
         String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
         String aliasArn = lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getQualifiedArn();
@@ -604,12 +607,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
     }
 
-    public void logErrorInLambdaFunction(LambdaFunctionArnInfoAndFunctionConf error) {
+    private void logErrorInLambdaFunction(LambdaFunctionArnInfoAndFunctionConf error) {
         log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
         log.error("  Error [" + error.getError().get() + "]");
     }
 
-    public List<Callable<LambdaFunctionArnInfoAndFunctionConf>> getCallableBuildSteps(List<BuildableFunction> buildableFunctions) {
+    private List<Callable<LambdaFunctionArnInfoAndFunctionConf>> getCallableBuildSteps(List<BuildableFunction> buildableFunctions) {
         List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = new ArrayList<>();
 
         buildSteps.addAll(buildableFunctions.stream()

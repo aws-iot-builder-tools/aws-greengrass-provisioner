@@ -48,8 +48,6 @@ public class FunctionConf {
     @Singular
     private List<LocalSageMakerResource> localSageMakerResources;
 
-    private List<String> dependencies;
-
     private boolean accessSysFs;
 
     private boolean greengrassContainer;

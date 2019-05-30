@@ -10,6 +10,7 @@ import org.slf4j.Logger;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.Optional;
 import java.util.function.Function;
@@ -80,4 +81,6 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     default String getArchivePath(FunctionConf functionConf) {
         return String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
     }
+
+    boolean hasDependencies(Path buildDirectory);
 }

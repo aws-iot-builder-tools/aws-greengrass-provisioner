@@ -14,6 +14,7 @@ import org.zeroturnaround.zip.ZipUtil;
 
 import javax.inject.Inject;
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -42,7 +43,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
 
-        if (functionConf.getDependencies().size() > 0) {
+        if (hasDependencies(functionConf.getBuildDirectory())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
 
             // Install all of the dependencies for this function
@@ -59,26 +60,28 @@ public class BasicNodeBuilder implements NodeBuilder {
         moveDeploymentPackage(functionConf, tempFile);
     }
 
+    @Override
+    public boolean hasDependencies(Path buildDirectory) {
+        return buildDirectory.resolve("package.json").toFile().exists();
+    }
+
     private void installDependencies(FunctionConf functionConf) {
-        for (String dependency : functionConf.getDependencies()) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependency [" + dependency + "]");
-            List<String> programAndArguments = new ArrayList<>();
-            programAndArguments.add("npm");
-            programAndArguments.add("install");
-            programAndArguments.add(dependency);
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependencies");
+        List<String> programAndArguments = new ArrayList<>();
+        programAndArguments.add("npm");
+        programAndArguments.add("install");
 
-            ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-            processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
+        ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+        processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
 
-            List<String> stdoutStrings = new ArrayList<>();
-            List<String> stderrStrings = new ArrayList<>();
+        List<String> stdoutStrings = new ArrayList<>();
+        List<String> stderrStrings = new ArrayList<>();
 
-            Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+        Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
 
-            if (!exitVal.isPresent() || exitVal.get() != 0) {
-                log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
-                System.exit(1);
-            }
+        if (!exitVal.isPresent() || exitVal.get() != 0) {
+            log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");
+            System.exit(1);
         }
     }
 

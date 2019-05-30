@@ -28,6 +28,7 @@ import java.util.stream.Collectors;
 
 public class BasicPythonBuilder implements PythonBuilder {
     public static final String PIP = "pip";
+    public static final String REQUIREMENTS_TXT = "requirements.txt";
     private final String DIST_INFO = ".dist-info";
     private final String BIN = "bin";
     private final String INIT_PY = "__init__.py";
@@ -56,7 +57,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
 
-        if (functionConf.getDependencies().size() > 0) {
+        if (hasDependencies(functionConf.getBuildDirectory())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");
 
             installDependencies(functionConf);
@@ -98,41 +99,46 @@ public class BasicPythonBuilder implements PythonBuilder {
         moveDeploymentPackage(functionConf, tempFile);
     }
 
+    @Override
+    public boolean hasDependencies(Path buildDirectory) {
+        return buildDirectory.resolve(REQUIREMENTS_TXT).toFile().exists();
+    }
+
     private void installDependencies(FunctionConf functionConf) {
-        for (String dependency : functionConf.getDependencies()) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependency [" + dependency + "]");
-            List<String> programAndArguments = new ArrayList<>();
-            programAndArguments.add(PIP);
-            programAndArguments.add("install");
-            programAndArguments.add("--upgrade");
-            programAndArguments.add(dependency);
-            programAndArguments.add("-t");
-            programAndArguments.add(".");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependencies");
 
-            ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-            processBuilder.directory(functionConf.getBuildDirectory().toFile());
+        List<String> programAndArguments = new ArrayList<>();
+        programAndArguments.add(PIP);
+        programAndArguments.add("install");
+        programAndArguments.add("--upgrade");
+        programAndArguments.add("-r");
+        programAndArguments.add(REQUIREMENTS_TXT);
+        programAndArguments.add("-t");
+        programAndArguments.add(".");
 
-            List<String> stdoutStrings = new ArrayList<>();
-            List<String> stderrStrings = new ArrayList<>();
+        ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+        processBuilder.directory(functionConf.getBuildDirectory().toFile());
 
-            Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+        List<String> stdoutStrings = new ArrayList<>();
+        List<String> stderrStrings = new ArrayList<>();
 
-            if (!exitVal.isPresent() || exitVal.get() != 0) {
-                log.error("Something went wrong with pip");
+        Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
 
-                if (isCorrectPipVersion()) {
-                    log.error("pip version is correct but the Python dependency failed to install");
-                } else {
-                    log.error("pip version appears to be incorrect or pip is missing");
-                }
+        if (!exitVal.isPresent() || exitVal.get() != 0) {
+            log.error("Something went wrong with pip");
 
-                log.error("To resolve:");
-                log.error("1) Make sure Python and pip are installed and on your path");
-                log.error("2) Make sure pip version is 19.x (pip --version) and install it with get-pip.py if necessary (https://pip.pypa.io/en/stable/installing/)");
-                log.error("3) Try installing the dependency with pip and see if pip returns any installation errors");
-
-                System.exit(1);
+            if (isCorrectPipVersion()) {
+                log.error("pip version is correct but the Python dependency failed to install");
+            } else {
+                log.error("pip version appears to be incorrect or pip is missing");
             }
+
+            log.error("To resolve:");
+            log.error("1) Make sure Python and pip are installed and on your path");
+            log.error("2) Make sure pip version is 19.x (pip --version) and install it with get-pip.py if necessary (https://pip.pypa.io/en/stable/installing/)");
+            log.error("3) Try installing the dependency with pip and see if pip returns any installation errors");
+
+            System.exit(1);
         }
     }
 
