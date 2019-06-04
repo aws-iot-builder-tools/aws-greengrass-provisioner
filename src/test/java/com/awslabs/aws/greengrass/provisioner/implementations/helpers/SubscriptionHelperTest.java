@@ -17,17 +17,13 @@ import static org.mockito.Mockito.mock;
 
 public class SubscriptionHelperTest {
     private BasicSubscriptionHelper basicSubscriptionHelper;
-    private IoHelper ioHelper;
-    private IotHelper iotHelper;
-    private GGVariables ggVariables;
-    private GGConstants ggConstants;
 
     @Before
     public void setup() {
-        ioHelper = mock(IoHelper.class);
-        iotHelper = mock(IotHelper.class);
-        ggVariables = mock(GGVariables.class);
-        ggConstants = mock(GGConstants.class);
+        IoHelper ioHelper = mock(IoHelper.class);
+        IotHelper iotHelper = mock(IotHelper.class);
+        GGVariables ggVariables = mock(GGVariables.class);
+        GGConstants ggConstants = mock(GGConstants.class);
 
         basicSubscriptionHelper = new BasicSubscriptionHelper();
         basicSubscriptionHelper.ioHelper = ioHelper;
