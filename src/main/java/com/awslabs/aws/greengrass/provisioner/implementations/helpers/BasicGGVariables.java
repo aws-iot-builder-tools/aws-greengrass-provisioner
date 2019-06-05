@@ -11,6 +11,7 @@ import javax.inject.Inject;
 
 public class BasicGGVariables implements GGVariables {
     @Inject
+    public
     GGConstants ggConstants;
 
     @Inject
