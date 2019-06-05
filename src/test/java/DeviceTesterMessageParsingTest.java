@@ -102,6 +102,8 @@ public class DeviceTesterMessageParsingTest {
 
     private static String COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-04-30T17:40:38Z\" level=error msg=panic: Async command on remote host failed to start with error: EOF groupId= testCaseId=shadow_sync_test_1 deviceId=DUT executionId=c875296d-6b6d-11e9-99df-0242ac110002 suiteId=GGQ";
 
+    private static String FAIL_TO_ADD_REMOTE_FILE_RESOURCE_ERROR_1 = "[INFO] BasicGroupTestHelper: time=\"2019-06-05T18:02:47Z\" level=info msg=[Error: 101] InternalError: failed to add remote file resource: failed to copy file to target path busybox-x86_64: failed to create parent directory at path busybox-x86_64: Process exited with status 1 suiteId=GGQ groupId=version testCaseId=ggc_version_check_test_1 deviceId=DUT executionId=1e987a3f-87bc-11e9-ac9c-0242ac110002";
+
     private static List<String> CHECKING_GGC_VERSION_STRINGS = List.of(CHECKING_GGC_VERSION_1);
     private static List<String> RUNNING_STRINGS = List.of(RUNNING_1, RUNNING_2);
     private static List<String> FINISHED_STRINGS = List.of(FINISHED_1, FINISHED_2);
@@ -142,6 +144,7 @@ public class DeviceTesterMessageParsingTest {
     private static List<String> FAIL_TO_REMOVE_GREENGRASS_STRINGS = List.of(FAIL_TO_REMOVE_GREENGRASS_ERROR_1);
     private static List<String> FAIL_TO_RESTORE_GREENGRASS_STRINGS = List.of(FAIL_TO_RESTORE_GREENGRASS_ERROR_1);
     private static List<String> COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS = List.of(COMMAND_ON_REMOTE_HOST_FAILED_TO_START_ERROR_1);
+    private static List<String> FAIL_TO_ADD_REMOTE_FILE_RESOURCE_STRINGS = List.of(FAIL_TO_ADD_REMOTE_FILE_RESOURCE_ERROR_1);
     private static List<String> EMPTY_STRINGS = List.of(EMPTY_1);
 
     private static List<String> ALL_STRINGS = List.of(
@@ -185,6 +188,7 @@ public class DeviceTesterMessageParsingTest {
             FAIL_TO_REMOVE_GREENGRASS_STRINGS,
             FAIL_TO_RESTORE_GREENGRASS_STRINGS,
             COMMAND_ON_REMOTE_HOST_FAILED_TO_START_STRINGS,
+            FAIL_TO_ADD_REMOTE_FILE_RESOURCE_STRINGS,
             EMPTY_STRINGS)
             .flatMap(List::toStream);
 

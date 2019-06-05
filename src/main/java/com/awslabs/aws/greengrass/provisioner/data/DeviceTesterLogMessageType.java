@@ -44,6 +44,7 @@ public enum DeviceTesterLogMessageType {
     FAIL_TO_REMOVE_GREENGRASS(string -> string.contains("Fail to remove Greengrass")),
     FAIL_TO_RESTORE_GREENGRASS(string -> string.contains("Fail to restore Greengrass")),
     COMMAND_ON_REMOTE_HOST_FAILED_TO_START(string -> string.contains("Async command on remote host failed to start with error")),
+    FAIL_TO_ADD_REMOTE_FILE_RESOURCE(string -> string.contains("failed to add remote file resource")),
     EMPTY(string -> string.isEmpty());
 
     private final Function<String, Boolean> matcher;
