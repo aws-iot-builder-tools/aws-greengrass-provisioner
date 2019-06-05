@@ -1,10 +1,4 @@
-FROM ubuntu:18.04
-
-# Update package manager
-RUN apt-get update -y && apt-get upgrade -y
-
-# Install JDK so Java functions can be built
-RUN apt-get install -y openjdk-8-jdk-headless
+FROM openjdk:8u212-b04-jdk-stretch
 
 COPY build.gradle /build/
 COPY gradlew /build/
