@@ -21,11 +21,6 @@ public class OfficialGreengrassImageDockerClientProvider implements DockerClient
     }
 
     @Override
-    public String getRegistryUrl() {
-        return "https://" + ggConstants.getOfficialGreengrassEcrEndpoint();
-    }
-
-    @Override
     public AuthorizationData getAuthorizationData() {
         Optional<List<String>> optionalRegistryIds = Optional.of(Arrays.asList(ggConstants.getOfficialGreengrassAccountId()));
         GetAuthorizationTokenRequest.Builder getAuthorizationTokenRequestBuilder = GetAuthorizationTokenRequest.builder();

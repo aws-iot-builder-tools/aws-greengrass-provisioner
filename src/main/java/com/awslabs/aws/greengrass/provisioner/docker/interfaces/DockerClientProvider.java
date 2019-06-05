@@ -57,8 +57,6 @@ public interface DockerClientProvider extends Provider<DockerClient> {
                 .build();
     }
 
-    String getRegistryUrl();
-
     AuthorizationData getAuthorizationData();
 
     default String getDockerHost() {

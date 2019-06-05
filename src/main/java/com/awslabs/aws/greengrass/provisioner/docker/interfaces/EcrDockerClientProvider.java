@@ -17,11 +17,6 @@ public class EcrDockerClientProvider implements DockerClientProvider {
     }
 
     @Override
-    public String getRegistryUrl() {
-        return getAuthorizationData().proxyEndpoint();
-    }
-
-    @Override
     public AuthorizationData getAuthorizationData() {
         GetAuthorizationTokenRequest getAuthorizationTokenRequest = GetAuthorizationTokenRequest.builder().build();
         GetAuthorizationTokenResponse getAuthorizationTokenResponse = ecrClient.getAuthorizationToken(getAuthorizationTokenRequest);
