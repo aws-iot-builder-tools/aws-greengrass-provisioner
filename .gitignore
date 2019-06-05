@@ -19,3 +19,7 @@ build
 *.swp
 /out
 *.jar
+/functions
+/foundation
+/deployments
+/credentials
