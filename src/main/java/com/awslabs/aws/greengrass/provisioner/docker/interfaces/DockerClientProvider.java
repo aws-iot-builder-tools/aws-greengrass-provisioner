@@ -15,7 +15,7 @@ public interface DockerClientProvider extends Provider<DockerClient> {
     default RegistryAuthSupplier getRegistryAuthSupplier() {
         return new RegistryAuthSupplier() {
             @Override
-            public RegistryAuth authFor(String imageName) throws DockerException {
+            public RegistryAuth authFor(String imageName) {
                 return standardAuth();
             }
 
@@ -36,12 +36,12 @@ public interface DockerClientProvider extends Provider<DockerClient> {
             }
 
             @Override
-            public RegistryAuth authForSwarm() throws DockerException {
+            public RegistryAuth authForSwarm() {
                 throw new RuntimeException("Not implemented");
             }
 
             @Override
-            public RegistryConfigs authForBuild() throws DockerException {
+            public RegistryConfigs authForBuild() {
                 return RegistryConfigs.builder()
                         .addConfig(getDockerHost(), standardAuth())
                         .build();
@@ -56,8 +56,6 @@ public interface DockerClientProvider extends Provider<DockerClient> {
                 .registryAuthSupplier(getRegistryAuthSupplier())
                 .build();
     }
-
-    String getRegistryUrl();
 
     AuthorizationData getAuthorizationData();
 

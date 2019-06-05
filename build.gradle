@@ -50,6 +50,8 @@ def httpClientVersion = '4.5.8'
 def jodahFailsafeVersion = '2.0.1'
 def testContainersVersion = '1.11.3'
 def hamcrestVersion = '2.1'
+def mqttOverWebsocketsVersion = 'mqtt-over-websockets-0.3'
+def awaitilityVersion = '3.1.6'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirTemp = "$buildDir/temp"
@@ -153,6 +155,11 @@ repositories {
     maven {
         url "https://repo.gradle.org/gradle/libs-releases-local/"
     }
+
+    // Jitpack for MQTT over WebSockets support
+    maven {
+        url 'https://jitpack.io'
+    }
 }
 
 sourceSets {
@@ -217,6 +224,8 @@ dependencies {
     testCompile "com.github.stefanbirkner:system-rules:$systemRulesVersion"
     testCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
     testCompile "org.mockito:mockito-core:$mockitoVersion"
+    testCompile "com.github.aws-samples:iot-reference-architectures:$mqttOverWebsocketsVersion"
+    testCompile "org.awaitility:awaitility:$awaitilityVersion"
 }
 
 // From: https://gist.github.com/matthiasbalke/3c9ecccbea1d460ee4c3fbc5843ede4a
