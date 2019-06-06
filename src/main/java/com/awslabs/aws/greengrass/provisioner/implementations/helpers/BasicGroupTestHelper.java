@@ -39,9 +39,9 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String TAIL_FOLLOW_COMMAND = "tail -F " + FULL_RUNTIME_LOG_PATH;
     private static final int SSH_TIMEOUT_IN_MINUTES = 45;
     private static final String DEVICE_POOL_ID = "DevicePool";
-    private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.3.0.zip";
-    private static final String LINUX_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.0.zip";
-    private static final String MAC_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.3.0.zip";
+    private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.3.1.zip";
+    private static final String LINUX_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.1.zip";
+    private static final String MAC_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_mac_1.3.1.zip";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to device under test";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, device under test may not be ready yet...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, device under test may not be ready yet...";
@@ -388,6 +388,15 @@ public class BasicGroupTestHelper implements GroupTestHelper {
         deviceTesterHelper.log(logMessage);
 
         DeviceTesterLogMessageType logMessageType = deviceTesterHelper.getLogMessageType(logMessage);
+
+        // Failure to add a remote file resource can indicate that there was a failure to sudo inside of device tester
+        if (logMessageType.equals(DeviceTesterLogMessageType.FAIL_TO_ADD_REMOTE_FILE_RESOURCE)) {
+            log.warn("The user running Device Tester on the remote host may not have permissions to sudo without a password.");
+            log.warn("To use GGP with Device Tester the user will need to be able to perform a passwordless sudo.");
+            log.warn("To enable passwordless sudo see this article: https://serverfault.com/a/160587");
+            log.warn("");
+            log.warn("If Device Tester fails after this point please enable passwordless sudo for the user and try again.");
+        }
 
         io.vavr.collection.Map<String, String> values = deviceTesterHelper.extractValuesFromLogMessage(logMessage);
 
