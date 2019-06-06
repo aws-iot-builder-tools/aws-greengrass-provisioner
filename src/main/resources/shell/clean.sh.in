@@ -31,4 +31,5 @@ rm -rf /greengrass \
   ./ggd.*.device.crt \
   ./run-*.sh \
   ./${ROOT_CA} \
+  ./n \
 
