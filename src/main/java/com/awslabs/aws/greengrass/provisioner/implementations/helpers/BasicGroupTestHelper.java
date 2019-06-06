@@ -389,6 +389,15 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         DeviceTesterLogMessageType logMessageType = deviceTesterHelper.getLogMessageType(logMessage);
 
+        // Failure to add a remote file resource can indicate that there was a failure to sudo inside of device tester
+        if (logMessageType.equals(DeviceTesterLogMessageType.FAIL_TO_ADD_REMOTE_FILE_RESOURCE)) {
+            log.warn("The user running Device Tester on the remote host may not have permissions to sudo without a password.");
+            log.warn("To use GGP with Device Tester the user will need to be able to perform a passwordless sudo.");
+            log.warn("To enable passwordless sudo see this article: https://serverfault.com/a/160587");
+            log.warn("");
+            log.warn("If Device Tester fails after this point please enable passwordless sudo for the user and try again.");
+        }
+
         io.vavr.collection.Map<String, String> values = deviceTesterHelper.extractValuesFromLogMessage(logMessage);
 
         Option<String> optionalTestCaseId = deviceTesterHelper.getOptionalTestCaseId(values);
