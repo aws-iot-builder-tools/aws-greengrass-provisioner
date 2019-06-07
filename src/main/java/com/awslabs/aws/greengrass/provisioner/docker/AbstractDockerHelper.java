@@ -190,11 +190,6 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         try (DockerClient dockerClient = getDockerClient()) {
             if (!isContainerRunning(groupName, dockerClient)) {
                 dockerClient.startContainer(containerId);
-
-                // Create the missing symlink for java8
-                String[] command = {"ln", "-sf", "/usr/bin/java", "/usr/local/bin/java8"};
-                ExecCreation execCreation = dockerClient.execCreate(containerId, command);
-                dockerClient.execStart(execCreation.id());
             } else {
                 log.info("The Docker container for this core is already running locally, the core should be redeploying now");
             }
