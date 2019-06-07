@@ -50,7 +50,7 @@ def httpClientVersion = '4.5.8'
 def jodahFailsafeVersion = '2.0.1'
 def testContainersVersion = '1.11.3'
 def hamcrestVersion = '2.1'
-def mqttOverWebsocketsVersion = 'mqtt-over-websockets-0.3'
+def mqttOverWebsocketsVersion = 'mqtt-over-websockets-0.3.4'
 def awaitilityVersion = '3.1.6'
 
 def buildDirDist = "$buildDir/dist"
