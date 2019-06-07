@@ -249,7 +249,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         functions.add(newFunction);
 
-        String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions));
+        String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions), greengrassHelper.getDefaultIsolationMode(groupInformation));
 
         GroupVersion newGroupVersion = GroupVersion.builder()
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
@@ -285,7 +285,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         List<Subscription> subscriptions = removeSubscriptions(groupInformation, functionToDeleteArn);
         String newSubscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
-        String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions));
+        String newFunctionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functions), greengrassHelper.getDefaultIsolationMode(groupInformation));
 
         GroupVersion newGroupVersion = GroupVersion.builder()
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)

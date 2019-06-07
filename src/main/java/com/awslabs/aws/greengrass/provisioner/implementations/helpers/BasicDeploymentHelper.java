@@ -27,10 +27,8 @@ import net.jodah.failsafe.RetryPolicy;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
-import software.amazon.awssdk.services.greengrass.model.Device;
 import software.amazon.awssdk.services.greengrass.model.Function;
-import software.amazon.awssdk.services.greengrass.model.GroupVersion;
-import software.amazon.awssdk.services.greengrass.model.Subscription;
+import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 
@@ -398,12 +396,27 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         List<Subscription> subscriptions = new ArrayList<>();
 
         ///////////////////////////////////////////////////
+        // Determine the default function isolation mode //
+        ///////////////////////////////////////////////////
+
+        FunctionIsolationMode defaultFunctionIsolationMode;
+
+        if (deploymentArguments.dockerLaunch) {
+            // If we're doing a Docker launch we always use no container
+            log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
+            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
+        } else {
+            // If we're not doing a Docker launch use the default values in the configuration file
+            defaultFunctionIsolationMode = ggVariables.getDefaultFunctionIsolationMode();
+        }
+
+        ///////////////////////////////////////////////////
         // Find enabled functions and their mapping info //
         ///////////////////////////////////////////////////
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
 
-        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf);
+        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
 
         // Find Python functions that may not have had their language updated, this should never happen
         Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
@@ -535,7 +548,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         /////////////////////////////////////////////////////////////////////////
 
         log.info("Creating function definition");
-        String functionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functionToConfMap.keySet()));
+        String functionDefinitionVersionArn = greengrassHelper.createFunctionDefinitionVersion(ImmutableSet.copyOf(functionToConfMap.keySet()), defaultFunctionIsolationMode);
 
         //////////////////////////////////////////////////
         // Create all of the things from the GGD config //
@@ -1145,7 +1158,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
         ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
-        ggScriptTemplate.write("PAYLOAD:\n" .getBytes());
+        ggScriptTemplate.write("PAYLOAD:\n".getBytes());
         ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
 
         return null;
@@ -1158,7 +1171,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         String ecrEndpoint = ecrDockerHelper.getEcrProxyEndpoint();
         ecrDockerHelper.createEcrRepositoryIfNecessary();
-        String shortEcrEndpoint = ecrEndpoint.substring("https://" .length()); // Remove leading https://
+        String shortEcrEndpoint = ecrEndpoint.substring("https://".length()); // Remove leading https://
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
         try (DockerClient dockerClient = ecrDockerClientProvider.get()) {
