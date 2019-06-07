@@ -18,13 +18,18 @@ import org.testcontainers.utility.MountableFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.CoreMatchers.is;
@@ -60,6 +65,17 @@ public class GreengrassEndToEndIT {
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
         GreengrassITShared.beforeTestSetup();
+
+        // Since we're testing with Docker but not using the native Docker launch feature we need to set the default function isolation mode to no container
+        Path functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
+
+        try (Stream<String> lines = Files.lines(functionDefaultsPath)) {
+            List<String> replaced = lines
+                    .map(line -> line.replaceAll("greengrassContainer\\s*=\\strue", "greengrassContainer = false"))
+                    .collect(Collectors.toList());
+            Files.write(functionDefaultsPath, replaced);
+        }
+
         BasicGGConstants basicGGConstants = new BasicGGConstants();
         BasicGGVariables basicGGVariables = new BasicGGVariables();
         basicGGVariables.ggConstants = basicGGConstants;
