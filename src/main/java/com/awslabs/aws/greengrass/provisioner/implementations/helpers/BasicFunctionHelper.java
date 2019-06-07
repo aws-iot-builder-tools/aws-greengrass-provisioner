@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
+import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
 
 import javax.inject.Inject;
@@ -174,16 +175,16 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf) {
+    public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
 
         // Find any functions with missing config files
         detectMissingConfigFiles(deploymentConf, enabledFunctionConfigFiles);
 
-        return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles);
+        return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
+    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<String> enabledFunctions = new ArrayList<>();
 
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
@@ -195,7 +196,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
             Path functionPath = getFunctionPath(enabledFunctionConf);
 
-            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath)).get();
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
 
             enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
@@ -212,7 +213,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath) {
+    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
         FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
 
         // Load function config file and use function.defaults.conf as the fallback for missing values
@@ -226,6 +227,10 @@ public class BasicFunctionHelper implements FunctionHelper {
             config = config.withValue(entry.getKey(), ConfigValueFactory.fromAnyRef(entry.getValue()));
         }
 
+        // Make sure we use the calculated default function isolation mode (forced to no container when using Docker)
+        config = config.withValue(ggConstants.getConfGreengrassContainer(), ConfigValueFactory.fromAnyRef(FunctionIsolationMode.GREENGRASS_CONTAINER.equals(defaultFunctionIsolationMode) ? true : false));
+
+        // Resolve the entire fallback config
         config = config.resolve();
 
         functionConfBuilder.buildDirectory(functionPath);

@@ -45,7 +45,7 @@ public interface GreengrassHelper {
      */
     Function buildFunctionModel(String functionArn, FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
 
-    String createFunctionDefinitionVersion(Set<Function> functions);
+    String createFunctionDefinitionVersion(Set<Function> functions, FunctionIsolationMode defaultFunctionIsolationMode);
 
     String createDeviceDefinitionAndVersion(String deviceDefinitionName, List<Device> devices);
 
@@ -70,6 +70,10 @@ public interface GreengrassHelper {
     GetGroupVersionResponse getLatestGroupVersion(GroupInformation groupInformation);
 
     List<Function> getFunctions(GroupInformation groupInformation);
+
+    FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation);
+
+    FunctionDefinitionVersion getFunctionDefinitionVersion(GroupInformation groupInformation);
 
     List<Device> getDevices(GroupInformation groupInformation);
 

@@ -36,8 +36,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Inject
     GGConstants ggConstants;
     @Inject
-    GGVariables ggVariables;
-    @Inject
     IdExtractor idExtractor;
 
     @Inject
@@ -303,7 +301,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createFunctionDefinitionVersion(Set<Function> functions) {
+    public String createFunctionDefinitionVersion(Set<Function> functions, FunctionIsolationMode defaultFunctionIsolationMode) {
         functions = functions.stream()
                 .filter(function -> !function.functionArn().equals(ggConstants.getGgIpDetectorArn()))
                 .collect(Collectors.toSet());
@@ -338,8 +336,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         ImmutableSet.Builder<Function> functionsToScrubBuilder = ImmutableSet.builder();
         functionsToScrubBuilder.addAll(functionsWithNoContainer);
 
-        if (ggVariables.getDefaultFunctionIsolationMode().equals(FunctionIsolationMode.NO_CONTAINER)) {
-            log.warn("Isolation mode set to NoContainer in function defaults file, setting default isolation mode for the group to NoContainer");
+        if (defaultFunctionIsolationMode.equals(FunctionIsolationMode.NO_CONTAINER)) {
+            log.warn("Default isolation mode is no container");
 
             functionDefinitionVersionBuilder.defaultConfig(
                     FunctionDefaultConfig.builder()
@@ -906,6 +904,23 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public List<Function> getFunctions(GroupInformation groupInformation) {
+        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
+
+        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
+        List<Function> functions = new ArrayList<>(functionDefinition.functions());
+
+        return functions;
+    }
+
+    @Override
+    public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
+        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
+
+        return functionDefinition.defaultConfig().execution().isolationMode();
+    }
+
+    @Override
+    public FunctionDefinitionVersion getFunctionDefinitionVersion(GroupInformation groupInformation) {
         GroupVersion groupVersion = getGroupVersion(groupInformation);
 
         String functionDefinitionVersionArn = groupVersion.functionDefinitionVersionArn();
@@ -917,12 +932,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         GetFunctionDefinitionVersionResponse getFunctionDefinitionVersionResponse = greengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
 
-        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Function> functions = new ArrayList<>(functionDefinition.functions());
-
-        return functions;
+        return getFunctionDefinitionVersionResponse.definition();
     }
 
     @Override
