@@ -61,6 +61,7 @@ public class GreengrassEndToEndIT {
     private Gson gson;
     private boolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+    private Path functionDefaultsPath;
     private GreengrassITShared greengrassITShared;
 
     @Before
@@ -69,14 +70,9 @@ public class GreengrassEndToEndIT {
         greengrassITShared = new GreengrassITShared();
 
         // Since we're testing with Docker but not using the native Docker launch feature we need to set the default function isolation mode to no container
-        Path functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
+        functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
 
-        try (Stream<String> lines = Files.lines(functionDefaultsPath)) {
-            List<String> replaced = lines
-                    .map(line -> line.replaceAll("greengrassContainer\\s*=\\strue", "greengrassContainer = false"))
-                    .collect(Collectors.toList());
-            Files.write(functionDefaultsPath, replaced);
-        }
+        replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
         BasicGGConstants basicGGConstants = new BasicGGConstants();
         BasicGGVariables basicGGVariables = new BasicGGVariables();
@@ -102,6 +98,15 @@ public class GreengrassEndToEndIT {
         defaultTimeout = new Duration(90, TimeUnit.SECONDS);
     }
 
+    private void replaceStringInFunctionDefaults(String regex, String replacement) throws IOException {
+        try (Stream<String> lines = Files.lines(functionDefaultsPath)) {
+            List<String> replaced = lines
+                    .map(line -> line.replaceAll(regex, replacement))
+                    .collect(Collectors.toList());
+            Files.write(functionDefaultsPath, replaced);
+        }
+    }
+
     @After
     public void afterTestTeardown() throws IOException {
         GreengrassITShared.cleanDirectories();
@@ -112,6 +117,22 @@ public class GreengrassEndToEndIT {
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
         Assert.assertThat(oemArchiveName.exists(), is(true));
+    }
+
+    @Test
+    public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException {
+        // First build with the normal UID and GID configuration
+        greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
+
+        waitForContainerToStartSuccessfully(defaultTimeout);
+
+        // Redeploy with the UID and GID set to zero, this should fail because the original group.json wasn't set up to allow functions to run as root
+        replaceStringInFunctionDefaults("uid\\s*=\\s[0-9]+", "uid = 0");
+        replaceStringInFunctionDefaults("gid\\s*=\\s[0-9]+", "gid = 0");
+
+        greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
+
+        Assert.fail("This should throw an exception");
     }
 
     @Test
