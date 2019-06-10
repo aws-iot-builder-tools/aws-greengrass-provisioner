@@ -61,10 +61,12 @@ public class GreengrassEndToEndIT {
     private Gson gson;
     private boolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+    private GreengrassITShared greengrassITShared;
 
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
         GreengrassITShared.beforeTestSetup();
+        greengrassITShared = new GreengrassITShared();
 
         // Since we're testing with Docker but not using the native Docker launch feature we need to set the default function isolation mode to no container
         Path functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
@@ -79,9 +81,9 @@ public class GreengrassEndToEndIT {
         BasicGGConstants basicGGConstants = new BasicGGConstants();
         BasicGGVariables basicGGVariables = new BasicGGVariables();
         basicGGVariables.ggConstants = basicGGConstants;
-        String groupName = GreengrassITShared.GROUP_NAME;
+        String groupName = greengrassITShared.GROUP_NAME;
         oemArchiveName = new File(basicGGVariables.getOemArchiveName(groupName));
-        coreName = GreengrassITShared.GROUP_NAME + "_Core";
+        coreName = greengrassITShared.GROUP_NAME + "_Core";
 
         ioHelper = new BasicIoHelper();
 

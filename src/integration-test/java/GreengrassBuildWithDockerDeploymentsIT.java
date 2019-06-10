@@ -27,6 +27,7 @@ import static org.mockito.Mockito.mock;
 
 public class GreengrassBuildWithDockerDeploymentsIT {
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
+    private static GreengrassITShared greengrassITShared;
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
     @Rule
@@ -34,6 +35,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
 
     @BeforeClass
     public static void beforeClassSetup() throws IOException, InterruptedException {
+        greengrassITShared = new GreengrassITShared();
         ProcessBuilder processBuilder = new ProcessBuilder("/bin/bash", "-c", "./build.sh");
 
         Process process = processBuilder.start();
@@ -152,49 +154,49 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 1: Expected failure with invalid deployment name in Docker
     @Test
     public void shouldFailWithDocker() {
-        runContainer(GreengrassITShared.FAIL_DEPLOYMENT_COMMAND, not(equalTo(0)));
+        runContainer(greengrassITShared.FAIL_DEPLOYMENT_COMMAND, not(equalTo(0)));
     }
 
     // Test set 2: Expected success with CDD skeleton with Docker
     @Test
     public void shouldBuildJavaFunctionWithDocker() {
-        runContainer(GreengrassITShared.CDD_SKELETON_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.CDD_SKELETON_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     // Test set 3: Expected success with Python Hello World with Docker
     @Test
     public void shouldBuildPythonFunctionWithDocker() {
-        runContainer(GreengrassITShared.PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildPythonFunctionWithDependenciesWithDocker() {
-        runContainer(GreengrassITShared.LIFX_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.LIFX_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     // Test set 5: Expected success with Node Hello World with Docker
     @Test
     public void shouldBuildNodeFunctionWithDocker() {
-        runContainer(GreengrassITShared.NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     // Test set 6: Expected success with all three languages in one build with Docker
     @Test
     public void shouldBuildCombinedFunctionWithDocker() {
-        runContainer(GreengrassITShared.ALL_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.ALL_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     // Test set 7: Expected failure to launch an EC2 instance with ARM32 with Docker
     @Test
     public void shouldFailEc2LaunchWithArm32WithDocker() {
-        runContainer(GreengrassITShared.EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, not(equalTo(0)));
+        runContainer(greengrassITShared.EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, not(equalTo(0)));
     }
 
     // Test set 8: Expected success with Node Express function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildNodeFunctionWithDependenciesWithDocker() {
-        runContainer(GreengrassITShared.NODE_WEBSERVER_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.NODE_WEBSERVER_DEPLOYMENT_COMMAND, equalTo(0));
     }
 
     private void runContainer(String nodeHelloWorldDeploymentCommand, Matcher<Integer> integerMatcher) {
