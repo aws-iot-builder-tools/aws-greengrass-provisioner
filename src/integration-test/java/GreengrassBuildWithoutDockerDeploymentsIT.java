@@ -16,7 +16,7 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     public ExpectedException expectedException = ExpectedException.none();
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
-    private GreengrassITShared greengrassITShared;
+    GreengrassITShared greengrassITShared;
 
     @Before
     public void beforeTestSetup() throws IOException {
