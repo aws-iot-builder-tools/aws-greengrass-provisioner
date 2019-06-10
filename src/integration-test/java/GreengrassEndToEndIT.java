@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import org.awaitility.Duration;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.collection.IsMapContaining;
+import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.junit.rules.ExpectedException;
@@ -61,31 +62,30 @@ public class GreengrassEndToEndIT {
     private Gson gson;
     private boolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+    private Path functionDefaultsPath;
+    private GreengrassITShared greengrassITShared;
 
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
         GreengrassITShared.beforeTestSetup();
+        greengrassITShared = new GreengrassITShared();
 
         // Since we're testing with Docker but not using the native Docker launch feature we need to set the default function isolation mode to no container
-        Path functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
+        functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
 
-        try (Stream<String> lines = Files.lines(functionDefaultsPath)) {
-            List<String> replaced = lines
-                    .map(line -> line.replaceAll("greengrassContainer\\s*=\\strue", "greengrassContainer = false"))
-                    .collect(Collectors.toList());
-            Files.write(functionDefaultsPath, replaced);
-        }
+        replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
         BasicGGConstants basicGGConstants = new BasicGGConstants();
         BasicGGVariables basicGGVariables = new BasicGGVariables();
         basicGGVariables.ggConstants = basicGGConstants;
-        String groupName = GreengrassITShared.GROUP_NAME;
+        String groupName = greengrassITShared.GROUP_NAME;
         oemArchiveName = new File(basicGGVariables.getOemArchiveName(groupName));
-        coreName = GreengrassITShared.GROUP_NAME + "_Core";
+        coreName = greengrassITShared.GROUP_NAME + "_Core";
 
         ioHelper = new BasicIoHelper();
 
         greengrassBuildWithoutDockerDeploymentsIT = new GreengrassBuildWithoutDockerDeploymentsIT();
+        greengrassBuildWithoutDockerDeploymentsIT.greengrassITShared = greengrassITShared;
 
         BasicMqttOverWebsocketsProvider basicMqttOverWebsocketsProvider = new BasicMqttOverWebsocketsProvider();
         String clientId = UUID.randomUUID().toString();
@@ -98,6 +98,15 @@ public class GreengrassEndToEndIT {
         flag = false;
 
         defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+    }
+
+    private void replaceStringInFunctionDefaults(String regex, String replacement) throws IOException {
+        try (Stream<String> lines = Files.lines(functionDefaultsPath)) {
+            List<String> replaced = lines
+                    .map(line -> line.replaceAll(regex, replacement))
+                    .collect(Collectors.toList());
+            Files.write(functionDefaultsPath, replaced);
+        }
     }
 
     @After
@@ -113,14 +122,37 @@ public class GreengrassEndToEndIT {
     }
 
     @Test
+    public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException, MqttException {
+        expectedSystemExit.expectSystemExitWithStatus(1);
+       
+        // First build with the normal UID and GID configuration
+        greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
+
+        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
+
+        waitForContainerToStartSuccessfully(defaultTimeout);
+
+        // Redeploy with the UID and GID set to zero, this should fail because the original group.json wasn't set up to allow functions to run as root
+        replaceStringInFunctionDefaults("uid\\s*=\\s[0-9]+", "uid = 0");
+        replaceStringInFunctionDefaults("gid\\s*=\\s[0-9]+", "gid = 0");
+
+        greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
+
+        Assert.fail("This should throw an exception");
+    }
+
+    @Test
     public void shouldStartWithNodeConfiguration() throws IOException, InterruptedException, MqttException {
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
-        String expectedTopic = String.join("/", coreName, "node", "hello", "world");
-
-        setupHelloWorldFunctionCheck(expectedTopic);
+        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
 
         waitForContainerToStartSuccessfully(defaultTimeout);
+    }
+
+    @NotNull
+    public String getNodeExpectedTopic() {
+        return String.join("/", coreName, "node", "hello", "world");
     }
 
     @Test

@@ -618,6 +618,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 return DeploymentStatus.FAILED;
             }
 
+            if (errorMessage.contains("Greengrass is not configured to run lambdas with root permissions")) {
+                return DeploymentStatus.FAILED;
+            }
+
             // Possible error messages we've encountered
             //   "The security token included in the request is invalid."
             //   "We're having a problem right now.  Please try again in a few minutes."
