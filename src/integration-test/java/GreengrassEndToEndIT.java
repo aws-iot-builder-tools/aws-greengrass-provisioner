@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import org.awaitility.Duration;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.collection.IsMapContaining;
+import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.junit.rules.ExpectedException;
@@ -121,9 +122,13 @@ public class GreengrassEndToEndIT {
     }
 
     @Test
-    public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException {
+    public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException, MqttException {
+        expectedSystemExit.expectSystemExitWithStatus(1);
+       
         // First build with the normal UID and GID configuration
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
+
+        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
 
         waitForContainerToStartSuccessfully(defaultTimeout);
 
@@ -140,11 +145,14 @@ public class GreengrassEndToEndIT {
     public void shouldStartWithNodeConfiguration() throws IOException, InterruptedException, MqttException {
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
-        String expectedTopic = String.join("/", coreName, "node", "hello", "world");
-
-        setupHelloWorldFunctionCheck(expectedTopic);
+        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
 
         waitForContainerToStartSuccessfully(defaultTimeout);
+    }
+
+    @NotNull
+    public String getNodeExpectedTopic() {
+        return String.join("/", coreName, "node", "hello", "world");
     }
 
     @Test
