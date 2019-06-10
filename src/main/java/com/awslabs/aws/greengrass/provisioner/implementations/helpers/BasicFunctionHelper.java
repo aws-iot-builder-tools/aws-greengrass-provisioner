@@ -219,6 +219,10 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Load function config file and use function.defaults.conf as the fallback for missing values
         Config config = ConfigFactory.parseFile(enabledFunctionConf);
         Config functionDefaults = ggVariables.getFunctionDefaults();
+
+        // Make sure we use the calculated default function isolation mode as the default (forced to no container when using Docker)
+        functionDefaults = functionDefaults.withValue(ggConstants.getConfGreengrassContainer(), ConfigValueFactory.fromAnyRef(FunctionIsolationMode.GREENGRASS_CONTAINER.equals(defaultFunctionIsolationMode) ? true : false));
+
         config = config.withFallback(functionDefaults);
 
         // Add the default environment values to the config so they can be used for resolution
@@ -226,9 +230,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (Map.Entry<String, String> entry : defaultEnvironment.entrySet()) {
             config = config.withValue(entry.getKey(), ConfigValueFactory.fromAnyRef(entry.getValue()));
         }
-
-        // Make sure we use the calculated default function isolation mode (forced to no container when using Docker)
-        config = config.withValue(ggConstants.getConfGreengrassContainer(), ConfigValueFactory.fromAnyRef(FunctionIsolationMode.GREENGRASS_CONTAINER.equals(defaultFunctionIsolationMode) ? true : false));
 
         // Resolve the entire fallback config
         config = config.resolve();
