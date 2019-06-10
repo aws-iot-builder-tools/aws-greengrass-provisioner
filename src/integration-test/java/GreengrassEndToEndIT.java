@@ -84,6 +84,7 @@ public class GreengrassEndToEndIT {
         ioHelper = new BasicIoHelper();
 
         greengrassBuildWithoutDockerDeploymentsIT = new GreengrassBuildWithoutDockerDeploymentsIT();
+        greengrassBuildWithoutDockerDeploymentsIT.greengrassITShared = greengrassITShared;
 
         BasicMqttOverWebsocketsProvider basicMqttOverWebsocketsProvider = new BasicMqttOverWebsocketsProvider();
         String clientId = UUID.randomUUID().toString();
