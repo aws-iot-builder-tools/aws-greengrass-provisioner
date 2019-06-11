@@ -554,28 +554,30 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create all of the things from the GGD config //
         //////////////////////////////////////////////////
 
-        Set<String> thingArns = new HashSet<>();
-
-        log.info("Creating Greengrass device things");
-
         Set<String> thingNames = ggdConfs.stream().map(GGDConf::getThingName).collect(Collectors.toSet());
 
-        for (String thingName : thingNames) {
-            String deviceThingArn = iotHelper.createThing(thingName);
-            thingArns.add(deviceThingArn);
+        if (thingNames.size() > 0) {
+            Set<String> thingArns = new HashSet<>();
 
-            String ggdThingName = getGgdThingName(thingName);
-            String ggdPolicyName = String.join("_", ggdThingName, "Policy");
+            log.info("Creating Greengrass device things");
 
-            log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, ggdThingName);
+            for (String thingName : thingNames) {
+                String deviceThingArn = iotHelper.createThing(thingName);
+                thingArns.add(deviceThingArn);
 
-            String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
+                String ggdThingName = getGgdThingName(thingName);
+                String ggdPolicyName = String.join("_", ggdThingName, "Policy");
 
-            log.info("Creating and attaching policies to Greengrass device thing");
-            iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(deviceThingArn));
-            iotHelper.attachPrincipalPolicy(ggdPolicyName, deviceCertificateArn);
-            iotHelper.attachThingPrincipal(thingName, deviceCertificateArn);
+                log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
+                KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, ggdThingName);
+
+                String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
+
+                log.info("Creating and attaching policies to Greengrass device thing");
+                iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(deviceThingArn));
+                iotHelper.attachPrincipalPolicy(ggdPolicyName, deviceCertificateArn);
+                iotHelper.attachThingPrincipal(thingName, deviceCertificateArn);
+            }
         }
 
         //////////////////////////////////////////////////////
