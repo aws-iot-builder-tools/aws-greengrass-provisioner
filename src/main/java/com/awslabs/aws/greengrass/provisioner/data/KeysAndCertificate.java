@@ -1,23 +1,22 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.services.iot.model.KeyPair;
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
 
-@Data
-@Builder
-public class KeysAndCertificate {
-    private final String certificateArn;
+@Value.Immutable
+public abstract class KeysAndCertificate {
+    public abstract String getCertificateArn();
 
-    private final String certificateId;
+    public abstract String getCertificateId();
 
-    private final String certificatePem;
+    public abstract String getCertificatePem();
 
-    private final KeyPair keyPair;
+    public abstract KeyPair getKeyPair();
 
     public static KeysAndCertificate from(CreateKeysAndCertificateResponse createKeysAndCertificateResponse) {
-        KeysAndCertificate keysAndCertificate = KeysAndCertificate.builder()
+        KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
                 .certificateArn(createKeysAndCertificateResponse.certificateArn())
                 .certificateId(createKeysAndCertificateResponse.certificateId())
                 .certificatePem(createKeysAndCertificateResponse.certificatePem())

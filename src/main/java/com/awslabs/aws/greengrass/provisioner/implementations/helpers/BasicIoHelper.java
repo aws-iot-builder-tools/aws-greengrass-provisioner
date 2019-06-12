@@ -4,7 +4,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHe
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.jcraft.jsch.*;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.*;
@@ -26,8 +27,8 @@ import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-@Slf4j
 public class BasicIoHelper implements IoHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicIoHelper.class);
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
 
@@ -131,12 +132,12 @@ public class BasicIoHelper implements IoHelper {
         return jsch;
     }
 
-    public Void logPrivateKeyIssueAndIgnore(String privateKeyFile) {
+    private Void logPrivateKeyIssueAndIgnore(String privateKeyFile) {
         log.error("Issue with private key file [" + privateKeyFile + "], skipping");
         return null;
     }
 
-    public Void addIdentity(JSch jsch, String privateKeyFile) throws JSchException {
+    private Void addIdentity(JSch jsch, String privateKeyFile) throws JSchException {
         jsch.addIdentity(privateKeyFile);
         return null;
     }

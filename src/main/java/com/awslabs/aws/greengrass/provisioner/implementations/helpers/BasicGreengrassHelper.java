@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
@@ -9,7 +10,7 @@ import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -19,14 +20,14 @@ import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class BasicGreengrassHelper implements GreengrassHelper {
-    public static final String DEFAULT = "Default";
-    public static final int DEFAULT_LOGGER_SPACE_IN_KB = 128 * 1024;
-    public static final String FAILURE = "Failure";
-    public static final String IN_PROGRESS = "InProgress";
-    public static final String SUCCESS = "Success";
-    public static final String BUILDING = "Building";
+    private static final String DEFAULT = "Default";
+    private static final int DEFAULT_LOGGER_SPACE_IN_KB = 128 * 1024;
+    private static final String FAILURE = "Failure";
+    private static final String IN_PROGRESS = "InProgress";
+    private static final String SUCCESS = "Success";
+    private static final String BUILDING = "Building";
+    private final org.slf4j.Logger log = LoggerFactory.getLogger(BasicGreengrassHelper.class);
     @Inject
     GreengrassClient greengrassClient;
     @Inject
@@ -638,7 +639,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createResourceDefinitionVersion(List<FunctionConf> functionConfs) {
+    public String createResourceDefinitionVersion(List<ModifiableFunctionConf> functionConfs) {
         List<Resource> resources = new ArrayList<>();
 
         for (FunctionConf functionConf : functionConfs) {

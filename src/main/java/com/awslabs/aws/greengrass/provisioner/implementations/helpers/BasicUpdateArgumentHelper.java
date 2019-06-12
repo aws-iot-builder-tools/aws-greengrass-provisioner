@@ -4,12 +4,14 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.UpdateArgumentHelper;
 import com.beust.jcommander.JCommander;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-@Slf4j
 public class BasicUpdateArgumentHelper implements UpdateArgumentHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicUpdateArgumentHelper.class);
+
     @Inject
     public BasicUpdateArgumentHelper() {
     }

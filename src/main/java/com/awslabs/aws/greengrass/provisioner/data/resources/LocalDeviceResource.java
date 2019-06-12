@@ -1,12 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.data.resources;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 
-@Data
-@Builder
-public class LocalDeviceResource {
-    private final String name;
-    private final String path;
-    private final boolean readWrite;
+@Value.Immutable
+public abstract class LocalDeviceResource {
+    public abstract String getName();
+
+    public abstract String getPath();
+
+    public abstract boolean isReadWrite();
 }

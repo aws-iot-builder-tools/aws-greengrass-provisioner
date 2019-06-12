@@ -3,12 +3,13 @@ package com.awslabs.aws.greengrass.provisioner.docker;
 import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ProgressMessage;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 
-@Slf4j
 public class BasicProgressHandler implements ProgressHandler {
+    private final Logger log = LoggerFactory.getLogger(BasicProgressHandler.class);
     String lastMessage = null;
 
     @Inject
@@ -16,7 +17,7 @@ public class BasicProgressHandler implements ProgressHandler {
     }
 
     @Override
-    public void progress(ProgressMessage message) throws DockerException {
+    public void progress(ProgressMessage message) {
         if (message.error() != null) {
             log.error("Docker build error [" + message.error() + "]");
             return;

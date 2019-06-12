@@ -1,26 +1,29 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 
 import java.nio.file.Path;
 import java.util.List;
 
-@Data
-@Builder
-public class GGDConf {
-    private String thingName;
-    private String scriptName;
-    private Path rootPath;
+@Value.Immutable
+public abstract class GGDConf {
+    public abstract String getThingName();
 
-    private List<String> connectedShadows;
+    public abstract String getScriptName();
 
-    private List<String> fromCloudSubscriptions;
-    private List<String> toCloudSubscriptions;
-    private List<String> outputTopics;
-    private List<String> inputTopics;
+    public abstract Path getRootPath();
 
-    private List<String> files;
+    public abstract List<String> getConnectedShadows();
 
-    private List<String> dependencies;
+    public abstract List<String> getFromCloudSubscriptions();
+
+    public abstract List<String> getToCloudSubscriptions();
+
+    public abstract List<String> getOutputTopics();
+
+    public abstract List<String> getInputTopics();
+
+    public abstract List<String> getFiles();
+
+    public abstract List<String> getDependencies();
 }

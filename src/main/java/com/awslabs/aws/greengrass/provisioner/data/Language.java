@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import lombok.Getter;
 import software.amazon.awssdk.services.lambda.model.Runtime;
 
 public enum Language {
@@ -13,8 +12,11 @@ public enum Language {
     PYTHON2_7(Runtime.PYTHON2_7),
     PYTHON3_7(Runtime.PYTHON3_7);
 
-    @Getter
     private final Runtime runtime;
+
+    public Runtime getRuntime() {
+        return runtime;
+    }
 
     Language(Runtime runtime) {
         this.runtime = runtime;

@@ -1,17 +1,19 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 
 import java.util.Optional;
 
-@Data
-@Builder
-public class LambdaFunctionArnInfo {
-    @Builder.Default
-    private final Optional<String> error = Optional.empty();
-    private String qualifier;
-    private String baseArn;
-    private String qualifiedArn;
-    private String aliasArn;
+@Value.Immutable
+public abstract class LambdaFunctionArnInfo {
+    public abstract Optional<String> getError();
+
+    public abstract String getQualifier();
+
+    public abstract String getBaseArn();
+
+    public abstract String getQualifiedArn();
+
+    // This is optional because when the function is first built the alias ARN is not available
+    public abstract Optional<String> getAliasArn();
 }

@@ -2,7 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IamHelper;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.iam.model.*;
 import software.amazon.awssdk.services.sts.StsClient;
@@ -10,8 +11,8 @@ import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
 
 import javax.inject.Inject;
 
-@Slf4j
 public class BasicIamHelper implements IamHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicIamHelper.class);
     @Inject
     IamClient iamClient;
     @Inject

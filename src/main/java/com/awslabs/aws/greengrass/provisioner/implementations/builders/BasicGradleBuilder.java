@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnector;
 import org.gradle.tooling.ProjectConnection;
@@ -13,9 +12,8 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Optional;
 
-@Slf4j
 public class BasicGradleBuilder implements GradleBuilder {
-    public static final String BUILD_GRADLE = "build.gradle";
+    private static final String BUILD_GRADLE = "build.gradle";
 
     @Inject
     public BasicGradleBuilder() {

@@ -1,16 +1,15 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import lombok.Builder;
-import lombok.Data;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
+import org.immutables.value.Value;
 
 import java.util.Optional;
 
-@Data
-@Builder
-public class LambdaFunctionArnInfoAndFunctionConf {
-    private final LambdaFunctionArnInfo lambdaFunctionArnInfo;
-    private final FunctionConf functionConf;
-    @Builder.Default
-    private final Optional<String> error = Optional.empty();
+@Value.Immutable
+public abstract class LambdaFunctionArnInfoAndFunctionConf {
+    public abstract LambdaFunctionArnInfo getLambdaFunctionArnInfo();
+
+    public abstract ModifiableFunctionConf getFunctionConf();
+
+    public abstract Optional<String> getError();
 }
