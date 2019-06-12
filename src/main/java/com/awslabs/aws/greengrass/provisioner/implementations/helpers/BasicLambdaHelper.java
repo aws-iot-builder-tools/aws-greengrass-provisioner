@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
@@ -10,9 +11,10 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.LambdaClient;
@@ -23,8 +25,8 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Optional;
 
-@Slf4j
 public class BasicLambdaHelper implements LambdaHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicLambdaHelper.class);
     @Inject
     LambdaClient lambdaClient;
     @Inject
@@ -81,7 +83,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         Optional<String> error = pythonBuilder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
-            return LambdaFunctionArnInfo.builder()
+            return ImmutableLambdaFunctionArnInfo.builder()
                     .error(error).build();
         }
 
@@ -97,7 +99,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         Optional<String> error = nodeBuilder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
-            return LambdaFunctionArnInfo.builder()
+            return ImmutableLambdaFunctionArnInfo.builder()
                     .error(error).build();
         }
 
@@ -155,7 +157,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         String qualifiedArn = publishVersionResponse.functionArn();
         String baseArn = qualifiedArn.replaceAll(":" + qualifier + "$", "");
 
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = LambdaFunctionArnInfo.builder()
+        LambdaFunctionArnInfo lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder()
                 .qualifier(qualifier)
                 .qualifiedArn(qualifiedArn)
                 .baseArn(baseArn)

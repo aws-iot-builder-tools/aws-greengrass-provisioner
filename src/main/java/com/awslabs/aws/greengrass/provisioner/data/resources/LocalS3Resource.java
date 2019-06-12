@@ -1,12 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.data.resources;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 
-@Data
-@Builder
-public class LocalS3Resource {
-    private final String name;
-    private final String uri;
-    private final String path;
+@Value.Immutable
+public abstract class LocalS3Resource {
+    public abstract String getName();
+
+    public abstract String getUri();
+
+    public abstract String getPath();
 }

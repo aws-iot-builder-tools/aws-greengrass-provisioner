@@ -8,8 +8,9 @@ import io.vavr.collection.List;
 import io.vavr.collection.Map;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Duration;
 import java.util.AbstractMap;
@@ -20,9 +21,8 @@ import java.util.regex.Pattern;
 
 import static io.vavr.API.*;
 
-@Slf4j
 public class BasicDeviceTesterHelper implements DeviceTesterHelper {
-    public static final String TIME = "time";
+    private static final String TIME = "time";
     private static final String KEY_PATTERN = "[a-zA-Z]+=";
     private static final List<DeviceTesterLogMessageType> IGNORED_MESSAGE_TYPES = List.of(
             DeviceTesterLogMessageType.CHECKING_GGC_VERSION,
@@ -64,6 +64,7 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
             DeviceTesterLogMessageType.FAIL_TO_REMOVE_GREENGRASS,
             DeviceTesterLogMessageType.COMMAND_ON_REMOTE_HOST_FAILED_TO_START,
             DeviceTesterLogMessageType.FAIL_TO_ADD_REMOTE_FILE_RESOURCE);
+    private final Logger log = LoggerFactory.getLogger(BasicDeviceTesterHelper.class);
 
     @Override
     public DeviceTesterLogMessageType getLogMessageType(String logMessage) {

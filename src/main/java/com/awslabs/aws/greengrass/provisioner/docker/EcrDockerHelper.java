@@ -5,13 +5,10 @@ import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientP
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.services.ecr.EcrClient;
 
 import javax.inject.Inject;
 
-@Slf4j
 public class EcrDockerHelper extends AbstractDockerHelper {
     @Inject
     EcrDockerClientProvider ecrDockerClientProvider;
@@ -20,12 +17,16 @@ public class EcrDockerHelper extends AbstractDockerHelper {
     EcrClient ecrClient;
     @Inject
     ProgressHandler progressHandler;
-    @Getter
     @Inject
     ExceptionHelper exceptionHelper;
 
     @Inject
     public EcrDockerHelper() {
+    }
+
+    @Override
+    public ExceptionHelper getExceptionHelper() {
+        return exceptionHelper;
     }
 
     @Override

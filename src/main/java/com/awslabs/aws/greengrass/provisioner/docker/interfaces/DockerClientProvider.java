@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 import com.spotify.docker.client.DefaultDockerClient;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.auth.RegistryAuthSupplier;
-import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.RegistryAuth;
 import com.spotify.docker.client.messages.RegistryConfigs;
 import org.bouncycastle.util.encoders.Base64;

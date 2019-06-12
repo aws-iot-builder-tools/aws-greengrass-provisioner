@@ -1,35 +1,31 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
-import lombok.Builder;
-import lombok.Data;
-import lombok.Singular;
+import org.immutables.value.Value;
 
 import java.util.List;
 import java.util.Map;
 
-@Data
-@Builder
-public class DeploymentConf {
-    private String name;
+@Value.Immutable
+public abstract class DeploymentConf {
+    public abstract String getName();
 
-    private String groupName;
+    public abstract String getGroupName();
 
-    private List<String> functions;
+    public abstract List<String> getFunctions();
 
-    private String coreRoleName;
+    public abstract String getCoreRoleName();
 
-    private String coreRoleAssumeRolePolicy;
+    public abstract String getCoreRoleAssumeRolePolicy();
 
-    private List<String> coreRolePolicies;
+    public abstract List<String> getCoreRolePolicies();
 
-    private String corePolicy;
+    public abstract String getCorePolicy();
 
-    private String lambdaRoleName;
+    public abstract String getLambdaRoleName();
 
-    private String lambdaRoleAssumeRolePolicy;
+    public abstract String getLambdaRoleAssumeRolePolicy();
 
-    private List<String> ggds;
+    public abstract List<String> getGgds();
 
-    @Singular
-    private Map<String, String> environmentVariables;
+    public abstract Map<String, String> getEnvironmentVariables();
 }

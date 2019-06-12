@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
 import io.vavr.control.Try;
-import lombok.Getter;
 
 import java.io.File;
 import java.net.URL;
@@ -16,17 +15,7 @@ public enum Architecture {
     X86_64("greengrass-linux-x86-64-1.9.1.tar.gz"),
     ARM64("greengrass-linux-aarch64-1.9.1.tar.gz");
 
-    @Getter
-    private final String DIST = "dist";
-
-    @Getter
     private final String filename;
-
-    @Getter(lazy = true)
-    private final String resourcePath = innerGetResourcePath();
-
-    @Getter(lazy = true)
-    private final Optional<URL> resourceUrl = innerGetResourceUrl();
 
     Architecture(String filename) {
         this.filename = filename;
@@ -38,11 +27,19 @@ public enum Architecture {
                 .collect(Collectors.joining(", "));
     }
 
-    private String innerGetResourcePath() {
-        return String.join("/", DIST, getFilename());
+    public String getFilename() {
+        return filename;
     }
 
-    private Optional<URL> innerGetResourceUrl() {
+    public String getDIST() {
+        return "dist";
+    }
+
+    public String getResourcePath() {
+        return String.join("/", getDIST(), getFilename());
+    }
+
+    public Optional<URL> getResourceUrl() {
         String resourcePath = getResourcePath();
 
         File resource = new File(resourcePath);

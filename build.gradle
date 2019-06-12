@@ -1,7 +1,4 @@
 plugins {
-    // Processes Lombok annotations during build
-    id 'io.franzbecker.gradle-lombok' version '3.1.0'
-
     // Creates fat JAR
     id 'com.github.johnrengelman.shadow' version '5.0.0'
 
@@ -44,7 +41,6 @@ def commonsLangVersion = '3.9'
 def junitVersion = '4.12'
 def systemRulesVersion = '1.19.0'
 def mockitoVersion = '2.28.2'
-def lombokVersion = '1.18.8'
 def vavrVersion = '0.10.0'
 def httpClientVersion = '4.5.8'
 def jodahFailsafeVersion = '2.0.1'
@@ -52,6 +48,7 @@ def testContainersVersion = '1.11.3'
 def hamcrestVersion = '2.1'
 def mqttOverWebsocketsVersion = 'mqtt-over-websockets-0.3.4'
 def awaitilityVersion = '3.1.6'
+def immutablesValueVersion = '2.7.5'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirTemp = "$buildDir/temp"
@@ -116,12 +113,6 @@ task downloadAll {
 // This task will be enabled when Greengrass Core and the SDKs are available directly via S3
 assemble.dependsOn downloadAll
 
-lombok {
-    // Processes Lombok annotations during build
-    version = "$lombokVersion"
-    sha256 = ''
-}
-
 group = 'com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner'
 version = '1.0-SNAPSHOT'
 
@@ -129,7 +120,7 @@ description = """"""
 
 shadowJar {
     // Create a shadow JAR with all of the necessary dependencies
-    archiveName = 'AwsGreengrassProvisioner.jar'
+    archiveFileName = 'AwsGreengrassProvisioner.jar'
 
     // Include the "dist" files which are the SDKs and Greengrass binaries
     into('/dist') {
@@ -152,14 +143,10 @@ tasks.withType(JavaCompile) {
 repositories {
     mavenCentral()
 
-    maven {
-        url "https://repo.gradle.org/gradle/libs-releases-local/"
-    }
+    maven { url "https://repo.gradle.org/gradle/libs-releases-local/" }
 
     // Jitpack for MQTT over WebSockets support
-    maven {
-        url 'https://jitpack.io'
-    }
+    maven { url 'https://jitpack.io' }
 }
 
 sourceSets {
@@ -183,6 +170,9 @@ task integrationTest(type: Test) {
 }
 
 dependencies {
+    annotationProcessor "org.immutables:value:$immutablesValueVersion"
+    compile "org.immutables:value:$immutablesValueVersion"
+
     compile "com.google.inject:guice:$guiceVersion"
 
     compile "com.typesafe:config:$configVersion"

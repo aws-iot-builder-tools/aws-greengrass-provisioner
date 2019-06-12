@@ -2,15 +2,16 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.*;
 
 import javax.inject.Inject;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 public class BasicGroupQueryHelper implements GroupQueryHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicGroupQueryHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject

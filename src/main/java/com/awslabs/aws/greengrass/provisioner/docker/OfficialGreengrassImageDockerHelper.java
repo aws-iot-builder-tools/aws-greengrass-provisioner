@@ -14,9 +14,9 @@ import com.spotify.docker.client.messages.ContainerConfig;
 import com.spotify.docker.client.messages.ContainerCreation;
 import com.spotify.docker.client.messages.Image;
 import io.vavr.control.Try;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ecr.EcrClient;
 
@@ -32,8 +32,8 @@ import java.util.Optional;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
 
-@Slf4j
 public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
+    private final Logger log = LoggerFactory.getLogger(OfficialGreengrassImageDockerHelper.class);
     @Inject
     OfficialGreengrassImageDockerClientProvider officialGreengrassImageDockerClientProvider;
     @Inject
@@ -44,12 +44,16 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
     GGVariables ggVariables;
     @Inject
     IoHelper ioHelper;
-    @Getter
     @Inject
     ExceptionHelper exceptionHelper;
 
     @Inject
     public OfficialGreengrassImageDockerHelper() {
+    }
+
+    @Override
+    public ExceptionHelper getExceptionHelper() {
+        return exceptionHelper;
     }
 
     @Override

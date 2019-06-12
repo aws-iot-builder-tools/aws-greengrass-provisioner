@@ -2,9 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.*;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
@@ -21,9 +19,10 @@ import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.typesafe.config.*;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
@@ -51,10 +50,8 @@ import java.util.stream.Collectors;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
 
-@Slf4j
 public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String USER_DIR = "user.dir";
-
     private static final String AWS_AMI_ACCOUNT_ID = "099720109477";
     private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-????????";
     private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-????????";
@@ -63,7 +60,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String DOES_NOT_EXIST = "does not exist";
-
+    private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
     @Inject
@@ -142,7 +139,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private DeploymentConf buildDeploymentConf(String deploymentConfigFilename, Config config, String groupName) {
-        DeploymentConf.DeploymentConfBuilder deploymentConfBuilder = DeploymentConf.builder();
+        ImmutableDeploymentConf.Builder deploymentConfBuilder = ImmutableDeploymentConf.builder();
 
         String trimmedDeploymentName = deploymentConfigFilename.replaceAll(".conf$", "").replaceAll("^.*/", "");
         deploymentConfBuilder.name(trimmedDeploymentName);
@@ -165,7 +162,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return deploymentConfBuilder.build();
     }
 
-    private void setEnvironmentVariables(DeploymentConf.DeploymentConfBuilder deploymentConfBuilder, Config config) {
+    private void setEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
         Try.of(() -> innerSetEnvironmentVariables(deploymentConfBuilder, config))
                 .recover(ConfigException.Missing.class, throwable -> logNoEnvironmentVariablesForDeployment())
                 .get();
@@ -177,7 +174,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
-    private Void innerSetEnvironmentVariables(DeploymentConf.DeploymentConfBuilder deploymentConfBuilder, Config config) {
+    private Void innerSetEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
         ConfigObject configObject = config.getObject("conf.environmentVariables");
 
         if (configObject.size() == 0) {
@@ -187,7 +184,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Config tempConfig = configObject.toConfig();
 
         for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
-            deploymentConfBuilder.environmentVariable(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
+            deploymentConfBuilder.putEnvironmentVariables(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
         }
 
         return null;
@@ -416,7 +413,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
 
-        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
+        List<ModifiableFunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
 
         // Find Python functions that may not have had their language updated, this should never happen
         Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
@@ -524,7 +521,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .ifPresent(buildableFunction -> functionHelper.installJavaDependencies());
 
         // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
-        Map<Function, FunctionConf> functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(buildableFunctions);
+        Map<Function, ModifiableFunctionConf> functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(buildableFunctions);
 
         ///////////////////////////////////////////
         // Find GGD configs and its mapping info //

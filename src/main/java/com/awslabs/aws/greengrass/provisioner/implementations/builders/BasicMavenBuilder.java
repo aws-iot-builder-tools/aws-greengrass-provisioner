@@ -7,50 +7,47 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.maven.shared.invoker.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.Callable;
 
-@Slf4j
 public class BasicMavenBuilder implements MavenBuilder {
-    public static final String CLEAN = "clean";
-    public static final String COMPILE = "compile";
-    public static final String PACKAGE = "package";
-    public static final String INSTALL_INSTALL_FILE = "install:install-file";
-
-    public static final List<String> CLEAN_COMPILE_PACKAGE = Arrays.asList(CLEAN, COMPILE, PACKAGE);
-    public static final List<String> INSTALL = Arrays.asList(INSTALL_INSTALL_FILE);
-
-    public static final List<String> BUILD_OPTIONS = CLEAN_COMPILE_PACKAGE;
-
-    public static final String MVN_EXECUTABLE = "mvn";
-    public static final String FILE = "file";
-    public static final String CDD_BASELINE_VERSION_0_3 = "0.3";
-    public static final String CDD_BASELINE_DEPENDENCIES_VERSION_0_3 = "0.3";
-    public static final String GROUP_ID = "groupId";
-    public static final String ARTIFACT_ID = "artifactId";
-    public static final String COM_AWSLABS = "com.awslabs";
-    public static final String COM_AMAZONAWS = "com.amazonaws";
-    public static final String CDDBASELINEJAVA = "cddbaselinejava";
-    public static final String VERSION = "version";
-    public static final String PACKAGING = "packaging";
-    public static final String JAR = "jar";
-    public static final String VERSION_1_3_1 = "1.3.1";
-    public static final String POM = "pom";
-    public static final String CDDBASELINEJAVADEPENDENCIES = "cddbaselinejavadependencies";
-    public static final String GREENGRASS_LAMBDA = "greengrass-lambda";
-    public static final String FOUNDATION_GREENGRASS_JAVA_SDK_1_3_1_JAR = "/foundation/GreengrassJavaSDK-1.3.1.jar.zip";
-    public static final String FOUNDATION_CDDBASELINE_JAVA_JAR = "/foundation/CDDBaseline-0.3.jar.zip";
-    public static final String FOUNDATION_CDDBASELINE_DEPENDENCIES_JAVA_POM = "/foundation/CDDBaselineJavaDependencies/pom.xml";
-    public static final String MAVEN_HOME_PREFIX = "Maven home: ";
-    public static final String M_2_HOME_KEY = "M2_HOME";
-    public static final String NO_COMPILER_ERROR = "No compiler is provided in this environment.";
-    public static final String VERSION_OPTION = "--version";
-
+    private static final String CLEAN = "clean";
+    private static final String COMPILE = "compile";
+    private static final String PACKAGE = "package";
+    private static final String INSTALL_INSTALL_FILE = "install:install-file";
+    private static final List<String> CLEAN_COMPILE_PACKAGE = Arrays.asList(CLEAN, COMPILE, PACKAGE);
+    private static final List<String> INSTALL = Arrays.asList(INSTALL_INSTALL_FILE);
+    private static final List<String> BUILD_OPTIONS = CLEAN_COMPILE_PACKAGE;
+    private static final String MVN_EXECUTABLE = "mvn";
+    private static final String FILE = "file";
+    private static final String CDD_BASELINE_VERSION_0_3 = "0.3";
+    private static final String CDD_BASELINE_DEPENDENCIES_VERSION_0_3 = "0.3";
+    private static final String GROUP_ID = "groupId";
+    private static final String ARTIFACT_ID = "artifactId";
+    private static final String COM_AWSLABS = "com.awslabs";
+    private static final String COM_AMAZONAWS = "com.amazonaws";
+    private static final String CDDBASELINEJAVA = "cddbaselinejava";
+    private static final String VERSION = "version";
+    private static final String PACKAGING = "packaging";
+    private static final String JAR = "jar";
+    private static final String VERSION_1_3_1 = "1.3.1";
+    private static final String POM = "pom";
+    private static final String CDDBASELINEJAVADEPENDENCIES = "cddbaselinejavadependencies";
+    private static final String GREENGRASS_LAMBDA = "greengrass-lambda";
+    private static final String FOUNDATION_GREENGRASS_JAVA_SDK_1_3_1_JAR = "/foundation/GreengrassJavaSDK-1.3.1.jar.zip";
+    private static final String FOUNDATION_CDDBASELINE_JAVA_JAR = "/foundation/CDDBaseline-0.3.jar.zip";
+    private static final String FOUNDATION_CDDBASELINE_DEPENDENCIES_JAVA_POM = "/foundation/CDDBaselineJavaDependencies/pom.xml";
+    private static final String MAVEN_HOME_PREFIX = "Maven home: ";
+    private static final String M_2_HOME_KEY = "M2_HOME";
+    private static final String NO_COMPILER_ERROR = "No compiler is provided in this environment.";
+    private static final String VERSION_OPTION = "--version";
+    private final Logger log = LoggerFactory.getLogger(BasicMavenBuilder.class);
     @Inject
     ProcessHelper processHelper;
     @Inject
@@ -61,7 +58,7 @@ public class BasicMavenBuilder implements MavenBuilder {
     ExecutorHelper executorHelper;
 
     @Inject
-    public BasicMavenBuilder() {
+    private BasicMavenBuilder() {
     }
 
     @Override
@@ -204,7 +201,7 @@ public class BasicMavenBuilder implements MavenBuilder {
                 .get();
     }
 
-    public Void invokeMaven(Optional<File> pomXmlPath, Optional<String> functionName, Optional<Map<String, String>> properties, InvocationRequest request, Invoker invoker, List<String> outputList, List<String> errorList) throws MavenInvocationException {
+    private Void invokeMaven(Optional<File> pomXmlPath, Optional<String> functionName, Optional<Map<String, String>> properties, InvocationRequest request, Invoker invoker, List<String> outputList, List<String> errorList) throws MavenInvocationException {
         if (functionName.isPresent()) {
             loggingHelper.logInfoWithName(log, functionName.get(), "Attempting Maven build of Java function");
         } else if (pomXmlPath.isPresent()) {
@@ -244,7 +241,7 @@ public class BasicMavenBuilder implements MavenBuilder {
         return null;
     }
 
-    public String getInternalName(Optional<Map<String, String>> properties) {
+    private String getInternalName(Optional<Map<String, String>> properties) {
         Optional<String> optionalName = Optional.empty();
 
         if (properties.isPresent()) {

@@ -9,10 +9,10 @@ import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.ContainerConfig;
-import com.spotify.docker.client.messages.ExecCreation;
 import com.spotify.docker.client.messages.Image;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.ecr.model.CreateRepositoryRequest;
 import software.amazon.awssdk.services.ecr.model.DescribeRepositoriesRequest;
@@ -28,11 +28,11 @@ import java.util.stream.Collectors;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
 
-@Slf4j
 public abstract class AbstractDockerHelper implements DockerHelper {
-    public static String dockerFileDirectory = String.join("/",
+    private static String dockerFileDirectory = String.join("/",
             "foundation",
             "docker");
+    private final Logger log = LoggerFactory.getLogger(AbstractDockerHelper.class);
     private Optional<String> ecrRepositoryName;
     private Optional<String> ecrImageName;
 

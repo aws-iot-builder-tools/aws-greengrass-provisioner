@@ -4,7 +4,8 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.CloudFormationHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
 import software.amazon.awssdk.services.cloudformation.model.*;
 
@@ -14,8 +15,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class BasicCloudFormationHelper implements CloudFormationHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicCloudFormationHelper.class);
     @Inject
     CloudFormationClient cloudFormationClient;
     @Inject
@@ -26,7 +27,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
     }
 
     private boolean hasCloudFormationTemplate(FunctionConf functionConf) {
-        return (functionConf.getCfTemplate() != null);
+        return (functionConf.getCfTemplate().isPresent());
     }
 
     @Override
@@ -53,7 +54,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                 .stackName(stackName)
                 .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
                 .parameters(parameters)
-                .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
+                .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate().get()))
                 .build();
 
         String finalStackName = stackName;
@@ -85,7 +86,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                 .stackName(finalStackName)
                 .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
                 .parameters(parameters)
-                .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate()))
+                .templateBody(ioHelper.readFileAsString(functionConf.getCfTemplate().get()))
                 .build();
 
         cloudFormationClient.updateStack(updateStackRequest);

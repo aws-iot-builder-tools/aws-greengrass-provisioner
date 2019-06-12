@@ -5,59 +5,64 @@ import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
-import lombok.Builder;
-import lombok.Data;
-import lombok.Singular;
+import org.immutables.value.Value;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 
 import java.io.File;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
-@Data
-@Builder
-public class FunctionConf {
-    private Language language;
-    private EncodingType encodingType;
-    private Path buildDirectory;
-    private String groupName;
-    private String functionName;
-    private String handlerName;
-    private String aliasName;
-    private int memorySizeInKb;
-    private boolean pinned;
-    private int timeoutInSeconds;
+@Value.Modifiable
+public abstract class FunctionConf {
+    public abstract Language getLanguage();
 
-    private List<String> fromCloudSubscriptions;
-    private List<String> toCloudSubscriptions;
-    private List<String> outputTopics;
-    private List<String> inputTopics;
+    public abstract EncodingType getEncodingType();
 
-    private List<String> connectedShadows;
+    public abstract Path getBuildDirectory();
 
-    @Singular
-    private List<LocalDeviceResource> localDeviceResources;
+    public abstract String getGroupName();
 
-    @Singular
-    private List<LocalVolumeResource> localVolumeResources;
+    public abstract String getFunctionName();
 
-    @Singular
-    private List<LocalS3Resource> localS3Resources;
+    public abstract String getHandlerName();
 
-    @Singular
-    private List<LocalSageMakerResource> localSageMakerResources;
+    public abstract String getAliasName();
 
-    private boolean accessSysFs;
+    public abstract int getMemorySizeInKb();
 
-    private boolean greengrassContainer;
+    public abstract boolean isPinned();
 
-    private int uid;
+    public abstract int getTimeoutInSeconds();
 
-    private int gid;
+    public abstract List<String> getFromCloudSubscriptions();
 
-    @Singular
-    private Map<String, String> environmentVariables;
+    public abstract List<String> getToCloudSubscriptions();
 
-    private File cfTemplate;
+    public abstract List<String> getOutputTopics();
+
+    public abstract List<String> getInputTopics();
+
+    public abstract List<String> getConnectedShadows();
+
+    public abstract List<LocalDeviceResource> getLocalDeviceResources();
+
+    public abstract List<LocalVolumeResource> getLocalVolumeResources();
+
+    public abstract List<LocalS3Resource> getLocalS3Resources();
+
+    public abstract List<LocalSageMakerResource> getLocalSageMakerResources();
+
+    public abstract boolean isAccessSysFs();
+
+    public abstract boolean isGreengrassContainer();
+
+    public abstract int getUid();
+
+    public abstract int getGid();
+
+    public abstract Map<String, String> getEnvironmentVariables();
+
+    public abstract Optional<File> getCfTemplate();
 }

@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -155,11 +156,12 @@ public interface IoHelper {
     }
 
     default String serializeKeys(CreateKeysAndCertificateResponse createKeysAndCertificateResponse, JsonHelper jsonHelper) {
-        KeysAndCertificate keysAndCertificate = KeysAndCertificate.builder()
+        KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
                 .certificateArn(createKeysAndCertificateResponse.certificateArn())
                 .certificateId(createKeysAndCertificateResponse.certificateId())
                 .certificatePem(createKeysAndCertificateResponse.certificatePem())
-                .keyPair(createKeysAndCertificateResponse.keyPair()).build();
+                .keyPair(createKeysAndCertificateResponse.keyPair())
+                .build();
 
         return serializeObject(keysAndCertificate, jsonHelper);
     }

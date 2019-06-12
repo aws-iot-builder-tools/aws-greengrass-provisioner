@@ -6,7 +6,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ScriptHelper;
 import com.google.common.collect.ImmutableMap;
-import lombok.Getter;
 
 import javax.inject.Inject;
 import java.util.Map;
@@ -16,28 +15,16 @@ import java.util.regex.Matcher;
 
 
 public class BasicScriptHelper implements ScriptHelper {
-    public static final String GGD_PIP_DEPENDENCIES = "GGD_PIP_DEPENDENCIES";
-    public static final String LIB_SYSTEMD_SYSTEM_PATH = "/lib/systemd/system";
+    private static final String GGD_PIP_DEPENDENCIES = "GGD_PIP_DEPENDENCIES";
+    private static final String LIB_SYSTEMD_SYSTEM_PATH = "/lib/systemd/system";
     private final String shellPath = "shell/";
-    @Getter
-    private final String installScriptName = "install.sh";
-    private final String installTemplatePath = shellPath + installScriptName + ".in";
-    @Getter
-    private final String startScriptName = "start.sh";
-    private final String startTemplatePath = shellPath + startScriptName + ".in";
-    @Getter
-    private final String stopScriptName = "stop.sh";
-    private final String stopTemplatePath = shellPath + stopScriptName + ".in";
-    @Getter
-    private final String cleanScriptName = "clean.sh";
-    private final String cleanTemplatePath = shellPath + cleanScriptName + ".in";
+    private final String installTemplatePath = shellPath + getInstallScriptName() + ".in";
+    private final String startTemplatePath = shellPath + getStartScriptName() + ".in";
+    private final String stopTemplatePath = shellPath + getStopScriptName() + ".in";
+    private final String cleanTemplatePath = shellPath + getCleanScriptName() + ".in";
     private final String ggScriptTemplatePath = shellPath + "template.sh.in";
-    @Getter
-    private final String monitorScriptName = "monitor.sh";
-    private final String monitorTemplatePath = shellPath + monitorScriptName + ".in";
-    @Getter
-    private final String systemdScriptName = "greengrass.service";
-    private final String systemdTemplatePath = shellPath + systemdScriptName + ".in";
+    private final String monitorTemplatePath = shellPath + getMonitorScriptName() + ".in";
+    private final String systemdTemplatePath = shellPath + getSystemdScriptName() + ".in";
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -47,6 +34,36 @@ public class BasicScriptHelper implements ScriptHelper {
 
     @Inject
     public BasicScriptHelper() {
+    }
+
+    @Override
+    public String getCleanScriptName() {
+        return "clean.sh";
+    }
+
+    @Override
+    public String getMonitorScriptName() {
+        return "monitor.sh";
+    }
+
+    @Override
+    public String getSystemdScriptName() {
+        return "greengrass.service";
+    }
+
+    @Override
+    public String getInstallScriptName() {
+        return "install.sh";
+    }
+
+    @Override
+    public String getStartScriptName() {
+        return "start.sh";
+    }
+
+    @Override
+    public String getStopScriptName() {
+        return "stop.sh";
     }
 
     @Override
@@ -126,13 +143,13 @@ public class BasicScriptHelper implements ScriptHelper {
         variables.put("CORE_PUBLIC_CERTIFICATE", ggConstants.getCorePublicCertificateName());
         variables.put("CORE_PRIVATE_KEY", ggConstants.getCorePrivateKeyName());
         variables.put("ENDPOINT", iotHelper.getEndpoint());
-        variables.put("START_SCRIPT", startScriptName);
-        variables.put("STOP_SCRIPT", stopScriptName);
-        variables.put("CLEAN_SCRIPT", cleanScriptName);
-        variables.put("INSTALL_SCRIPT", installScriptName);
+        variables.put("START_SCRIPT", getStartScriptName());
+        variables.put("STOP_SCRIPT", getStopScriptName());
+        variables.put("CLEAN_SCRIPT", getCleanScriptName());
+        variables.put("INSTALL_SCRIPT", getInstallScriptName());
         variables.put("GREENGRASS_DAEMON", ggConstants.getGreengrassDaemonName());
-        variables.put("MONITOR_SCRIPT", monitorScriptName);
-        variables.put("SYSTEMD_SCRIPT", systemdScriptName);
+        variables.put("MONITOR_SCRIPT", getMonitorScriptName());
+        variables.put("SYSTEMD_SCRIPT", getSystemdScriptName());
         variables.put("SYSTEMD_DESTINATION_PATH", LIB_SYSTEMD_SYSTEM_PATH);
 
         architecture.ifPresent(arch -> variables.put("GG_BITS", arch.getFilename()));

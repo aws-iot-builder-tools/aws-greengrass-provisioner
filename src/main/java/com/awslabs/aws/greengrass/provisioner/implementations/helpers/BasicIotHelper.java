@@ -3,8 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import io.vavr.control.Try;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.*;
@@ -12,13 +12,11 @@ import software.amazon.awssdk.services.iot.model.*;
 import javax.inject.Inject;
 import java.util.List;
 
-@Slf4j
 public class BasicIotHelper implements IotHelper {
-    public static final String CREDENTIALS = "credentials/";
+    private static final String CREDENTIALS = "credentials/";
+    private final Logger log = LoggerFactory.getLogger(BasicIotHelper.class);
     @Inject
     IotClient iotClient;
-    @Getter(lazy = true)
-    private final String endpoint = describeEndpoint();
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -30,7 +28,8 @@ public class BasicIotHelper implements IotHelper {
     public BasicIotHelper() {
     }
 
-    private String describeEndpoint() {
+    @Override
+    public String getEndpoint() {
         return iotClient.describeEndpoint().endpointAddress();
     }
 

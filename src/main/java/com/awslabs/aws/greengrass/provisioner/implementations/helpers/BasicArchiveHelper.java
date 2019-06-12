@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableVirtualTarEntry;
 import com.awslabs.aws.greengrass.provisioner.data.VirtualTarEntry;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ArchiveHelper;
 import org.kamranzafar.jtar.TarEntry;
@@ -34,7 +35,7 @@ public class BasicArchiveHelper implements ArchiveHelper {
 
         inputStream = new ByteArrayInputStream(content);
 
-        return VirtualTarEntry.builder()
+        return ImmutableVirtualTarEntry.builder()
                 .content(content)
                 .filename(filename)
                 .permissions(permissions)
@@ -62,7 +63,7 @@ public class BasicArchiveHelper implements ArchiveHelper {
 
             // Grab the file and write its actual contents to the stream
             BufferedInputStream origin = new BufferedInputStream(virtualTarEntry.getInputStream());
-            
+
             int count;
             byte data[] = new byte[2048];
 
