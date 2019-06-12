@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.docker;
 
 import com.spotify.docker.client.ProgressHandler;
-import com.spotify.docker.client.exceptions.DockerException;
 import com.spotify.docker.client.messages.ProgressMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

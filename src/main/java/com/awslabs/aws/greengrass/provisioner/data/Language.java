@@ -14,11 +14,11 @@ public enum Language {
 
     private final Runtime runtime;
 
-    public Runtime getRuntime() {
-        return runtime;
-    }
-
     Language(Runtime runtime) {
         this.runtime = runtime;
+    }
+
+    public Runtime getRuntime() {
+        return runtime;
     }
 }
