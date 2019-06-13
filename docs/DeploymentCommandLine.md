@@ -162,3 +162,11 @@ Works with `--ec2-launch`.
 Long form: `--no-systemd`
 
 Prevents the bootstrap script from adding Greengrass to systemd.
+
+## Put artifacts into S3
+
+Long form: `--s3-bucket`
+
+Long form: `--s3-directory`
+
+Stores build artifacts (OEM file, bootstrap script, and/or GGDs) into S3. Bucket and directory must both be specified.
