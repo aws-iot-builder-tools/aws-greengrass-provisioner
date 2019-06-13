@@ -5,6 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
+import com.oblac.nomen.Nomen;
 import io.vavr.control.Try;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
@@ -49,6 +50,10 @@ public interface IoHelper {
 
     default String getUuid() {
         return UUID.randomUUID().toString();
+    }
+
+    default String getRandomName() {
+        return Nomen.est().withSeparator("_").withSpace("_").adjective().noun().get();
     }
 
     default byte[] readFile(String filename) {

@@ -6,8 +6,8 @@ import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.beust.jcommander.JCommander;
-import com.oblac.nomen.Nomen;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
@@ -25,6 +25,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     EcrDockerHelper ecrDockerHelper;
     @Inject
     GGConstants ggConstants;
+    @Inject
+    IoHelper ioHelper;
 
     @Inject
     public BasicDeploymentArgumentHelper() {
@@ -133,7 +135,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 throw new RuntimeException("Group name is required for all operations");
             }
 
-            deploymentArguments.groupName = Nomen.est().withSeparator("_").withSpace("_").adjective().noun().get();
+            deploymentArguments.groupName = ioHelper.getRandomName();
             // Filter out dot characters, sometimes the library uses the value "jr." which is not allowed in a group name
             deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("\\.", "");
             // Filter out normal apostrophes, and special apostrophes (from "farfetch’d")
