@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.lambda.LambdaClient;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public class AwsGreengrassProvisionerModule extends AbstractModule {
@@ -36,6 +37,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(Ec2Client.class).toProvider(Ec2ClientProvider.class);
         bind(IamClient.class).toProvider(IamClientProvider.class);
         bind(StsClient.class).toProvider(StsClientProvider.class);
+        bind(S3Client.class).toProvider(S3ClientProvider.class);
         bind(GreengrassClient.class).toProvider(GreengrassClientProvider.class);
         bind(LambdaClient.class).toProvider(LambdaClientProvider.class);
         bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
