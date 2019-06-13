@@ -425,7 +425,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (legacyPythonFunctions.size() != 0) {
             log.error("Some Python functions do not have a Python version specified, this should never happen!");
             legacyPythonFunctions.stream()
-                    .map(functionConf -> functionConf.getFunctionName())
+                    .map(FunctionConf::getFunctionName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }

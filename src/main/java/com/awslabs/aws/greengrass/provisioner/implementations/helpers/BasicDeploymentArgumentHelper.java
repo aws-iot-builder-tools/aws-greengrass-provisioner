@@ -155,7 +155,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             throw new RuntimeException("EC2 launch supports X86 and ARM64 only");
         }
 
-        if (deploymentArguments.buildContainer == true) {
+        if (deploymentArguments.buildContainer) {
             // If we are building a container we need the OEM files
             deploymentArguments.oemOutput = true;
         }
@@ -167,7 +167,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
         */
 
-        if (deploymentArguments.pushContainer == true) {
+        if (deploymentArguments.pushContainer) {
             // If they want to push a container then we have to build it
             deploymentArguments.buildContainer = true;
         }
