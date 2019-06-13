@@ -185,7 +185,7 @@ dependencies {
     compile "com.spotify:docker-client:$dockerClientVersion"
 
     // For Docker-style names
-    compile 'com.oblac:nomen-est-omen:1.2.3'
+    compile 'com.oblac:nomen-est-omen:2.0.0'
 
     // For scp/ssh support
     compile 'com.jcraft:jsch:0.1.55'

@@ -1,5 +1,7 @@
+import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicIoHelper;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicThreadHelper;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.SingleThreadedExecutorHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
 
@@ -32,7 +34,7 @@ public class GreengrassITShared {
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    final String GROUP_NAME = UUID.randomUUID().toString();
+    final String GROUP_NAME = new BasicIoHelper().getUuid();
     final String GROUP_OPTION = String.join(" ", "-g", GROUP_NAME);
     final String CDD_SKELETON_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", GROUP_OPTION);
     final String FAIL_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", GROUP_OPTION);

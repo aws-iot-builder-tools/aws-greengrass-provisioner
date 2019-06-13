@@ -369,7 +369,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private File extractDeviceTester(File deviceTesterZip) throws IOException {
-        File deviceTesterDirectory = Files.createTempDirectory(UUID.randomUUID().toString()).toFile();
+        File deviceTesterDirectory = Files.createTempDirectory(ioHelper.getUuid()).toFile();
         deviceTesterDirectory.deleteOnExit();
         log.info("Extracting Device Tester to [{}] ...", deviceTesterDirectory.getAbsolutePath());
         Path deviceTesterPath = deviceTesterDirectory.toPath();
