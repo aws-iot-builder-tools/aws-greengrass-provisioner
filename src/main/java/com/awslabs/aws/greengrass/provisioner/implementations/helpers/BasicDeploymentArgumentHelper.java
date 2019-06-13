@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
+import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.S3ClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
@@ -13,6 +14,10 @@ import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest;
+import software.amazon.awssdk.services.s3.model.GetBucketLocationResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -27,6 +32,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     GGConstants ggConstants;
     @Inject
     IoHelper ioHelper;
+    @Inject
+    S3ClientProvider s3ClientProvider;
 
     @Inject
     public BasicDeploymentArgumentHelper() {
@@ -97,6 +104,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
         deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
+        deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
+        deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
 
         if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch) {
             throw new RuntimeException("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
@@ -192,6 +201,33 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
         }
 
+        if (deploymentArguments.s3Bucket != null) {
+            if (deploymentArguments.s3Directory == null) {
+                throw new RuntimeException("S3 bucket specified without S3 directory. S3 directory is required. Set S3 directory to '/' to store the output in the root of the bucket.");
+            }
+
+            if ((!deploymentArguments.oemOutput) && (!deploymentArguments.scriptOutput) && (!deploymentArguments.ggdOutput)) {
+                throw new RuntimeException("S3 destination specified but not output files will be generated. You must specify at least one of OEM, script, and GGD output to use S3.");
+            }
+
+            S3Client s3Client = s3ClientProvider.get();
+
+            // At this point the S3 options look good, make sure that the bucket exists
+            GetBucketLocationRequest getBucketLocationRequest = GetBucketLocationRequest.builder()
+                    .bucket(deploymentArguments.s3Bucket)
+                    .build();
+
+            Try.of(() -> s3Client.getBucketLocation(getBucketLocationRequest))
+                    .recover(NoSuchBucketException.class, this::throwBucketDoesNotExistError)
+                    .get();
+        } else if (deploymentArguments.s3Directory != null) {
+            throw new RuntimeException("S3 directory was specified with no S3 bucket. S3 bucket is required.");
+        }
+
         return deploymentArguments;
+    }
+
+    private GetBucketLocationResponse throwBucketDoesNotExistError(Throwable throwable) {
+        throw new RuntimeException("Specified S3 bucket does not exist. The bucket must already exist before running the provisioner");
     }
 }
