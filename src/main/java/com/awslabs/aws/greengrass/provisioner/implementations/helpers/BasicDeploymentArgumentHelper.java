@@ -133,7 +133,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 throw new RuntimeException("Group name is required for all operations");
             }
 
-            deploymentArguments.groupName = Nomen.est().separator("_").space("_").adjective().pokemon().get();
+            deploymentArguments.groupName = Nomen.est().withSeparator("_").withSpace("_").adjective().noun().get();
             // Filter out dot characters, sometimes the library uses the value "jr." which is not allowed in a group name
             deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("\\.", "");
             // Filter out normal apostrophes, and special apostrophes (from "farfetch’d")
