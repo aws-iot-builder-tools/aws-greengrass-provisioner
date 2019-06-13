@@ -26,7 +26,6 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -88,7 +87,7 @@ public class GreengrassEndToEndIT {
         greengrassBuildWithoutDockerDeploymentsIT.greengrassITShared = greengrassITShared;
 
         BasicMqttOverWebsocketsProvider basicMqttOverWebsocketsProvider = new BasicMqttOverWebsocketsProvider();
-        String clientId = UUID.randomUUID().toString();
+        String clientId = new BasicIoHelper().getUuid();
 
         mqttClient = basicMqttOverWebsocketsProvider.getMqttClient(clientId);
         mqttClient.connect();
