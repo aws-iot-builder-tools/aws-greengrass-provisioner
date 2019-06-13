@@ -21,4 +21,4 @@ docker rm -v $id
 # Build the container that runs the application
 docker build -t aws-greengrass-provisioner -f Dockerfile.run .
 
-rm AwsGreengrassProvisioner.jar
+rm -f AwsGreengrassProvisioner.jar

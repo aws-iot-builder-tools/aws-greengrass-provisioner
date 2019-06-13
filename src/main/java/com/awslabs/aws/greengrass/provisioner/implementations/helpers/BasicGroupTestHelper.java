@@ -9,9 +9,10 @@ import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
 import io.vavr.control.Option;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.GetGroupVersionResponse;
 import software.amazon.awssdk.services.greengrass.model.GroupInformation;
 
@@ -30,7 +31,6 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String RUNTIME_LOG = "runtime.log";
     private static final String FULL_RUNTIME_LOG_PATH = "/greengrass/ggc/var/log/system/" + RUNTIME_LOG;
@@ -47,6 +47,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, device under test may not be ready yet...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String VAR_LIB_GGQ = "/var/lib/GGQ";
+    private final Logger log = LoggerFactory.getLogger(BasicGroupTestHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject

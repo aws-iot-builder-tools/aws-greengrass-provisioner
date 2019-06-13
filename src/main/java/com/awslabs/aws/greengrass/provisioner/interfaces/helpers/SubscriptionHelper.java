@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.Subscription;
 
@@ -17,9 +17,9 @@ public interface SubscriptionHelper {
 
     Subscription createSubscriptionFromCloud(String target, String topicFilter);
 
-    List<Subscription> connectFunctionsAndDevices(Map<Function, FunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs);
+    List<Subscription> connectFunctionsAndDevices(Map<Function, ModifiableFunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs);
 
-    List<Subscription> connectFunctionsToShadows(Map<Function, FunctionConf> functionAliasToConfMap);
+    List<Subscription> connectFunctionsToShadows(Map<Function, ModifiableFunctionConf> functionAliasToConfMap);
 
     List<Subscription> createCloudSubscriptionsForArn(List<String> fromCloudSubscriptions, List<String> toCloudSubscriptions, String arn);
 

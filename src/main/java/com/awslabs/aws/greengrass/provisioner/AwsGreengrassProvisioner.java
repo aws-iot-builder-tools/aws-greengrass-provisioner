@@ -6,15 +6,16 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.ProvisionException;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
 import javax.inject.Inject;
 import java.util.Optional;
 import java.util.Set;
 
-@Slf4j
 public class AwsGreengrassProvisioner implements Runnable {
+    private static final Logger log = LoggerFactory.getLogger(AwsGreengrassProvisioner.class);
     private static Optional<Injector> optionalInjector = Optional.empty();
     @Inject
     Set<Operation> operations;

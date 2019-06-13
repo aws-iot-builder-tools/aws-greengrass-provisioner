@@ -1,12 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.data.resources;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 
-@Data
-@Builder
-public class LocalSageMakerResource {
-    private final String name;
-    private final String arn;
-    private final String path;
+@Value.Immutable
+public abstract class LocalSageMakerResource {
+    public abstract String getName();
+
+    public abstract String getArn();
+
+    public abstract String getPath();
 }

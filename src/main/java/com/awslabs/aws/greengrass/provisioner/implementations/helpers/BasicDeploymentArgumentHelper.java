@@ -11,13 +11,14 @@ import com.oblac.nomen.Nomen;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.Optional;
 
-@Slf4j
 public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicDeploymentArgumentHelper.class);
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
     @Inject

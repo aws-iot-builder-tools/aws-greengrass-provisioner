@@ -1,20 +1,20 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.TestArgumentHelper;
 import com.beust.jcommander.JCommander;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.util.List;
 
-@Slf4j
 public class BasicTestArgumentHelper implements TestArgumentHelper {
-    public static final String DTOUTPUT = "/dtoutput";
-    public static final String DT_ZIP = "/devicetester_greengrass_linux_1.3.1.zip";
+    private static final String DTOUTPUT = "/dtoutput";
+    private static final String DT_ZIP = "/devicetester_greengrass_linux_1.3.1.zip";
+    private final Logger log = LoggerFactory.getLogger(BasicTestArgumentHelper.class);
     @Inject
     IoHelper ioHelper;
 

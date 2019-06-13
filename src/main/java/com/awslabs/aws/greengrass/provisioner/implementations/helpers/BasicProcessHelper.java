@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.AwsCredentialsProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
@@ -18,7 +17,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-@Slf4j
 public class BasicProcessHelper implements ProcessHelper {
     private static final String AWS_SECRET_KEY = "AWS_SECRET_KEY";
     private static final String AWS_ACCESS_KEY_ID = "AWS_ACCESS_KEY_ID";

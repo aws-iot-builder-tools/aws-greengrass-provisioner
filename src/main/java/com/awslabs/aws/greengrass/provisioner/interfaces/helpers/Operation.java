@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
 import io.vavr.control.Try;
-import org.slf4j.Logger;
 
 import java.util.Arrays;
 

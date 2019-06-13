@@ -124,7 +124,7 @@ public class GreengrassEndToEndIT {
     @Test
     public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException, MqttException {
         expectedSystemExit.expectSystemExitWithStatus(1);
-       
+
         // First build with the normal UID and GID configuration
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 

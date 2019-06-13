@@ -2,12 +2,9 @@ package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.beust.jcommander.Parameter;
-import lombok.Getter;
 
 public class DeploymentArguments extends Arguments {
     private final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
-    @Getter
-    private final String requiredOptionName = SHORT_DEPLOYMENT_CONFIG_OPTION;
     private final String LONG_BUILD_CONTAINER_OPTION = "--build-container";
     private final String SHORT_BUILD_CONTAINER_OPTION = "-c";
     private final String LONG_PUSH_CONTAINER_OPTION = "--push-container";
@@ -24,10 +21,9 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
     private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
-    //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
-
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
+    //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
     public Architecture architecture;
     @Parameter(names = {LONG_GROUP_NAME_OPTION, SHORT_GROUP_NAME_OPTION}, description = "The name of the Greengrass group")
     public String groupName;
@@ -58,11 +54,20 @@ public class DeploymentArguments extends Arguments {
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
     @Parameter(names = "--help", help = true)
-    @Getter
     public boolean help;
+
+    @Override
+    public String getRequiredOptionName() {
+        return SHORT_DEPLOYMENT_CONFIG_OPTION;
+    }
 
     @Override
     public boolean isRequiredOptionSet() {
         return (deploymentConfigFilename != null);
+    }
+
+    @Override
+    public boolean isHelp() {
+        return help;
     }
 }

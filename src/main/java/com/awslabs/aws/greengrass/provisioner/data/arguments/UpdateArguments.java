@@ -1,12 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.beust.jcommander.Parameter;
-import lombok.Getter;
 
 public class UpdateArguments extends Arguments {
     private final String LONG_UPDATE_GROUP_OPTION = "--update-group";
-    @Getter
-    private final String requiredOptionName = LONG_UPDATE_GROUP_OPTION;
     private final String LONG_ADD_SUBSCRIPTION_OPTION = "--add-subscription";
     private final String REMOVE_SUBSCRIPTION_OPTION = "--remove-subscription";
     private final String LONG_ADD_DEVICE_OPTION = "--add-device";
@@ -20,7 +17,6 @@ public class UpdateArguments extends Arguments {
     private final String SUBSCRIPTION_SOURCE_OPTION = "--subscription-source";
     private final String SUBSCRIPTION_SUBJECT_OPTION = "--subscription-subject";
     private final String SUBSCRIPTION_TARGET_OPTION = "--subscription-target";
-
     @Parameter(names = {LONG_UPDATE_GROUP_OPTION}, description = "Update an existing Greengrass group (must specify additional options)")
     public boolean updateGroup;
     @Parameter(names = {LONG_GROUP_NAME_OPTION, SHORT_GROUP_NAME_OPTION}, description = "The name of the Greengrass group")
@@ -50,11 +46,20 @@ public class UpdateArguments extends Arguments {
     @Parameter(names = {SUBSCRIPTION_TARGET_OPTION}, description = "The target for a subscription table update")
     public String subscriptionTarget;
     @Parameter(names = "--help", help = true)
-    @Getter
     public boolean help;
+
+    @Override
+    public String getRequiredOptionName() {
+        return LONG_UPDATE_GROUP_OPTION;
+    }
 
     @Override
     public boolean isRequiredOptionSet() {
         return updateGroup;
+    }
+
+    @Override
+    public boolean isHelp() {
+        return help;
     }
 }

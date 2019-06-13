@@ -5,7 +5,8 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
 import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
@@ -15,10 +16,9 @@ import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class BasicGroupUpdateHelper implements GroupUpdateHelper {
-    public static final String SUBSCRIPTION_ERROR = "is not valid for a subscription (cloud, function ARN, or thing ARN).  When specifying a function make sure you specify the alias (e.g. \"FUNCTION:PROD\")";
-
+    private static final String SUBSCRIPTION_ERROR = "is not valid for a subscription (cloud, function ARN, or thing ARN).  When specifying a function make sure you specify the alias (e.g. \"FUNCTION:PROD\")";
+    private final Logger log = LoggerFactory.getLogger(BasicGroupUpdateHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject

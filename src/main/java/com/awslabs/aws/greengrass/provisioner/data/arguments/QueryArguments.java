@@ -1,12 +1,9 @@
 package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.beust.jcommander.Parameter;
-import lombok.Getter;
 
 public class QueryArguments extends Arguments {
     private final String LONG_QUERY_GROUP_OPTION = "--query-group";
-    @Getter
-    private final String requiredOptionName = LONG_QUERY_GROUP_OPTION;
     private final String LONG_GET_GROUP_CA_OPTION = "--get-group-ca";
     private final String LONG_LIST_SUBSCRIPTIONS_OPTION = "--list-subscriptions";
     private final String LONG_LIST_FUNCTIONS_OPTION = "--list-functions";
@@ -27,8 +24,17 @@ public class QueryArguments extends Arguments {
     @Parameter(names = {LONG_WRITE_TO_FILE_OPTION}, description = "(Optional) Whether or not to write the output to a file")
     public boolean writeToFile;
     @Parameter(names = "--help", help = true)
-    @Getter
     public boolean help;
+
+    @Override
+    public boolean isHelp() {
+        return help;
+    }
+
+    @Override
+    public String getRequiredOptionName() {
+        return LONG_QUERY_GROUP_OPTION;
+    }
 
     @Override
     public boolean isRequiredOptionSet() {

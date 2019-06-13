@@ -8,8 +8,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import io.vavr.control.Try;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeroturnaround.zip.ZipUtil;
 
 import javax.inject.Inject;
@@ -24,18 +24,13 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-@Slf4j
-
 public class BasicPythonBuilder implements PythonBuilder {
-    public static final String PIP = "pip";
-    public static final String REQUIREMENTS_TXT = "requirements.txt";
+    private static final String PIP = "pip";
+    private static final String REQUIREMENTS_TXT = "requirements.txt";
+    private final Logger log = LoggerFactory.getLogger(BasicPythonBuilder.class);
     private final String DIST_INFO = ".dist-info";
     private final String BIN = "bin";
     private final String INIT_PY = "__init__.py";
-    @Getter
-    private final Optional<SDK> sdk = Optional.empty();
-    @Getter
-    private final String sdkDestinationPath = ".";
     @Inject
     ProcessHelper processHelper;
     @Inject
@@ -47,6 +42,16 @@ public class BasicPythonBuilder implements PythonBuilder {
 
     @Inject
     public BasicPythonBuilder() {
+    }
+
+    @Override
+    public Optional<SDK> getSdk() {
+        return Optional.empty();
+    }
+
+    @Override
+    public String getSdkDestinationPath() {
+        return ".";
     }
 
     @Override

@@ -2,12 +2,9 @@ package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.beust.jcommander.Parameter;
-import lombok.Getter;
 
 public class TestArguments extends Arguments {
     private final String LONG_TEST_GROUP_OPTION = "--test-group";
-    @Getter
-    private final String requiredOptionName = LONG_TEST_GROUP_OPTION;
     private final String LONG_USER_OPTION = "--user";
     private final String SHORT_USER_OPTION = "-u";
     private final String LONG_PRIVATE_KEY_PATH_OPTION = "--private-key-path";
@@ -22,7 +19,6 @@ public class TestArguments extends Arguments {
     private final String SHORT_OUTPUT_DIRECTORY_OPTION = "-o";
     @Parameter(names = {LONG_TEST_GROUP_OPTION}, description = "Use Device Tester on a device")
     public boolean testGroup;
-
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     public Architecture architecture;
@@ -43,11 +39,20 @@ public class TestArguments extends Arguments {
     @Parameter(names = {LONG_OUTPUT_DIRECTORY_OPTION, SHORT_OUTPUT_DIRECTORY_OPTION}, description = "The directory to place the test results in")
     public String outputDirectory;
     @Parameter(names = "--help", help = true)
-    @Getter
     public boolean help;
+
+    @Override
+    public String getRequiredOptionName() {
+        return LONG_TEST_GROUP_OPTION;
+    }
 
     @Override
     public boolean isRequiredOptionSet() {
         return testGroup;
+    }
+
+    @Override
+    public boolean isHelp() {
+        return help;
     }
 }

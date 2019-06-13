@@ -3,8 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import io.vavr.control.Try;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.*;
@@ -12,13 +12,13 @@ import software.amazon.awssdk.services.iot.model.*;
 import javax.inject.Inject;
 import java.util.List;
 
-@Slf4j
 public class BasicIotHelper implements IotHelper {
-    public static final String CREDENTIALS = "credentials/";
+    public static final String IOT_DATA_ATS = "iot:Data-ATS";
+    public static final String IOT_CREDENTIAL_PROVIDER = "iot:CredentialProvider";
+    private static final String CREDENTIALS = "credentials/";
+    private final Logger log = LoggerFactory.getLogger(BasicIotHelper.class);
     @Inject
     IotClient iotClient;
-    @Getter(lazy = true)
-    private final String endpoint = describeEndpoint();
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -30,8 +30,17 @@ public class BasicIotHelper implements IotHelper {
     public BasicIotHelper() {
     }
 
-    private String describeEndpoint() {
-        return iotClient.describeEndpoint().endpointAddress();
+    @Override
+    public String getEndpoint() {
+        return innerGetEndpoint(IOT_DATA_ATS);
+    }
+
+    private String innerGetEndpoint(String endpointType) {
+        DescribeEndpointRequest describeEndpointRequest = DescribeEndpointRequest.builder()
+                .endpointType(endpointType)
+                .build();
+
+        return iotClient.describeEndpoint(describeEndpointRequest).endpointAddress();
     }
 
     @Override
@@ -199,11 +208,7 @@ public class BasicIotHelper implements IotHelper {
 
     @Override
     public String getCredentialProviderUrl() {
-        DescribeEndpointRequest describeEndpointRequest = DescribeEndpointRequest.builder()
-                .endpointType("iot:CredentialProvider")
-                .build();
-
-        return iotClient.describeEndpoint(describeEndpointRequest).endpointAddress();
+        return innerGetEndpoint(IOT_CREDENTIAL_PROVIDER);
     }
 
     @Override

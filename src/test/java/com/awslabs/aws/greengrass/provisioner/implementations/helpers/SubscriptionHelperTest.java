@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
@@ -35,9 +35,11 @@ public class SubscriptionHelperTest {
     @Test
     public void simpleDirectFunctionToFunctionTopicMappingTest() {
         List<String> topics = Arrays.asList("a", "b", "c", "d", "e");
-        Map<Function, FunctionConf> map = new HashMap<>();
+        Map<Function, ModifiableFunctionConf> map = new HashMap<>();
 
-        FunctionConf abInput = FunctionConf.builder().inputTopics(topics).outputTopics(new ArrayList<>()).build();
+        ModifiableFunctionConf abInput = ModifiableFunctionConf.create()
+                .setInputTopics(topics)
+                .setOutputTopics(new ArrayList<>());
         String abInputArn = "abInputArn";
         Function abInputFunction = Function.builder()
                 .functionArn(abInputArn)
@@ -45,7 +47,9 @@ public class SubscriptionHelperTest {
 
         map.put(abInputFunction, abInput);
 
-        FunctionConf abOutput = FunctionConf.builder().outputTopics(topics).inputTopics(new ArrayList<>()).build();
+        ModifiableFunctionConf abOutput = ModifiableFunctionConf.create()
+                .setOutputTopics(topics)
+                .setInputTopics(new ArrayList<>());
         String abOutputArn = "abOutputArn";
         Function abOutputFunction = Function.builder()
                 .functionArn(abOutputArn)

@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import lombok.Getter;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionConfiguration;
 
@@ -10,66 +9,114 @@ import javax.inject.Inject;
 import java.io.File;
 
 public class BasicGGConstants implements GGConstants {
-    public static final String DEVICE_KEY = "device.key";
-    public static final String DEVICE_CRT = "device.crt";
-    @Getter
-    private final String rootCaUrl = "https://www.symantec.com/content/en/us/enterprise/verisign/roots/VeriSign-Class%203-Public-Primary-Certification-Authority-G5.pem";
-    @Getter
-    private final String rootCaName = "root.ca.pem";
-    @Getter
-    private final String configFileName = "config.json";
-    @Getter
-    private final String greengrassDaemonName = "/greengrass/ggc/core/greengrassd";
-    @Getter
-    private final String lambdaDummyRoleName = "GGLambdaDummyRole";
-    @Getter
-    private final String corePublicCertificateName = "core.crt";
-    @Getter
-    private final String corePrivateKeyName = "core.key";
-    @Getter
-    private final String ggIpDetectorArn = "arn:aws:lambda:::function:GGIPDetector:1";
-    @Getter
-    private final String ggShadowServiceName = "GGShadowService";
-    @Getter
-    private final String ggdPrefix = "ggd";
-    @Getter
-    private final String buildDirectory = "build";
-    @Getter
-    private final String certsDirectoryPrefix = "certs";
-    @Getter
-    private final String configDirectoryPrefix = "config";
-    @Getter
-    private final String officialGreengrassAccountId = "216483018798";
-    @Getter(lazy = true)
-    private final String officialGreengrassEcrEndpoint = buildOfficialGreengrassEcrEndpoint();
-    @Getter(lazy = true)
-    private final String officialGreengrassDockerImage = buildOfficialGreengrassDockerImageString();
-    @Getter
-    private final String defaultsConf = "defaults.conf";
-    @Getter
-    private final File functionDefaultsConf = new File("deployments/function.defaults.conf");
-    @Getter
-    private final String confGreengrassContainer = "conf.greengrassContainer";
-    @Getter
-    private final File deploymentDefaultsConf = new File("deployments/deployment.defaults.conf");
-    @Getter
-    private final String ggdDefaultsConf = "ggds/ggd.defaults.conf";
+    private static final String DEVICE_KEY = "device.key";
+    private static final String DEVICE_CRT = "device.crt";
     @Inject
     IoHelper ioHelper;
-    @Getter(lazy = true)
-    private final Function ggIpDetectorFunction = buildGgIpDetectorFunction();
 
     @Inject
     public BasicGGConstants() {
     }
 
-    private String buildOfficialGreengrassEcrEndpoint() {
+    @Override
+    public String getRootCaUrl() {
+        return "https://www.amazontrust.com/repository/AmazonRootCA1.pem";
+    }
+
+    @Override
+    public String getRootCaName() {
+        return "root.ca.pem";
+    }
+
+    @Override
+    public String getConfigFileName() {
+        return "config.json";
+    }
+
+    @Override
+    public String getGreengrassDaemonName() {
+        return "/greengrass/ggc/core/greengrassd";
+    }
+
+    @Override
+    public String getCorePublicCertificateName() {
+        return "core.crt";
+    }
+
+    @Override
+    public String getCorePrivateKeyName() {
+        return "core.key";
+    }
+
+    @Override
+    public String getGgIpDetectorArn() {
+        return "arn:aws:lambda:::function:GGIPDetector:1";
+    }
+
+    @Override
+    public String getGgShadowServiceName() {
+        return "GGShadowService";
+    }
+
+    @Override
+    public String getGgdPrefix() {
+        return "ggd";
+    }
+
+    @Override
+    public String getBuildDirectory() {
+        return "build";
+    }
+
+    @Override
+    public String getCertsDirectoryPrefix() {
+        return "certs";
+    }
+
+    @Override
+    public String getConfigDirectoryPrefix() {
+        return "config";
+    }
+
+    @Override
+    public String getOfficialGreengrassAccountId() {
+        return "216483018798";
+    }
+
+    @Override
+    public String getDefaultsConf() {
+        return "defaults.conf";
+    }
+
+    @Override
+    public File getFunctionDefaultsConf() {
+        return new File("deployments/function.defaults.conf");
+    }
+
+    @Override
+    public String getConfGreengrassContainer() {
+        return "conf.greengrassContainer";
+    }
+
+    @Override
+    public File getDeploymentDefaultsConf() {
+        return new File("deployments/deployment.defaults.conf");
+    }
+
+    @Override
+    public String getGgdDefaultsConf() {
+        return "ggds/ggd.defaults.conf";
+    }
+
+    @Override
+    public String getOfficialGreengrassEcrEndpoint() {
         return String.join(".",
                 getOfficialGreengrassAccountId(),
                 "dkr.ecr.us-west-2.amazonaws.com");
     }
 
-    private String buildOfficialGreengrassDockerImageString() {
+    @Override
+    public String getOfficialGreengrassDockerImage() {
         return String.join("/",
                 getOfficialGreengrassEcrEndpoint(),
                 "aws-iot-greengrass:1.9.1-amazonlinux");
@@ -77,20 +124,21 @@ public class BasicGGConstants implements GGConstants {
 
     @Override
     public String trimGgdPrefix(String thingName) {
-        return thingName.replaceFirst(ggdPrefix + "-", "");
+        return thingName.replaceFirst(getGgdPrefix() + "-", "");
     }
 
     @Override
     public String getDevicePublicCertificateName(String thingName) {
-        return String.join(".", ggdPrefix, thingName, DEVICE_CRT);
+        return String.join(".", getGgdPrefix(), thingName, DEVICE_CRT);
     }
 
     @Override
     public String getDevicePrivateKeyName(String thingName) {
-        return String.join(".", ggdPrefix, thingName, DEVICE_KEY);
+        return String.join(".", getGgdPrefix(), thingName, DEVICE_KEY);
     }
 
-    private Function buildGgIpDetectorFunction() {
+    @Override
+    public Function getGgIpDetectorFunction() {
         FunctionConfiguration functionConfiguration = FunctionConfiguration.builder()
                 .memorySize(32768)
                 .pinned(true)

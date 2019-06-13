@@ -40,7 +40,7 @@ public class BasicGGVariables implements GGVariables {
 
     @Override
     public String getGgHost(Region region) {
-        return "greengrass.iot." + region.toString() + ".amazonaws.com";
+        return "greengrass-ats.iot." + region.toString() + ".amazonaws.com";
     }
 
     @Override

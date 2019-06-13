@@ -8,8 +8,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import io.vavr.control.Try;
-import lombok.Getter;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.zeroturnaround.zip.ZipUtil;
 
 import javax.inject.Inject;
@@ -19,12 +19,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-@Slf4j
 public class BasicNodeBuilder implements NodeBuilder {
-    @Getter
-    private final Optional<SDK> sdk = Optional.of(SDK.NODEJS);
-    @Getter
-    private final String sdkDestinationPath = ".";
+    private final Logger log = LoggerFactory.getLogger(BasicNodeBuilder.class);
     @Inject
     ProcessHelper processHelper;
     @Inject
@@ -36,6 +32,16 @@ public class BasicNodeBuilder implements NodeBuilder {
 
     @Inject
     public BasicNodeBuilder() {
+    }
+
+    @Override
+    public Optional<SDK> getSdk() {
+        return Optional.of(SDK.NODEJS);
+    }
+
+    @Override
+    public String getSdkDestinationPath() {
+        return ".";
     }
 
     @Override

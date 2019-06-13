@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableGGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGDHelper;
@@ -9,7 +10,8 @@ import com.typesafe.config.ConfigException;
 import com.typesafe.config.ConfigFactory;
 import com.typesafe.config.ConfigValueFactory;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -20,11 +22,10 @@ import java.util.stream.Collectors;
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
 
-@Slf4j
 public class BasicGGDHelper implements GGDHelper {
-    public static final String GGDS = "ggds/";
-    public static final String GGD_CONF = "ggd.conf";
-
+    private static final String GGDS = "ggds/";
+    private static final String GGD_CONF = "ggd.conf";
+    private final Logger log = LoggerFactory.getLogger(BasicGGDHelper.class);
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -39,7 +40,7 @@ public class BasicGGDHelper implements GGDHelper {
         File ggdConfigFile = new File(GGDS + ggdName + "/" + GGD_CONF);
         File scriptPath = new File(GGDS + ggdName);
 
-        GGDConf.GGDConfBuilder ggdConfBuilder = GGDConf.builder();
+        ImmutableGGDConf.Builder ggdConfBuilder = ImmutableGGDConf.builder();
 
         return Try.of(() -> innerGetGgdConf(groupName, ggdName, ggdConfigFile, scriptPath, ggdConfBuilder))
                 .onFailure(throwable -> Match(throwable).of(
@@ -56,7 +57,7 @@ public class BasicGGDHelper implements GGDHelper {
         return null;
     }
 
-    private GGDConf innerGetGgdConf(String groupName, String ggdName, File ggdConfigFile, File scriptPath, GGDConf.GGDConfBuilder ggdConfBuilder) {
+    private GGDConf innerGetGgdConf(String groupName, String ggdName, File ggdConfigFile, File scriptPath, ImmutableGGDConf.Builder ggdConfBuilder) {
         Config config = ConfigFactory.parseFile(ggdConfigFile);
         config = config.withValue("GROUP_NAME", ConfigValueFactory.fromAnyRef(groupName));
         Config fallback = ConfigFactory.parseFile(new File(ggConstants.getGgdDefaultsConf()));

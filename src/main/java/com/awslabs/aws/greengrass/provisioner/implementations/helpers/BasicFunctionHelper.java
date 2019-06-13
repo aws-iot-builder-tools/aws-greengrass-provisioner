@@ -1,22 +1,19 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
-import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfoAndFunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.Language;
+import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.*;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.typesafe.config.*;
 import io.vavr.control.Try;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
@@ -33,9 +30,8 @@ import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-@Slf4j
-
 public class BasicFunctionHelper implements FunctionHelper {
+    private final Logger log = LoggerFactory.getLogger(BasicFunctionHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
@@ -175,7 +171,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    public List<ModifiableFunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
 
         // Find any functions with missing config files
@@ -184,10 +180,10 @@ public class BasicFunctionHelper implements FunctionHelper {
         return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<ModifiableFunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<String> enabledFunctions = new ArrayList<>();
 
-        List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
+        List<ModifiableFunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
         if (!ggConstants.getFunctionDefaultsConf().exists()) {
             log.warn(ggConstants.getFunctionDefaultsConf().toString() + " does not exist.  All function configurations MUST contain all required values.");
@@ -196,7 +192,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
             Path functionPath = getFunctionPath(enabledFunctionConf);
 
-            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
+            ModifiableFunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
 
             enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
@@ -213,8 +209,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
-        FunctionConf.FunctionConfBuilder functionConfBuilder = FunctionConf.builder();
+    private ModifiableFunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
+        ModifiableFunctionConf functionConf = ModifiableFunctionConf.create();
 
         // Load function config file and use function.defaults.conf as the fallback for missing values
         Config config = ConfigFactory.parseFile(enabledFunctionConf);
@@ -234,7 +230,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Resolve the entire fallback config
         config = config.resolve();
 
-        functionConfBuilder.buildDirectory(functionPath);
+        functionConf.setBuildDirectory(functionPath);
 
         Language language = Language.valueOf(config.getString("conf.language"));
 
@@ -253,51 +249,51 @@ public class BasicFunctionHelper implements FunctionHelper {
             throw new RuntimeException("Specifying dependencies in function.conf is no longer supported. Use requirements.txt for Python and package.json for NodeJS instead.");
         }
 
-        functionConfBuilder.language(language);
-        functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
-        functionConfBuilder.functionName(config.getString("conf.functionName"));
-        functionConfBuilder.groupName(deploymentConf.getGroupName());
-        functionConfBuilder.handlerName(config.getString("conf.handlerName"));
-        functionConfBuilder.aliasName(config.getString("conf.aliasName"));
-        functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
-        functionConfBuilder.pinned(config.getBoolean("conf.pinned"));
-        functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
-        functionConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
-        functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
-        functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
-        functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
-        functionConfBuilder.accessSysFs(config.getBoolean("conf.accessSysFs"));
-        functionConfBuilder.greengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
-        functionConfBuilder.uid(config.getInt("conf.uid"));
-        functionConfBuilder.gid(config.getInt("conf.gid"));
+        functionConf.setLanguage(language);
+        functionConf.setEncodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
+        functionConf.setFunctionName(config.getString("conf.functionName"));
+        functionConf.setGroupName(deploymentConf.getGroupName());
+        functionConf.setHandlerName(config.getString("conf.handlerName"));
+        functionConf.setAliasName(config.getString("conf.aliasName"));
+        functionConf.setMemorySizeInKb(config.getInt("conf.memorySizeInKb"));
+        functionConf.setIsPinned(config.getBoolean("conf.pinned"));
+        functionConf.setTimeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
+        functionConf.setFromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
+        functionConf.setToCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
+        functionConf.setOutputTopics(config.getStringList("conf.outputTopics"));
+        functionConf.setInputTopics(config.getStringList("conf.inputTopics"));
+        functionConf.setIsAccessSysFs(config.getBoolean("conf.accessSysFs"));
+        functionConf.setIsGreengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
+        functionConf.setUid(config.getInt("conf.uid"));
+        functionConf.setGid(config.getInt("conf.gid"));
 
-        setLocalDeviceResourcesConfig(functionConfBuilder, config);
-        setLocalVolumeResourcesConfig(functionConfBuilder, config);
-        setLocalSageMakerResourcesConfig(functionConfBuilder, config);
-        setLocalS3ResourcesConfig(functionConfBuilder, config);
+        setLocalDeviceResourcesConfig(functionConf, config);
+        setLocalVolumeResourcesConfig(functionConf, config);
+        setLocalSageMakerResourcesConfig(functionConf, config);
+        setLocalS3ResourcesConfig(functionConf, config);
 
-        List<String> connectedShadows = getConnectedShadows(functionConfBuilder, config);
-        functionConfBuilder.connectedShadows(connectedShadows);
+        List<String> connectedShadows = getConnectedShadows(functionConf, config);
+        functionConf.setConnectedShadows(connectedShadows);
 
         // Use the environment variables from the deployment and then add the environment variables from the function
-        functionConfBuilder.environmentVariables(deploymentConf.getEnvironmentVariables());
-        setEnvironmentVariables(functionConfBuilder, config);
-        addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
+        functionConf.putAllEnvironmentVariables(deploymentConf.getEnvironmentVariables());
+        setEnvironmentVariables(functionConf, config);
+        addConnectedShadowsToEnvironment(functionConf, connectedShadows);
 
         File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
 
         if (cfTemplate.exists()) {
-            functionConfBuilder.cfTemplate(cfTemplate);
+            functionConf.setCfTemplate(cfTemplate);
         }
 
-        return functionConfBuilder.build();
+        return functionConf;
     }
 
-    private void addConnectedShadowsToEnvironment(FunctionConf.FunctionConfBuilder functionConfBuilder, List<String> connectedShadows) {
+    private void addConnectedShadowsToEnvironment(ModifiableFunctionConf functionConf, List<String> connectedShadows) {
         int index = 0;
 
         for (String connectedShadow : connectedShadows) {
-            functionConfBuilder.environmentVariable("CONNECTED_SHADOW_" + index, connectedShadow);
+            functionConf.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadow);
             index++;
         }
     }
@@ -323,22 +319,22 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfigFiles;
     }
 
-    private List<String> getConnectedShadows(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private List<String> getConnectedShadows(ModifiableFunctionConf functionConf, Config config) {
         List<String> connectedShadows = config.getStringList("conf.connectedShadows");
 
         if (connectedShadows.size() == 0) {
-            log.debug("No connected shadows specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No connected shadows specified for [" + functionConf.getFunctionName() + "] function");
             return new ArrayList<>();
         }
 
         return connectedShadows;
     }
 
-    private void setLocalDeviceResourcesConfig(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private void setLocalDeviceResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localDeviceResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local device resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local device resources specified for [" + functionConf.getFunctionName() + "] function");
             return;
         }
 
@@ -350,20 +346,20 @@ public class BasicFunctionHelper implements FunctionHelper {
             Optional<String> name = getName(temp);
             name = makeNameSafe(path, name);
 
-            LocalDeviceResource localDeviceResource = LocalDeviceResource.builder()
+            LocalDeviceResource localDeviceResource = com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalDeviceResource.builder()
                     .name(name.get())
                     .path(path)
-                    .readWrite(temp.getBoolean(READ_WRITE))
+                    .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
-            functionConfBuilder.localDeviceResource(localDeviceResource);
+            functionConf.addLocalDeviceResources(localDeviceResource);
         }
     }
 
-    private void setLocalVolumeResourcesConfig(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private void setLocalVolumeResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localVolumeResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local volume resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local volume resources specified for [" + functionConf.getFunctionName() + "] function");
             return;
         }
 
@@ -379,21 +375,21 @@ public class BasicFunctionHelper implements FunctionHelper {
             Optional<String> name = getName(temp);
             name = makeNameSafe(sourcePath, name);
 
-            LocalVolumeResource localVolumeResource = LocalVolumeResource.builder()
+            LocalVolumeResource localVolumeResource = ImmutableLocalVolumeResource.builder()
                     .name(name.get())
                     .sourcePath(sourcePath)
                     .destinationPath(destinationPath)
-                    .readWrite(temp.getBoolean(READ_WRITE))
+                    .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
-            functionConfBuilder.localVolumeResource(localVolumeResource);
+            functionConf.addLocalVolumeResources(localVolumeResource);
         }
     }
 
-    private void setLocalS3ResourcesConfig(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private void setLocalS3ResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localS3Resources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local S3 resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local S3 resources specified for [" + functionConf.getFunctionName() + "] function");
             return;
         }
 
@@ -405,21 +401,21 @@ public class BasicFunctionHelper implements FunctionHelper {
             Optional<String> name = getName(temp);
             name = makeNameSafe(path, name);
 
-            LocalS3Resource localS3Resource = LocalS3Resource.builder()
+            LocalS3Resource localS3Resource = ImmutableLocalS3Resource.builder()
                     .name(name.get())
                     .uri(uri)
                     .path(path)
                     .build();
 
-            functionConfBuilder.localS3Resource(localS3Resource);
+            functionConf.addLocalS3Resources(localS3Resource);
         }
     }
 
-    private void setLocalSageMakerResourcesConfig(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private void setLocalSageMakerResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localSageMakerResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local SageMaker resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local SageMaker resources specified for [" + functionConf.getFunctionName() + "] function");
             return;
         }
 
@@ -451,13 +447,13 @@ public class BasicFunctionHelper implements FunctionHelper {
             Optional<String> name = getName(temp);
             name = makeNameSafe(path, name);
 
-            LocalSageMakerResource localSageMakerResource = LocalSageMakerResource.builder()
+            LocalSageMakerResource localSageMakerResource = ImmutableLocalSageMakerResource.builder()
                     .name(name.get())
                     .arn(arn)
                     .path(path)
                     .build();
 
-            functionConfBuilder.localSageMakerResource(localSageMakerResource);
+            functionConf.addLocalSageMakerResources(localSageMakerResource);
         }
     }
 
@@ -478,13 +474,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return name;
     }
 
-    /*
-    private Optional<String> makeNameSafe(String path, Optional<String> name) {
-        return Optional.of(UUID.randomUUID().toString());
-    }
-    */
-
-    private void setEnvironmentVariables(FunctionConf.FunctionConfBuilder functionConfBuilder, Config config) {
+    private void setEnvironmentVariables(ModifiableFunctionConf functionConf, Config config) {
         ConfigObject configObject = config.getObject("conf.environmentVariables");
 
         if (configObject.size() == 0) {
@@ -494,12 +484,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         Config tempConfig = configObject.toConfig();
 
         for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
-            functionConfBuilder.environmentVariable(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
+            functionConf.putEnvironmentVariables(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
         }
     }
 
     @Override
-    public List<BuildableFunction> getBuildableFunctions(List<FunctionConf> functionConfs, Role lambdaRole) {
+    public List<BuildableFunction> getBuildableFunctions(List<ModifiableFunctionConf> functionConfs, Role lambdaRole) {
         List<BuildableJavaMavenFunction> javaMavenFunctions = functionConfs.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
@@ -532,30 +522,30 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<FunctionConf> getPythonPredicate() {
-        Predicate<FunctionConf> python27Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
-        Predicate<FunctionConf> python37Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
+    public Predicate<ModifiableFunctionConf> getPythonPredicate() {
+        Predicate<ModifiableFunctionConf> python27Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
+        Predicate<ModifiableFunctionConf> python37Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
 
         return python27Predicate.or(python37Predicate);
     }
 
     @Override
-    public Predicate<FunctionConf> getNodePredicate() {
-        Predicate<FunctionConf> node610Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS6_10);
-        Predicate<FunctionConf> node810Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS8_10);
+    public Predicate<ModifiableFunctionConf> getNodePredicate() {
+        Predicate<ModifiableFunctionConf> node610Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS6_10);
+        Predicate<ModifiableFunctionConf> node810Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS8_10);
 
         return node610Predicate.or(node810Predicate);
     }
 
     @Override
-    public Predicate<FunctionConf> getJavaPredicate() {
-        Predicate<FunctionConf> java8Predicate = functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
+    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
+        Predicate<ModifiableFunctionConf> java8Predicate = functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
 
         return java8Predicate;
     }
 
     @Override
-    public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions) {
+    public Map<Function, ModifiableFunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions) {
         // Get a list of all the build steps we will call
         List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = getCallableBuildSteps(buildableFunctions);
 
@@ -584,7 +574,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         lambdaFunctionArnInfoAndFunctionConfs.stream()
                 .forEach(lambdaFunctionArnInfoAndFunctionConf -> setEnvironmentVariables(environmentVariablesForLocalLambdas, lambdaFunctionArnInfoAndFunctionConf));
 
-        Map<Function, FunctionConf> functionToConfMap = new HashMap<>();
+        Map<Function, ModifiableFunctionConf> functionToConfMap = new HashMap<>();
 
         // Build the function models
         lambdaFunctionArnInfoAndFunctionConfs.stream()
@@ -593,16 +583,16 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionToConfMap;
     }
 
-    private void putFunctionConfIntoFunctionConfMap(Map<Function, FunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
-        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
-        functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn(), functionConf), functionConf);
+    private void putFunctionConfIntoFunctionConfMap(Map<Function, ModifiableFunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
+        ModifiableFunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+        functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn().get(), functionConf), functionConf);
     }
 
     private void setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
-        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+        ModifiableFunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
         Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
         environmentVariables.putAll(environmentVariablesForLocalLambdas);
-        functionConf.setEnvironmentVariables(environmentVariables);
+        functionConf.putAllEnvironmentVariables(environmentVariables);
     }
 
     private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
@@ -653,76 +643,76 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableJavaMavenFunction buildableJavaMavenFunction) {
-        FunctionConf functionConf = buildableJavaMavenFunction.getFunctionConf();
+        ModifiableFunctionConf functionConf = buildableJavaMavenFunction.getFunctionConf();
         Role lambdaRole = buildableJavaMavenFunction.getLambdaRole();
 
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
         String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo.setAliasArn(javaAliasArn);
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
 
-        return LambdaFunctionArnInfoAndFunctionConf.builder()
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                 .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
                 .functionConf(functionConf)
                 .build();
     }
 
     private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableJavaGradleFunction buildableJavaGradleFunction) {
-        FunctionConf functionConf = buildableJavaGradleFunction.getFunctionConf();
+        ModifiableFunctionConf functionConf = buildableJavaGradleFunction.getFunctionConf();
         Role lambdaRole = buildableJavaGradleFunction.getLambdaRole();
 
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
         String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo.setAliasArn(javaAliasArn);
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
 
-        return LambdaFunctionArnInfoAndFunctionConf.builder()
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                 .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
                 .functionConf(functionConf)
                 .build();
     }
 
     private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePythonFunction buildablePythonFunction) {
-        FunctionConf functionConf = buildablePythonFunction.getFunctionConf();
+        ModifiableFunctionConf functionConf = buildablePythonFunction.getFunctionConf();
         Role lambdaRole = buildablePythonFunction.getLambdaRole();
 
         log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePythonFunctionIfNecessary(functionConf, lambdaRole);
 
         if (lambdaFunctionArnInfo.getError().isPresent()) {
-            return LambdaFunctionArnInfoAndFunctionConf.builder()
+            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                     .functionConf(functionConf)
                     .error(lambdaFunctionArnInfo.getError())
                     .build();
         }
 
         String pythonAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo.setAliasArn(pythonAliasArn);
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(pythonAliasArn).build();
 
-        return LambdaFunctionArnInfoAndFunctionConf.builder()
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                 .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
                 .functionConf(functionConf)
                 .build();
     }
 
     private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableNodeFunction buildableNodeFunction) {
-        FunctionConf functionConf = buildableNodeFunction.getFunctionConf();
+        ModifiableFunctionConf functionConf = buildableNodeFunction.getFunctionConf();
         Role lambdaRole = buildableNodeFunction.getLambdaRole();
 
         log.info("Creating Node function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateNodeFunctionIfNecessary(functionConf, lambdaRole);
 
         if (lambdaFunctionArnInfo.getError().isPresent()) {
-            return LambdaFunctionArnInfoAndFunctionConf.builder()
+            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                     .functionConf(functionConf)
                     .error(lambdaFunctionArnInfo.getError())
                     .build();
         }
 
         String nodeAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo.setAliasArn(nodeAliasArn);
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(nodeAliasArn).build();
 
-        return LambdaFunctionArnInfoAndFunctionConf.builder()
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
                 .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
                 .functionConf(functionConf)
                 .build();

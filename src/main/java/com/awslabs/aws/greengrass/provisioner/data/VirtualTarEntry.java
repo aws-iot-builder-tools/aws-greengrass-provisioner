@@ -1,21 +1,19 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import lombok.Builder;
-import lombok.Data;
+import org.immutables.value.Value;
 import org.kamranzafar.jtar.TarEntry;
 
 import java.io.InputStream;
 
-@Data
-@Builder
-public class VirtualTarEntry {
-    private byte[] content;
+@Value.Immutable
+public abstract class VirtualTarEntry {
+    public abstract byte[] getContent();
 
-    private String filename;
+    public abstract String getFilename();
 
-    private int permissions;
+    public abstract int getPermissions();
 
-    private TarEntry tarEntry;
+    public abstract TarEntry getTarEntry();
 
-    private InputStream inputStream;
+    public abstract InputStream getInputStream();
 }
