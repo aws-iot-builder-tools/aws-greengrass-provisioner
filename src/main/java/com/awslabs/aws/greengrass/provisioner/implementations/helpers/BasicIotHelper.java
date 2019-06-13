@@ -13,6 +13,8 @@ import javax.inject.Inject;
 import java.util.List;
 
 public class BasicIotHelper implements IotHelper {
+    public static final String IOT_DATA_ATS = "iot:Data-ATS";
+    public static final String IOT_CREDENTIAL_PROVIDER = "iot:CredentialProvider";
     private static final String CREDENTIALS = "credentials/";
     private final Logger log = LoggerFactory.getLogger(BasicIotHelper.class);
     @Inject
@@ -30,7 +32,15 @@ public class BasicIotHelper implements IotHelper {
 
     @Override
     public String getEndpoint() {
-        return iotClient.describeEndpoint().endpointAddress();
+        return innerGetEndpoint(IOT_DATA_ATS);
+    }
+
+    private String innerGetEndpoint(String endpointType) {
+        DescribeEndpointRequest describeEndpointRequest = DescribeEndpointRequest.builder()
+                .endpointType(endpointType)
+                .build();
+
+        return iotClient.describeEndpoint(describeEndpointRequest).endpointAddress();
     }
 
     @Override
@@ -198,11 +208,7 @@ public class BasicIotHelper implements IotHelper {
 
     @Override
     public String getCredentialProviderUrl() {
-        DescribeEndpointRequest describeEndpointRequest = DescribeEndpointRequest.builder()
-                .endpointType("iot:CredentialProvider")
-                .build();
-
-        return iotClient.describeEndpoint(describeEndpointRequest).endpointAddress();
+        return innerGetEndpoint(IOT_CREDENTIAL_PROVIDER);
     }
 
     @Override
