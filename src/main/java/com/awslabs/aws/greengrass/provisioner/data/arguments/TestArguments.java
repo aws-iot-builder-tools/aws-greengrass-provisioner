@@ -39,7 +39,7 @@ public class TestArguments extends Arguments {
     @Parameter(names = {LONG_OUTPUT_DIRECTORY_OPTION, SHORT_OUTPUT_DIRECTORY_OPTION}, description = "The directory to place the test results in")
     public String outputDirectory;
     @Parameter(names = "--help", help = true)
-    public boolean help;
+    private boolean help;
 
     @Override
     public String getRequiredOptionName() {
