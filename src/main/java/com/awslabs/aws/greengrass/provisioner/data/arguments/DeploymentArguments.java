@@ -21,6 +21,8 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
     private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
+    private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
+    private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -53,6 +55,10 @@ public class DeploymentArguments extends Arguments {
     public boolean hsiSoftHsm2;
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
+    @Parameter(names = {LONG_S3_BUCKET_OPTION}, description = "S3 bucket to store output files")
+    public String s3Bucket;
+    @Parameter(names = {LONG_S3_DIRECTORY_OPTION}, description = "S3 directory inside the bucket to store output files")
+    public String s3Directory;
     @Parameter(names = "--help", help = true)
     public boolean help;
 
