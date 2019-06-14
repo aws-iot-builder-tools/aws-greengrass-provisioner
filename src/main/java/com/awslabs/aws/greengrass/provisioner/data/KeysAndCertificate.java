@@ -1,20 +1,20 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
+import org.immutables.gson.Gson;
 import org.immutables.value.Value;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 import software.amazon.awssdk.services.iot.model.KeyPair;
 
+@Gson.TypeAdapters
 @Value.Immutable
 public abstract class KeysAndCertificate {
     public static KeysAndCertificate from(CreateKeysAndCertificateResponse createKeysAndCertificateResponse) {
-        KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
+        return ImmutableKeysAndCertificate.builder()
                 .certificateArn(createKeysAndCertificateResponse.certificateArn())
                 .certificateId(createKeysAndCertificateResponse.certificateId())
                 .certificatePem(createKeysAndCertificateResponse.certificatePem())
-                .keyPair(createKeysAndCertificateResponse.keyPair()).build();
-
-        return keysAndCertificate;
+                .keyPair(createKeysAndCertificateResponse.keyPair())
+                .build();
     }
 
     public abstract String getCertificateArn();

@@ -171,7 +171,9 @@ task integrationTest(type: Test) {
 
 dependencies {
     annotationProcessor "org.immutables:value:$immutablesValueVersion"
+    annotationProcessor "org.immutables:gson:$immutablesValueVersion"
     compile "org.immutables:value:$immutablesValueVersion"
+    compile "org.immutables:gson:$immutablesValueVersion"
 
     compile "com.google.inject:guice:$guiceVersion"
 

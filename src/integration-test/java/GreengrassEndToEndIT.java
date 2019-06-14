@@ -1,9 +1,10 @@
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGConstants;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGVariables;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicIoHelper;
+import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
-import com.google.gson.Gson;
 import org.awaitility.Duration;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.collection.IsMapContaining;
@@ -58,11 +59,11 @@ public class GreengrassEndToEndIT {
     private GreengrassBuildWithoutDockerDeploymentsIT greengrassBuildWithoutDockerDeploymentsIT;
     private MqttClient mqttClient;
     private String coreName;
-    private Gson gson;
     private boolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
     private Path functionDefaultsPath;
     private GreengrassITShared greengrassITShared;
+    private JsonHelper jsonHelper;
 
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
@@ -92,7 +93,7 @@ public class GreengrassEndToEndIT {
         mqttClient = basicMqttOverWebsocketsProvider.getMqttClient(clientId);
         mqttClient.connect();
 
-        gson = new Gson();
+        jsonHelper = new BasicJsonHelper();
 
         flag = false;
 
@@ -176,7 +177,7 @@ public class GreengrassEndToEndIT {
             public void messageArrived(String topic, MqttMessage message) {
                 Assert.assertThat(topic, is(expectedTopic));
                 String payloadString = new String(message.getPayload());
-                Map<String, Object> payloadMap = gson.fromJson(payloadString, Map.class);
+                Map<String, Object> payloadMap = jsonHelper.fromJson(Map.class, payloadString.getBytes());
                 Assert.assertThat(payloadMap, IsMapContaining.hasKey("message"));
                 setFlag(true);
             }
