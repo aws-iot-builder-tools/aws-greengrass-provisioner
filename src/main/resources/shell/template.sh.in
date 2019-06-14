@@ -174,6 +174,8 @@ if [ $YUM_MISSING -eq 0 ]; then
     INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
 else
     INSTALLER=apt-get
+    # Avoid preinst and postinst tasks from asking questions
+    export DEBIAN_FRONTEND=noninteractive
     INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre libsm6 iproute2"
 fi
 
