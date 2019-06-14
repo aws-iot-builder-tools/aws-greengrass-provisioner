@@ -315,6 +315,7 @@ if [ -d "${SYSTEMD_DESTINATION_PATH}" ]; then
     if [ ! -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
         echo "Creating Greengrass systemd service"
         cp ${SYSTEMD_SCRIPT} ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}
+        systemctl daemon-reload
     else
         echo "Greengrass service already exists, skipping installation of systemd file"
     fi
