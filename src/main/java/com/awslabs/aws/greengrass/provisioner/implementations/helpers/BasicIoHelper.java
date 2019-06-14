@@ -97,13 +97,6 @@ public class BasicIoHelper implements IoHelper {
     }
 
     @Override
-    public Void download(String url, File file) throws IOException {
-        download(url, file, Optional.empty());
-
-        return null;
-    }
-
-    @Override
     public Void download(String url, File file, Optional<String> optionalReferer) throws IOException {
         // From: http://stackoverflow.com/a/921400
         URL website = new URL(url);

@@ -7,7 +7,6 @@ import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.oblac.nomen.Nomen;
 import io.vavr.control.Try;
-import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
@@ -17,7 +16,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.security.MessageDigest;
 import java.util.List;
 import java.util.Optional;
 import java.util.Scanner;
@@ -71,7 +69,7 @@ public interface IoHelper {
     }
 
     default byte[] readFile(URL url) {
-        return Try.withResources(() -> url.openStream())
+        return Try.withResources(url::openStream)
                 .of(this::getByteArrayFromInputStream)
                 .get();
     }
@@ -159,8 +157,6 @@ public interface IoHelper {
     default Optional<InputStream> extractTar(String tarFile, String filenameToExtract) {
         try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new FileInputStream(new File(tarFile)))) {
             return getInputStreamFromTar(tarIn, filenameToExtract);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -169,8 +165,6 @@ public interface IoHelper {
     default Optional<InputStream> extractTarGz(String tarGzFile, String filenameToExtract) {
         try (final TarArchiveInputStream tarIn = new TarArchiveInputStream(new GZIPInputStream(new FileInputStream(new File(tarGzFile))))) {
             return getInputStreamFromTar(tarIn, filenameToExtract);
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -189,7 +183,7 @@ public interface IoHelper {
 
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-            int length = 0;
+            int length;
 
             byte[] buffer = new byte[16384];
 
@@ -238,8 +232,6 @@ public interface IoHelper {
     Void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
 
     Void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
-
-    Void download(String url, File file) throws IOException;
 
     Void download(String url, File file, Optional<String> optionalReferer) throws IOException;
 
