@@ -803,23 +803,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 throw new RuntimeException("Public IP address returned from EC2 was NULL, skipping EC2 setup");
             }
 
-            String user = "ubuntu";
-
-            Optional<Session> optionalSession = threadHelper.timeLimitTask(
-                    ioHelper.getSshSessionTask(publicIpAddress,
-                            user,
-                            SSH_CONNECTED_MESSAGE,
-                            SSH_TIMED_OUT_MESSAGE,
-                            SSH_CONNECTION_REFUSED_MESSAGE,
-                            SSH_ERROR_MESSAGE), 2, TimeUnit.MINUTES);
-
-            if (!optionalSession.isPresent()) {
-                throw new RuntimeException("Failed to connect and bootstrap the instance via SSH");
-            }
-
-            Session session = optionalSession.get();
-
-            threadHelper.timeLimitTask(getCopyAndBootstrapCallable(deploymentArguments, publicIpAddress, user, session), 5, TimeUnit.MINUTES);
+            attemptBootstrap(deploymentArguments, publicIpAddress, "ubuntu");
         }
 
         //////////////////////////////////////////////////////////////////////////
@@ -831,6 +815,24 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         return null;
+    }
+
+    private void attemptBootstrap(DeploymentArguments deploymentArguments, String ipAddress, String user) {
+        Optional<Session> optionalSession = threadHelper.timeLimitTask(
+                ioHelper.getSshSessionTask(ipAddress,
+                        user,
+                        SSH_CONNECTED_MESSAGE,
+                        SSH_TIMED_OUT_MESSAGE,
+                        SSH_CONNECTION_REFUSED_MESSAGE,
+                        SSH_ERROR_MESSAGE), 2, TimeUnit.MINUTES);
+
+        if (!optionalSession.isPresent()) {
+            throw new RuntimeException("Failed to connect and bootstrap the instance via SSH");
+        }
+
+        Session session = optionalSession.get();
+
+        threadHelper.timeLimitTask(getCopyAndBootstrapCallable(deploymentArguments, ipAddress, user, session), 5, TimeUnit.MINUTES);
     }
 
     @Override
