@@ -22,6 +22,8 @@ import com.typesafe.config.*;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.awaitility.core.ConditionTimeoutException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -48,22 +50,26 @@ import java.util.Set;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
+import static org.awaitility.Awaitility.await;
 
 public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String USER_DIR = "user.dir";
     private static final String AWS_AMI_ACCOUNT_ID = "099720109477";
     private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-????????";
     private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-????????";
-    private static final String SSH_CONNECTED_MESSAGE = "Connected to EC2 instance";
+    private static final String SSH_CONNECTED_MESSAGE = "Connected to host via SSH";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String DOES_NOT_EXIST = "does not exist";
+    public static final String SCREEN_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -806,6 +812,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             attemptBootstrap(deploymentArguments, publicIpAddress, "ubuntu");
         }
 
+        ///////////////////////////////////////////
+        // Launch a non-EC2 system, if necessary //
+        ///////////////////////////////////////////
+
+        if (deploymentArguments.launch != null) {
+            attemptBootstrap(deploymentArguments, deploymentArguments.launchHost, deploymentArguments.launchUser);
+        }
+
         //////////////////////////////////////////////////////////////////////////
         // Wait for the CloudFormation stacks to finish launching, if necessary //
         //////////////////////////////////////////////////////////////////////////
@@ -853,17 +867,48 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String filename = String.join(".", "gg", deploymentArguments.groupName, "sh");
         String localFilename = String.join("/", "build", filename);
         String remoteFilename = filename;
-        log.info("Copying bootstrap script to instance via scp...");
+        log.info("Copying bootstrap script to host via scp...");
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-        log.info("Running bootstrap script on instance in screen, connect to the instance [" + user + "@" + publicIpAddress + "] and run 'screen -r' to see the progress");
+        log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + publicIpAddress + "] and run 'screen -r' to see the progress");
         runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"));
         session.disconnect();
         return true;
     }
 
     private void runCommandInScreen(Session session, String command) throws JSchException, IOException {
+        AtomicBoolean screenDetected = new AtomicBoolean(false);
+
+        Consumer<String> screenAvailabilityChecker = getScreenAvailabilityChecker(screenDetected);
+
+        ioHelper.runCommand(session, String.join(" ", "screen", "--version"), Optional.of(screenAvailabilityChecker));
+
+        waitForScreenToBeDetected(screenDetected);
+
         ioHelper.runCommand(session, String.join(" ", "screen", "-d", "-m", command));
+    }
+
+    @NotNull
+    private Consumer<String> getScreenAvailabilityChecker(AtomicBoolean screenDetected) {
+        return string -> {
+            // screen --version returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
+            if (!string.contains("Screen")) {
+                // NOTE: This may never get hit since we're only watching standard out and not standard error
+                throw new RuntimeException(SCREEN_ERROR_MESSAGE);
+            }
+
+            screenDetected.set(true);
+        };
+    }
+
+    private void waitForScreenToBeDetected(AtomicBoolean screenDetected) {
+        try {
+            await()
+                    .atMost(org.awaitility.Duration.ONE_MINUTE)
+                    .until(screenDetected::get);
+        } catch (ConditionTimeoutException e) {
+            throw new RuntimeException(SCREEN_ERROR_MESSAGE);
+        }
     }
 
     private Optional<String> launchEc2Instance(String groupName, Architecture architecture) {
