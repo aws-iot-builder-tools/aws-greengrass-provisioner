@@ -213,12 +213,13 @@ dependencies {
 
     compile "org.testcontainers:testcontainers:$testContainersVersion"
 
+    compile "org.awaitility:awaitility:$awaitilityVersion"
+
     testCompile "junit:junit:$junitVersion"
     testCompile "com.github.stefanbirkner:system-rules:$systemRulesVersion"
     testCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
     testCompile "org.mockito:mockito-core:$mockitoVersion"
     testCompile "com.github.aws-samples:iot-reference-architectures:$mqttOverWebsocketsVersion"
-    testCompile "org.awaitility:awaitility:$awaitilityVersion"
 }
 
 // From: https://gist.github.com/matthiasbalke/3c9ecccbea1d460ee4c3fbc5843ede4a

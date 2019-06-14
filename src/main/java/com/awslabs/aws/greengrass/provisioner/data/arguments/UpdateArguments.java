@@ -46,7 +46,7 @@ public class UpdateArguments extends Arguments {
     @Parameter(names = {SUBSCRIPTION_TARGET_OPTION}, description = "The target for a subscription table update")
     public String subscriptionTarget;
     @Parameter(names = "--help", help = true)
-    public boolean help;
+    private boolean help;
 
     @Override
     public String getRequiredOptionName() {

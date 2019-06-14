@@ -103,12 +103,13 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
         deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
+        deploymentArguments.launch = getValueOrDefault(deploymentArguments.launch, getStringDefault(defaults, "conf.launch"));
         deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
         deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
         deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
 
-        if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch) {
-            throw new RuntimeException("The EC2 and Docker launch options are mutually exclusive.  Only specify one of them.");
+        if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
+            throw new RuntimeException("The EC2 launch, Docker launch, and launch options are mutually exclusive.  Only specify one of them.");
         }
 
         if (deploymentArguments.ec2Launch) {
@@ -139,8 +140,13 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.oemOutput = true;
         }
 
+        if ((deploymentArguments.launch != null)) {
+            // Force script file output with Docker launch
+            deploymentArguments.scriptOutput = true;
+        }
+
         if (deploymentArguments.groupName == null) {
-            if (!deploymentArguments.ec2Launch && !deploymentArguments.dockerLaunch) {
+            if (!deploymentArguments.ec2Launch && !deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
                 throw new RuntimeException("Group name is required for all operations");
             }
 
@@ -222,6 +228,17 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                     .get();
         } else if (deploymentArguments.s3Directory != null) {
             throw new RuntimeException("S3 directory was specified with no S3 bucket. S3 bucket is required.");
+        }
+
+        if (deploymentArguments.launch != null) {
+            String[] strings = deploymentArguments.launch.split("@");
+
+            if (strings.length != 2) {
+                throw new RuntimeException("Invalid launch destination format. Specify the launch destination as user@host (e.g. pi@192.168.1.5).");
+            }
+
+            deploymentArguments.launchUser = strings[0];
+            deploymentArguments.launchHost = strings[1];
         }
 
         return deploymentArguments;

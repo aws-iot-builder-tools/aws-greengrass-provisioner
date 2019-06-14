@@ -24,7 +24,7 @@ public class QueryArguments extends Arguments {
     @Parameter(names = {LONG_WRITE_TO_FILE_OPTION}, description = "(Optional) Whether or not to write the output to a file")
     public boolean writeToFile;
     @Parameter(names = "--help", help = true)
-    public boolean help;
+    private boolean help;
 
     @Override
     public boolean isHelp() {
