@@ -20,6 +20,7 @@ import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
+import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
@@ -38,6 +39,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(IamClient.class).toProvider(IamClientProvider.class);
         bind(StsClient.class).toProvider(StsClientProvider.class);
         bind(S3Client.class).toProvider(S3ClientProvider.class);
+        bind(CloudWatchLogsClient.class).toProvider(CloudWatchLogsClientProvider.class);
         bind(GreengrassClient.class).toProvider(GreengrassClientProvider.class);
         bind(LambdaClient.class).toProvider(LambdaClientProvider.class);
         bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
