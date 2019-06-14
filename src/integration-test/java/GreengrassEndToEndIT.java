@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -59,7 +60,7 @@ public class GreengrassEndToEndIT {
     private GreengrassBuildWithoutDockerDeploymentsIT greengrassBuildWithoutDockerDeploymentsIT;
     private MqttClient mqttClient;
     private String coreName;
-    private boolean flag;
+    private AtomicBoolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
     private Path functionDefaultsPath;
     private GreengrassITShared greengrassITShared;
@@ -95,7 +96,7 @@ public class GreengrassEndToEndIT {
 
         jsonHelper = new BasicJsonHelper();
 
-        flag = false;
+        flag = new AtomicBoolean(false);
 
         defaultTimeout = new Duration(90, TimeUnit.SECONDS);
     }
@@ -179,7 +180,7 @@ public class GreengrassEndToEndIT {
                 String payloadString = new String(message.getPayload());
                 Map<String, Object> payloadMap = jsonHelper.fromJson(Map.class, payloadString.getBytes());
                 Assert.assertThat(payloadMap, IsMapContaining.hasKey("message"));
-                setFlag(true);
+                flag.set(true);
             }
 
             @Override
@@ -233,14 +234,6 @@ public class GreengrassEndToEndIT {
         Duration waitDuration = optionalWaitDuration.get();
         log.info("Waiting up to " + waitDuration.toString() + " for the configuration to pass secondary tests");
 
-        await().atMost(waitDuration).until(optionalBooleanCallable.orElse(this::getFlag));
-    }
-
-    private boolean getFlag() {
-        return flag;
-    }
-
-    private void setFlag(boolean value) {
-        this.flag = value;
+        await().atMost(waitDuration).until(optionalBooleanCallable.orElse(flag::get));
     }
 }
