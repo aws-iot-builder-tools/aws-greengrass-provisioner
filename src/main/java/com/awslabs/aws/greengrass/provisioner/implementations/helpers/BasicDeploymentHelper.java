@@ -10,6 +10,7 @@ import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
+import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.S3ClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
@@ -23,6 +24,7 @@ import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
@@ -30,6 +32,8 @@ import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
@@ -113,6 +117,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     DeploymentArgumentHelper deploymentArgumentHelper;
     @Inject
     ExceptionHelper exceptionHelper;
+    @Inject
+    S3ClientProvider s3ClientProvider;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -1138,6 +1144,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Writing script [" + ggShScriptName + "]");
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
             ioHelper.makeExecutable(ggShScriptName);
+
+            // Copy to S3 if necessary
+            copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, ggShScriptName);
         }
 
         if (oemVirtualTarEntries.isPresent()) {
@@ -1145,6 +1154,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Writing OEM file [" + oemArchiveName + "]");
             ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
             ioHelper.makeExecutable(oemArchiveName);
+
+            // Copy to S3 if necessary
+            copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, oemArchiveName);
         }
 
         if (ggdVirtualTarEntries.isPresent()) {
@@ -1152,7 +1164,44 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Writing GGD file [" + ggdArchiveName + "]");
             ioHelper.writeFile(ggdArchiveName, getByteArrayOutputStream(ggdVirtualTarEntries).get().toByteArray());
             ioHelper.makeExecutable(ggdArchiveName);
+
+            // Copy to S3 if necessary
+            copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, ggdArchiveName);
         }
+    }
+
+    private void copyToS3IfNecessary(String s3Bucket, String s3Directory, String fileName) {
+        if (s3Bucket == null) {
+            return;
+        }
+
+        S3Client s3Client = s3ClientProvider.get();
+
+        if (s3Directory.equals("/")) {
+            // Clear out the S3 directory if it is just the root
+            s3Directory = "";
+        }
+
+        File inputFile = new File(fileName);
+        String s3FileName = inputFile.getName();
+
+        // Put the key together from the path
+        String key = String.join("/", s3Directory, s3FileName);
+
+        if (key.startsWith("/")) {
+            // If there's a leading slash remove it
+            key = key.substring(1);
+        }
+
+        // Replace any accidental double slashes
+        key = key.replaceAll("//", "/");
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(s3Bucket)
+                .key(key)
+                .build();
+
+        s3Client.putObject(putObjectRequest, RequestBody.fromFile(inputFile));
     }
 
     private Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
