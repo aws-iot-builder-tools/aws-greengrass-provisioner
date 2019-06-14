@@ -9,7 +9,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
 
-public class GreengrassITShared {
+class GreengrassITShared {
     static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
     static final File NODEJS_SDK_REQUIRED_FOR_TESTING = new File("foundation/aws-greengrass-core-sdk-js.zip");
     static final File MASTER_DEPLOYMENTS = new File("../aws-greengrass-lambda-functions/deployments");
