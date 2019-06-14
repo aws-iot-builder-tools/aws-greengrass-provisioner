@@ -13,6 +13,11 @@ rootcheck "${@}"
 
 ./${STOP_SCRIPT}
 
+if [ -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
+  rm -f ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}
+  systemctl daemon-reload
+fi
+
 rm -rf /greengrass \
   ./${START_SCRIPT} \
   ./${STOP_SCRIPT} \
@@ -20,7 +25,6 @@ rm -rf /greengrass \
   ./${CLEAN_SCRIPT} \
   ./${INSTALL_SCRIPT} \
   ./${SYSTEMD_SCRIPT} \
-  ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT} \
   ./${GG_SH} \
   ./${GG_SH}.DEPLOYED \
   ./${GG_BITS} \
