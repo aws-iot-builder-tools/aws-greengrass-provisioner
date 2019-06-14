@@ -128,19 +128,7 @@ public interface IoHelper {
 
     default Object deserializeObject(byte[] bytes, JsonHelper jsonHelper) {
         return Try.of(() -> (Object) jsonHelper.fromJson(KeysAndCertificate.class, bytes))
-                // Try to deserialize in a different way if this fails (for legacy credentials)
-                .recover(exception -> Try.of(() -> deserializeObjectFromObjectInputStream(bytes)).get())
                 .get();
-    }
-
-    default Object deserializeObjectFromObjectInputStream(byte[] bytes) throws IOException, ClassNotFoundException {
-        // Try again
-        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
-        ObjectInputStream ois = new ObjectInputStream(bais);
-        Object object = ois.readObject();
-        ois.close();
-
-        return object;
     }
 
     default String calcSHA1(URL url) {
