@@ -69,7 +69,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String DOES_NOT_EXIST = "does not exist";
-    public static final String SCREEN_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
+    private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
+    private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -863,51 +864,78 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return () -> copyAndBootstrap(deploymentArguments, publicIpAddress, user, session);
     }
 
-    private Boolean copyAndBootstrap(DeploymentArguments deploymentArguments, String publicIpAddress, String user, Session session) throws JSchException, IOException {
+    private Boolean copyAndBootstrap(DeploymentArguments deploymentArguments, String host, String user, Session session) throws JSchException, IOException {
         String filename = String.join(".", "gg", deploymentArguments.groupName, "sh");
         String localFilename = String.join("/", "build", filename);
         String remoteFilename = filename;
         log.info("Copying bootstrap script to host via scp...");
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-        log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + publicIpAddress + "] and run 'screen -r' to see the progress");
-        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"));
+        log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + host + "] and run 'screen -r' to see the progress");
+        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of("greengrass"));
         session.disconnect();
         return true;
     }
 
-    private void runCommandInScreen(Session session, String command) throws JSchException, IOException {
-        AtomicBoolean screenDetected = new AtomicBoolean(false);
+    private void runCommandInScreen(Session session, String command, Optional<String> screenSessionName) throws JSchException, IOException {
+        AtomicBoolean screenAvailable = new AtomicBoolean(false);
 
-        Consumer<String> screenAvailabilityChecker = getScreenAvailabilityChecker(screenDetected);
+        Consumer<String> screenAvailabilityChecker = getScreenAvailabilityChecker(screenAvailable);
 
         ioHelper.runCommand(session, String.join(" ", "screen", "--version"), Optional.of(screenAvailabilityChecker));
 
-        waitForScreenToBeDetected(screenDetected);
+        waitForFlagToToggle(screenAvailable, SCREEN_NOT_AVAILABLE_ERROR_MESSAGE);
 
-        ioHelper.runCommand(session, String.join(" ", "screen", "-d", "-m", command));
+        String sessionNameOptions = "";
+
+        if (screenSessionName.isPresent()) {
+            AtomicBoolean screenSessionNameAvailable = new AtomicBoolean(false);
+
+            Consumer<String> screenSessionNameChecker = getScreenSessionNameChecker(screenSessionNameAvailable);
+
+            sessionNameOptions = String.join(" ", "-S", screenSessionName.get());
+
+            ioHelper.runCommand(session, String.join(" ", "screen", sessionNameOptions, "-Q", "select", "."), Optional.of(screenSessionNameChecker));
+
+            waitForFlagToToggle(screenSessionNameAvailable, SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+        }
+
+        ioHelper.runCommand(session, String.join(" ", "screen", sessionNameOptions, "-d", "-m", command));
     }
 
     @NotNull
     private Consumer<String> getScreenAvailabilityChecker(AtomicBoolean screenDetected) {
         return string -> {
-            // screen --version returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
+            // "screen --version" returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
             if (!string.contains("Screen")) {
                 // NOTE: This may never get hit since we're only watching standard out and not standard error
-                throw new RuntimeException(SCREEN_ERROR_MESSAGE);
+                throw new RuntimeException(SCREEN_NOT_AVAILABLE_ERROR_MESSAGE);
             }
 
             screenDetected.set(true);
         };
     }
 
-    private void waitForScreenToBeDetected(AtomicBoolean screenDetected) {
+    @NotNull
+    private Consumer<String> getScreenSessionNameChecker(AtomicBoolean screenDetected) {
+        return string -> {
+            // "screen -S session_name -Q select ." returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
+            if (!string.contains("No screen session found")) {
+                // NOTE: This may never get hit since we're only watching standard out and not standard error
+                throw new RuntimeException(SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+            }
+
+            screenDetected.set(true);
+        };
+    }
+
+    private void waitForFlagToToggle(AtomicBoolean flag, String errorMessage) {
         try {
             await()
                     .atMost(org.awaitility.Duration.ONE_MINUTE)
-                    .until(screenDetected::get);
+                    .until(flag::get);
         } catch (ConditionTimeoutException e) {
-            throw new RuntimeException(SCREEN_ERROR_MESSAGE);
+            throw new RuntimeException(errorMessage);
         }
     }
 
