@@ -131,23 +131,6 @@ public interface IoHelper {
                 .get();
     }
 
-    default String calcSHA1(URL url) {
-        try (InputStream input = url.openStream()) {
-            MessageDigest sha1 = MessageDigest.getInstance("SHA-1");
-            byte[] buffer = new byte[8192];
-            int len = input.read(buffer);
-
-            while (len != -1) {
-                sha1.update(buffer, 0, len);
-                len = input.read(buffer);
-            }
-
-            return Hex.encodeHexString(sha1.digest()).toLowerCase();
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     default String serializeKeys(CreateKeysAndCertificateResponse createKeysAndCertificateResponse, JsonHelper jsonHelper) {
         KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
                 .certificateArn(createKeysAndCertificateResponse.certificateArn())
