@@ -170,3 +170,11 @@ Long form: `--s3-bucket`
 Long form: `--s3-directory`
 
 Stores build artifacts (OEM file, bootstrap script, and/or GGDs) into S3. Bucket and directory must both be specified.
+
+## Bootstrap a non-EC2 host
+
+Long form: `--launch`
+
+Copies the bootstrap script to a host via scp then attempts to SSH to the host and run the bootstrap script with the `--now` option in a screen session named `greengrass`.
+
+The format for the parameter is the same as SSH (e.g. `pi@192.168.1.5`).
