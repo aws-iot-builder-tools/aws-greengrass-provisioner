@@ -922,7 +922,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @NotNull
     private Consumer<String> getScreenSessionNameChecker(AtomicBoolean flag) {
         return string -> {
-            // "screen -S session_name -Q select ." returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
+            // "screen -S session_name -Q select ." returns a string like: No screen session found
             if (!string.contains("No screen session found")) {
                 // Doesn't look like what we want
                 return;
