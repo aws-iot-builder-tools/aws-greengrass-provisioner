@@ -294,7 +294,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             } else {
                 log.info("Tests passed: ");
 
-                passingTests.stream().forEach(log::info);
+                passingTests.forEach(log::info);
             }
 
             if (failingTests.size() == 0) {
@@ -302,7 +302,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             } else {
                 log.warn("Tests failed: ");
 
-                failingTests.stream().forEach(log::warn);
+                failingTests.forEach(log::warn);
             }
 
             // Move the results to the requested location
@@ -312,9 +312,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
             reportLocations.stream().findFirst().ifPresent(path ->
                     Try.of(() -> moveParentDirectory(path, outputDirectory))
-                            .onFailure(throwable -> {
-                                throwable.printStackTrace();
-                            })
+                            .onFailure(Throwable::printStackTrace)
                             .get());
         } finally {
             safeDisconnect(session);

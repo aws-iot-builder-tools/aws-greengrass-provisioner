@@ -144,7 +144,7 @@ public class BasicMavenBuilder implements MavenBuilder {
         if (properties.isPresent()) {
             Properties mavenProperties = new Properties();
 
-            properties.get().entrySet().stream()
+            properties.get().entrySet()
                     .forEach(entry -> mavenProperties.setProperty(entry.getKey(), entry.getValue()));
 
             request.setProperties(mavenProperties);

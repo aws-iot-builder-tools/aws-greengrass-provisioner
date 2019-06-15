@@ -62,8 +62,7 @@ public class BasicSdkErrorHandler implements SdkErrorHandler {
         }
 
         if (errors.size() != 0) {
-            errors.stream()
-                    .forEach(s -> log.error(s));
+            errors.forEach(log::error);
             System.exit(1);
         } else {
             throw e;
