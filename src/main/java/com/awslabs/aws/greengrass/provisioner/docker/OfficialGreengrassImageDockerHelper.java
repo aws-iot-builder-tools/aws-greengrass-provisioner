@@ -183,8 +183,7 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
         }
 
         if (errors.size() != 0) {
-            errors.stream()
-                    .forEach(error -> log.error(error));
+            errors.forEach(log::error);
             throw new RuntimeException("OEM extraction failed");
         }
 

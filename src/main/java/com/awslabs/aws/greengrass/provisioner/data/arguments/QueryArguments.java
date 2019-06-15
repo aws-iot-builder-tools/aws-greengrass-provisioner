@@ -9,6 +9,8 @@ public class QueryArguments extends Arguments {
     private final String LONG_LIST_FUNCTIONS_OPTION = "--list-functions";
     private final String LONG_LIST_DEVICES_OPTION = "--list-devices";
     private final String LONG_WRITE_TO_FILE_OPTION = "--write-to-file";
+    private final String LONG_DOWNLOAD_LOGS = "--download-logs";
+    private final String LONG_WATCH_LOGS = "--watch-logs";
     @Parameter(names = {LONG_QUERY_GROUP_OPTION}, description = "Query an existing Greengrass group (must specify additional options)")
     public boolean queryGroup;
     @Parameter(names = {LONG_GROUP_NAME_OPTION, SHORT_GROUP_NAME_OPTION}, description = "The name of the Greengrass group")
@@ -23,6 +25,10 @@ public class QueryArguments extends Arguments {
     public boolean listDevices;
     @Parameter(names = {LONG_WRITE_TO_FILE_OPTION}, description = "(Optional) Whether or not to write the output to a file")
     public boolean writeToFile;
+    @Parameter(names = {LONG_DOWNLOAD_LOGS}, description = "Download the group's CloudWatch logs")
+    public boolean downloadLogs;
+    @Parameter(names = {LONG_WATCH_LOGS}, description = "Watch the group's CloudWatch logs")
+    public boolean watchLogs;
     @Parameter(names = "--help", help = true)
     private boolean help;
 

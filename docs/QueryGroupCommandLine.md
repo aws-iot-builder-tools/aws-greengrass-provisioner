@@ -44,3 +44,15 @@ This is a flag to indicate that the group's devices should be listed.
 Long form: `--list-functions`
 
 This is a flag to indicate that the group's functions should be listed.
+
+## Download logs
+
+Long form: `--download-logs`
+
+This is a flag to indicate that the group's logs from CloudWatch should be downloaded into the directory `logs/GROUP_NAME`.
+
+## Watch logs
+
+Long form: `--watch-logs`
+
+This is a flag to indicate that the group's logs from CloudWatch should "tailed" like `tail -F` in Linux.
