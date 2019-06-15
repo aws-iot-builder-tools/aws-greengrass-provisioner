@@ -177,11 +177,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private void setEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
         Try.of(() -> innerSetEnvironmentVariables(deploymentConfBuilder, config))
-                .recover(ConfigException.Missing.class, throwable -> logNoEnvironmentVariablesForDeployment())
+                .recover(ConfigException.Missing.class, this::logNoEnvironmentVariablesForDeployment)
                 .get();
     }
 
-    private Void logNoEnvironmentVariablesForDeployment() {
+    private Void logNoEnvironmentVariablesForDeployment(Throwable throwable) {
         log.info("No environment variables specified in this deployment");
 
         return null;

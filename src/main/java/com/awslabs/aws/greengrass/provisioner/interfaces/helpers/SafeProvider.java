@@ -7,7 +7,7 @@ import javax.inject.Provider;
 
 public interface SafeProvider<T> extends Provider<T> {
     default T safeGet(SdkErrorHandler sdkErrorHandler) {
-        return Try.of(() -> unsafeGet())
+        return Try.of(this::unsafeGet)
                 .recover(SdkClientException.class, throwable -> (T) sdkErrorHandler.handleSdkError(throwable))
                 .get();
     }
