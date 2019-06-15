@@ -981,7 +981,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<Image> optionalImage = describeImagesResponse.images().stream().findFirst();
 
         if (!optionalImage.isPresent()) {
-            log.error("No Ubuntu 16.04 LTS image found in this region, not launching the instance");
+            log.error("No Ubuntu 18.04 LTS image found in this region, not launching the instance");
             return Optional.empty();
         }
 
