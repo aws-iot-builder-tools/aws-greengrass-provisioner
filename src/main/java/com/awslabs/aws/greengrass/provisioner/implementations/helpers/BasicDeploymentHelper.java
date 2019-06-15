@@ -906,39 +906,49 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @NotNull
-    private Consumer<String> getScreenAvailabilityChecker(AtomicBoolean screenDetected) {
+    private Consumer<String> getScreenAvailabilityChecker(AtomicBoolean flag) {
         return string -> {
             // "screen --version" returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
             if (!string.contains("Screen")) {
-                // NOTE: This may never get hit since we're only watching standard out and not standard error
-                throw new RuntimeException(SCREEN_NOT_AVAILABLE_ERROR_MESSAGE);
+                // Doesn't look like what we want
+                return;
             }
 
-            screenDetected.set(true);
+            // This should be it
+            flag.set(true);
         };
     }
 
     @NotNull
-    private Consumer<String> getScreenSessionNameChecker(AtomicBoolean screenDetected) {
+    private Consumer<String> getScreenSessionNameChecker(AtomicBoolean flag) {
         return string -> {
             // "screen -S session_name -Q select ." returns a string like: Screen version 4.05.00 (GNU) 10-Dec-16
             if (!string.contains("No screen session found")) {
-                // NOTE: This may never get hit since we're only watching standard out and not standard error
-                throw new RuntimeException(SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+                // Doesn't look like what we want
+                return;
             }
 
-            screenDetected.set(true);
+            // This should be it
+            flag.set(true);
         };
     }
 
     private void waitForFlagToToggle(AtomicBoolean flag, String errorMessage) {
-        try {
-            await()
-                    .atMost(org.awaitility.Duration.ONE_MINUTE)
-                    .until(flag::get);
-        } catch (ConditionTimeoutException e) {
-            throw new RuntimeException(errorMessage);
-        }
+        Try.of(() -> waitForFlagToToggle(flag))
+                .recover(ConditionTimeoutException.class, exception -> throwRuntimeException(errorMessage))
+                .get();
+    }
+
+    private Void throwRuntimeException(String errorMessage) {
+        throw new RuntimeException(errorMessage);
+    }
+
+    private Void waitForFlagToToggle(AtomicBoolean flag) {
+        await()
+                .atMost(org.awaitility.Duration.ONE_MINUTE)
+                .until(flag::get);
+
+        return null;
     }
 
     private Optional<String> launchEc2Instance(String groupName, Architecture architecture) {
