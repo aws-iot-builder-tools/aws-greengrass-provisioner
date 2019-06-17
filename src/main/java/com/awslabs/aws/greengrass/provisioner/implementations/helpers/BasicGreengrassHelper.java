@@ -361,7 +361,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         // Scrub the necessary functions
         Set<Function> scrubbedFunctions = functionsToScrubBuilder.build().stream()
-                .map(getScrubFunctionForNoContainerFunction())
+                .map(this::scrubFunctionForNoContainer)
                 .collect(Collectors.toSet());
 
         // Merge the functions back together (scrubbed functions and the functions we don't need to scrub)
@@ -382,21 +382,19 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createFunctionDefinitionResponse.latestVersionArn();
     }
 
-    private java.util.function.Function<Function, Function> getScrubFunctionForNoContainerFunction() {
-        return function -> scrubFunctionForNoContainer(function);
-    }
-
     private Function scrubFunctionForNoContainer(Function function) {
         Function.Builder functionBuilder = function.toBuilder();
         FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
+
+        // Specifying a memory size for a no container function is not allowed
         functionConfigurationBuilder.memorySize(null);
+
         functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
 
         log.warn("Scrubbing memory size from function [" + function.functionArn() + "] since it is running without Greengrass container isolation");
 
         return functionBuilder.build();
     }
-
 
     @Override
     public String createDeviceDefinitionAndVersion(String deviceDefinitionName, List<Device> devices) {
@@ -640,70 +638,24 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createResourceDefinitionVersion(List<ModifiableFunctionConf> functionConfs) {
+        // Log that the local resources from functions outside of the Greengrass container will be scrubbed
+        functionConfs.stream()
+                .filter(functionConf -> !functionConf.isGreengrassContainer())
+                .forEach(this::logLocalResourcesScrubbed);
+
+        // Get functions running in the Greengrass container
+        List<ModifiableFunctionConf> functionsInGreengrassContainer = functionConfs.stream()
+                .filter(ModifiableFunctionConf::isGreengrassContainer)
+                .collect(Collectors.toList());
+
         List<Resource> resources = new ArrayList<>();
 
-        for (FunctionConf functionConf : functionConfs) {
-            for (LocalDeviceResource localDeviceResource : functionConf.getLocalDeviceResources()) {
-                GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
-                        .autoAddGroupOwner(true)
-                        .build();
-
-                LocalDeviceResourceData localDeviceResourceData = LocalDeviceResourceData.builder()
-                        .groupOwnerSetting(groupOwnerSetting)
-                        .sourcePath(localDeviceResource.getPath())
-                        .build();
-
-                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
-                        .localDeviceResourceData(localDeviceResourceData)
-                        .build();
-
-                resources.add(createResource(resourceDataContainer, localDeviceResource.getName(), localDeviceResource.getName()));
-            }
-
-            for (LocalVolumeResource localVolumeResource : functionConf.getLocalVolumeResources()) {
-                GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
-                        .autoAddGroupOwner(true)
-                        .build();
-
-                LocalVolumeResourceData localVolumeResourceData = LocalVolumeResourceData.builder()
-                        .groupOwnerSetting(groupOwnerSetting)
-                        .sourcePath(localVolumeResource.getSourcePath())
-                        .destinationPath(localVolumeResource.getDestinationPath())
-                        .build();
-
-                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
-                        .localVolumeResourceData(localVolumeResourceData)
-                        .build();
-
-                resources.add(createResource(resourceDataContainer, localVolumeResource.getName(), localVolumeResource.getName()));
-            }
-
-            for (LocalS3Resource localS3Resource : functionConf.getLocalS3Resources()) {
-                S3MachineLearningModelResourceData s3MachineLearningModelResourceData = S3MachineLearningModelResourceData.builder()
-                        .s3Uri(localS3Resource.getUri())
-                        .destinationPath(localS3Resource.getPath())
-                        .build();
-
-                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
-                        .s3MachineLearningModelResourceData(s3MachineLearningModelResourceData)
-                        .build();
-
-                resources.add(createResource(resourceDataContainer, localS3Resource.getName(), localS3Resource.getName()));
-            }
-
-            for (LocalSageMakerResource localSageMakerResource : functionConf.getLocalSageMakerResources()) {
-                SageMakerMachineLearningModelResourceData sageMakerMachineLearningModelResourceData = SageMakerMachineLearningModelResourceData.builder()
-                        .sageMakerJobArn(localSageMakerResource.getArn())
-                        .destinationPath(localSageMakerResource.getPath())
-                        .build();
-
-                ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
-                        .sageMakerMachineLearningModelResourceData(sageMakerMachineLearningModelResourceData)
-                        .build();
-
-                resources.add(createResource(resourceDataContainer, localSageMakerResource.getName(), localSageMakerResource.getName()));
-            }
-        }
+        functionsInGreengrassContainer.forEach(functionConf -> {
+            resources.addAll(processLocalDeviceResources(functionConf));
+            resources.addAll(processLocalVolumeResources(functionConf));
+            resources.addAll(processLocalS3Resources(functionConf));
+            resources.addAll(processLocalSageMakerResources(functionConf));
+        });
 
         ResourceDefinitionVersion resourceDefinitionVersion = ResourceDefinitionVersion.builder()
                 .resources(resources)
@@ -719,6 +671,95 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         CreateResourceDefinitionResponse createResourceDefinitionResponse = greengrassClient.createResourceDefinition(createResourceDefinitionRequest);
 
         return createResourceDefinitionResponse.latestVersionArn();
+    }
+
+    private List<Resource> processLocalSageMakerResources(FunctionConf functionConf) {
+        return functionConf.getLocalSageMakerResources().stream()
+                .map(this::processLocalSageMakerResource)
+                .collect(Collectors.toList());
+    }
+
+    private Resource processLocalSageMakerResource(LocalSageMakerResource localSageMakerResource) {
+        SageMakerMachineLearningModelResourceData sageMakerMachineLearningModelResourceData = SageMakerMachineLearningModelResourceData.builder()
+                .sageMakerJobArn(localSageMakerResource.getArn())
+                .destinationPath(localSageMakerResource.getPath())
+                .build();
+
+        ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                .sageMakerMachineLearningModelResourceData(sageMakerMachineLearningModelResourceData)
+                .build();
+
+        return createResource(resourceDataContainer, localSageMakerResource.getName(), localSageMakerResource.getName());
+    }
+
+    private List<Resource> processLocalS3Resources(FunctionConf functionConf) {
+        return functionConf.getLocalS3Resources().stream()
+                .map(localS3Resource -> processLocalS3Resource(localS3Resource))
+                .collect(Collectors.toList());
+    }
+
+    private Resource processLocalS3Resource(LocalS3Resource localS3Resource) {
+        S3MachineLearningModelResourceData s3MachineLearningModelResourceData = S3MachineLearningModelResourceData.builder()
+                .s3Uri(localS3Resource.getUri())
+                .destinationPath(localS3Resource.getPath())
+                .build();
+
+        ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                .s3MachineLearningModelResourceData(s3MachineLearningModelResourceData)
+                .build();
+
+        return createResource(resourceDataContainer, localS3Resource.getName(), localS3Resource.getName());
+    }
+
+    private List<Resource> processLocalVolumeResources(FunctionConf functionConf) {
+        return functionConf.getLocalVolumeResources().stream()
+                .map(this::processLocalVolumeResource)
+                .collect(Collectors.toList());
+    }
+
+    private Resource processLocalVolumeResource(LocalVolumeResource localVolumeResource) {
+        GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
+                .autoAddGroupOwner(true)
+                .build();
+
+        LocalVolumeResourceData localVolumeResourceData = LocalVolumeResourceData.builder()
+                .groupOwnerSetting(groupOwnerSetting)
+                .sourcePath(localVolumeResource.getSourcePath())
+                .destinationPath(localVolumeResource.getDestinationPath())
+                .build();
+
+        ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                .localVolumeResourceData(localVolumeResourceData)
+                .build();
+
+        return createResource(resourceDataContainer, localVolumeResource.getName(), localVolumeResource.getName());
+    }
+
+    private List<Resource> processLocalDeviceResources(FunctionConf functionConf) {
+        return functionConf.getLocalDeviceResources().stream()
+                .map(this::processLocalDeviceResource)
+                .collect(Collectors.toList());
+    }
+
+    private Resource processLocalDeviceResource(LocalDeviceResource localDeviceResource) {
+        GroupOwnerSetting groupOwnerSetting = GroupOwnerSetting.builder()
+                .autoAddGroupOwner(true)
+                .build();
+
+        LocalDeviceResourceData localDeviceResourceData = LocalDeviceResourceData.builder()
+                .groupOwnerSetting(groupOwnerSetting)
+                .sourcePath(localDeviceResource.getPath())
+                .build();
+
+        ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                .localDeviceResourceData(localDeviceResourceData)
+                .build();
+
+        return createResource(resourceDataContainer, localDeviceResource.getName(), localDeviceResource.getName());
+    }
+
+    private void logLocalResourcesScrubbed(ModifiableFunctionConf functionConf) {
+        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName() + "] because it is not running in the Greengrass container");
     }
 
     private void validateResourceDefinitionVersion(ResourceDefinitionVersion resourceDefinitionVersion) {
@@ -836,13 +877,11 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private Resource createResource(ResourceDataContainer resourceDataContainer, String name, String id) {
-        Resource resource = Resource.builder()
+        return Resource.builder()
                 .resourceDataContainer(resourceDataContainer)
                 .name(name)
                 .id(id)
                 .build();
-
-        return resource;
     }
 
     @Override
