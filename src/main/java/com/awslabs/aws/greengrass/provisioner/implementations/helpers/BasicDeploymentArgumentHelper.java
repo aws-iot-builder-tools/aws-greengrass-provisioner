@@ -135,8 +135,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.scriptOutput = true;
         }
 
-        if (deploymentArguments.dockerLaunch) {
-            // Force OEM file output with Docker launch
+        if ((deploymentArguments.dockerLaunch) && (deploymentArguments.buildContainer)) {
+            // Force OEM file output with Docker launch or container build
             deploymentArguments.oemOutput = true;
         }
 
@@ -168,11 +168,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.ec2Launch && deploymentArguments.architecture.equals(Architecture.ARM32)) {
             throw new RuntimeException("EC2 launch supports X86 and ARM64 only");
-        }
-
-        if (deploymentArguments.buildContainer) {
-            // If we are building a container we need the OEM files
-            deploymentArguments.oemOutput = true;
         }
 
         /*

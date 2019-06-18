@@ -411,7 +411,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         FunctionIsolationMode defaultFunctionIsolationMode;
 
-        if (deploymentArguments.dockerLaunch) {
+        if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
             // If we're doing a Docker launch we always use no container
             log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
             defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
