@@ -56,3 +56,9 @@ This is a flag to indicate that the group's logs from CloudWatch should be downl
 Long form: `--watch-logs`
 
 This is a flag to indicate that the group's logs from CloudWatch should "tailed" like `tail -F` in Linux.
+
+## Diagnose
+
+Long form: `--diagnose`
+
+This is a flag to indicate that the group's logs from CloudWatch should be checked for common issues.

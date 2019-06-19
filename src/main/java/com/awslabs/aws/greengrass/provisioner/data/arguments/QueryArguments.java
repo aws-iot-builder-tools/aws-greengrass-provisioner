@@ -11,6 +11,7 @@ public class QueryArguments extends Arguments {
     private final String LONG_WRITE_TO_FILE_OPTION = "--write-to-file";
     private final String LONG_DOWNLOAD_LOGS = "--download-logs";
     private final String LONG_WATCH_LOGS = "--watch-logs";
+    private final String LONG_DIAGNOSE = "--diagnose";
     @Parameter(names = {LONG_QUERY_GROUP_OPTION}, description = "Query an existing Greengrass group (must specify additional options)")
     public boolean queryGroup;
     @Parameter(names = {LONG_GROUP_NAME_OPTION, SHORT_GROUP_NAME_OPTION}, description = "The name of the Greengrass group")
@@ -27,6 +28,8 @@ public class QueryArguments extends Arguments {
     public boolean writeToFile;
     @Parameter(names = {LONG_DOWNLOAD_LOGS}, description = "Download the group's CloudWatch logs")
     public boolean downloadLogs;
+    @Parameter(names = {LONG_DIAGNOSE}, description = "Diagnose Greengrass issues")
+    public boolean diagnose;
     @Parameter(names = {LONG_WATCH_LOGS}, description = "Watch the group's CloudWatch logs")
     public boolean watchLogs;
     @Parameter(names = "--help", help = true)
