@@ -21,7 +21,7 @@ Want an example added?  Open a Github issue and describe what you're looking for
 **Note:** You will need the deployments and functions directories from the AWS Labs Greengrass functions repo.
 
 **Remember: Any references to `GGP` in commands in this documentation must be replaced with the appropriate command for
-your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
+your environment (e.g. `./ggp.sh`, `java -jar ...`, etc.)**
 
 ### Deploy or redeploy an empty group (no functions) and create a bootstrap script
 

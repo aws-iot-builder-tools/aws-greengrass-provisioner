@@ -1,7 +1,7 @@
 # Getting Started
 
 **Remember: Any references to `GGP` in commands in this documentation must be replaced with the appropriate command for
-your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
+your environment (e.g. `./ggp.sh`, `java -jar ...`, etc.)**
 
 ## Before you start
 
@@ -10,7 +10,7 @@ be running Greengrass unless you are doing development on the same system.  GGP 
 to your Pi/EC2 instance/gateway.
 
 You must have AWS credentials configured on your system for GGP to work.  It uses the credentials and configuration in
-the `$HOME/.aws` directory just like the AWS CLI.  The `deploy.sh` script attempts to get these credentials via the AWS
+the `$HOME/.aws` directory just like the AWS CLI.  The `ggp.sh` script attempts to get these credentials via the AWS
 CLI's `aws configure ...` commands so it won't work if the AWS CLI isn't configured.  This also means that it will use
 your default region.  If you want to override this behavior you need to set the appropriate
 [environment variables for the default credential provider chain](https://docs.aws.amazon.com/sdk-for-java/v1/developer-guide/credentials.html#credentials-default).
@@ -37,7 +37,7 @@ Python, Java, and NodeJS are pre-installed on the Docker container.  You do not 
 repo and run GGP from there.**
 
 **Remember: Any references to `GGP` in commands in this documentation must be replaced with the appropriate command for
-your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
+your environment (e.g. `./ggp.sh`, `java -jar ...`, etc.)**
 
 Using a Raspberry Pi?  Use this command:
 

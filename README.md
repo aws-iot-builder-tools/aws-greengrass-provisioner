@@ -29,9 +29,9 @@ For brevity this application will be referred to as GGP in the docs.
 If you only want to use this tool you can simply read the "Want to get started quickly?" section.  You only need to
 clone this repo if you want to build the JAR file or modify the code.
 
-# Looking for the deploy.sh script so you can run GGP with Docker?
+# Looking for the ggp.sh script so you can run GGP with Docker?
 
-[deploy.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/deploy.sh) was moved so that there was only one version of it floating around across the repos.
+[ggp.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/ggp.sh) was moved so that there was only one version of it floating around across the repos.
 
 # Want to know about the concepts behind GGP?
 
@@ -50,15 +50,15 @@ Check out the [How It Works](/docs/HowItWorks.md) docs to understand how GGP doe
 Choose either option 1 or option 2 below and then jump to the [Getting Started](/docs/GettingStarted.md) docs.
 
 **Remember: Any references to `GGP` in commands in this documentation must be replaced with the appropriate command for
-your environment (e.g. `./deploy.sh`, `java -jar ...`, etc.)**
+your environment (e.g. `./ggp.sh`, `java -jar ...`, etc.)**
 
 ## Option 1: Use Docker
 
-Copy the [deploy.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/deploy.sh) script from this repo to your local system and make it executable (`chmod +x deploy.sh`
-on Unix-y systems).  Then run `./deploy.sh` to pull the latest version to your system and run it in a Docker container.
+Copy the [ggp.sh](https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/ggp.sh) script from this repo to your local system and make it executable (`chmod +x ggp.sh`
+on Unix-y systems).  Then run `./ggp.sh` to pull the latest version to your system and run it in a Docker container.
 
 If you plan on running GGP in Docker please remember that it needs to write files to the host operating system.  With
-Docker it uses volume mounts to do this.  Therefore, we recommend you use the `deploy.sh` script to run GGP so that the
+Docker it uses volume mounts to do this.  Therefore, we recommend you use the `ggp.sh` script to run GGP so that the
 mounts are set up properly.  If you don't use the script you'll need to use the `-v` option in Docker to mount the paths
 on your own.  If you don't do this the output files will be lost.
 
