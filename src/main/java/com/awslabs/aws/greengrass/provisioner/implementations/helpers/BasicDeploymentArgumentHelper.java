@@ -135,6 +135,11 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.scriptOutput = true;
         }
 
+        if (deploymentArguments.pushContainer) {
+            // If they want to push a container then we have to build it
+            deploymentArguments.buildContainer = true;
+        }
+
         if ((deploymentArguments.dockerLaunch) && (deploymentArguments.buildContainer)) {
             // Force OEM file output with Docker launch or container build
             deploymentArguments.oemOutput = true;
@@ -176,11 +181,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.buildContainer = true;
         }
         */
-
-        if (deploymentArguments.pushContainer) {
-            // If they want to push a container then we have to build it
-            deploymentArguments.buildContainer = true;
-        }
 
         if ((deploymentArguments.buildContainer || deploymentArguments.scriptOutput) && (deploymentArguments.architecture == null)) {
             throw new RuntimeException("Architecture must be specified when building a container or installation script");
