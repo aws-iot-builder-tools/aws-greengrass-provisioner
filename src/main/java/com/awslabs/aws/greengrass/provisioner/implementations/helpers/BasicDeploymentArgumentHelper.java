@@ -108,6 +108,11 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
         deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
 
+        if (deploymentArguments.pushContainer) {
+            // If they want to push a container then we have to build it
+            deploymentArguments.buildContainer = true;
+        }
+
         if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
             throw new RuntimeException("The EC2 launch, Docker launch, and launch options are mutually exclusive.  Only specify one of them.");
         }
@@ -135,14 +140,13 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.scriptOutput = true;
         }
 
-        if (deploymentArguments.pushContainer) {
-            // If they want to push a container then we have to build it
-            deploymentArguments.buildContainer = true;
-        }
-
         if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
             // Force OEM file output with Docker launch or container build
             deploymentArguments.oemOutput = true;
+        }
+
+        if ((deploymentArguments.buildContainer) && (ioHelper.isRunningInDocker())) {
+            throw new RuntimeException("Can't build a container from inside of Docker yet");
         }
 
         if ((deploymentArguments.launch != null)) {
