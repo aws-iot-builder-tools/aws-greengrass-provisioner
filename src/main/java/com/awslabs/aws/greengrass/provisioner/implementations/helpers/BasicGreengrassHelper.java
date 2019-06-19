@@ -641,6 +641,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         // Log that the local resources from functions outside of the Greengrass container will be scrubbed
         functionConfs.stream()
                 .filter(functionConf -> !functionConf.isGreengrassContainer())
+                .filter(this::functionConfHasLocalResources)
                 .forEach(this::logLocalResourcesScrubbed);
 
         // Get functions running in the Greengrass container
@@ -671,6 +672,27 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         CreateResourceDefinitionResponse createResourceDefinitionResponse = greengrassClient.createResourceDefinition(createResourceDefinitionRequest);
 
         return createResourceDefinitionResponse.latestVersionArn();
+    }
+
+    private boolean functionConfHasLocalResources(ModifiableFunctionConf functionConf) {
+        if (functionConf.getLocalDeviceResources().size() > 0) {
+            return true;
+        }
+
+        if (functionConf.getLocalVolumeResources().size() > 0) {
+            return true;
+        }
+
+        if (functionConf.getLocalS3Resources().size() > 0) {
+            return true;
+        }
+
+        if (functionConf.getLocalSageMakerResources().size() > 0) {
+            return true;
+        }
+
+        // No local resources found
+        return false;
     }
 
     private List<Resource> processLocalSageMakerResources(FunctionConf functionConf) {
