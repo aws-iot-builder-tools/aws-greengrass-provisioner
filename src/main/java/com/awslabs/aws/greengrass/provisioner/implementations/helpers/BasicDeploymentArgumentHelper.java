@@ -140,7 +140,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.buildContainer = true;
         }
 
-        if ((deploymentArguments.dockerLaunch) && (deploymentArguments.buildContainer)) {
+        if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
             // Force OEM file output with Docker launch or container build
             deploymentArguments.oemOutput = true;
         }
