@@ -7,7 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import software.amazon.awssdk.services.iot.model.KeyPair;
 
-import static org.hamcrest.core.Is.is;
+import static org.hamcrest.CoreMatchers.is;
 
 public class KeysAndCertificateSerializationTests {
     private JsonHelper jsonHelper;
