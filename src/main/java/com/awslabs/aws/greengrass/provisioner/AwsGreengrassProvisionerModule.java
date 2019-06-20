@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner;
 
+import com.awslabs.aws.greengrass.provisioner.data.diagnostics.*;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicGradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicMavenBuilder;
@@ -90,6 +91,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(ThreadHelper.class).to(BasicThreadHelper.class);
         bind(ProgressHandler.class).to(BasicProgressHandler.class);
 
+        // Operations that the user can execute
         Multibinder<Operation> operationMultibinder = Multibinder.newSetBinder(binder(), Operation.class);
         operationMultibinder.addBinding().to(BasicDeploymentHelper.class);
         operationMultibinder.addBinding().to(BasicGroupQueryHelper.class);
@@ -104,5 +106,17 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(DeviceTesterHelper.class).to(BasicDeviceTesterHelper.class);
 
         bind(ExceptionHelper.class).to(BasicExceptionHelper.class);
+
+        bind(DiagnosticsHelper.class).to(BasicDiagnosticsHelper.class);
+
+        // Diagnostic rules used in the diagnostic helper
+        Multibinder<DiagnosticRule> diagnosticRuleMultibinder = Multibinder.newSetBinder(binder(), DiagnosticRule.class);
+        diagnosticRuleMultibinder.addBinding().to(TooManyIpsDiagnosticRule.class);
+        diagnosticRuleMultibinder.addBinding().to(NoConnectivityInformationDiagnosticRule.class);
+        diagnosticRuleMultibinder.addBinding().to(MissingRuntimeWithTextErrorDiagnosticRule1.class);
+        diagnosticRuleMultibinder.addBinding().to(MissingRuntimeWithJsonErrorDiagnosticRule1.class);
+        diagnosticRuleMultibinder.addBinding().to(MissingRuntimeWithJsonErrorDiagnosticRule2.class);
+        diagnosticRuleMultibinder.addBinding().to(FunctionTimingOutDiagnosticRule.class);
+        diagnosticRuleMultibinder.addBinding().to(FunctionTimedOutDiagnosticRule.class);
     }
 }

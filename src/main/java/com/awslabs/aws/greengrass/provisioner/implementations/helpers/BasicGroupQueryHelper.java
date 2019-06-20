@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
 
 public class BasicGroupQueryHelper implements GroupQueryHelper {
     private final Logger log = LoggerFactory.getLogger(BasicGroupQueryHelper.class);
-    private final List<String> greengrassTopLevelLogNames = Arrays.asList("/aws/greengrass/GreengrassSystem/GGCloudSpooler",
+    private final Set<String> greengrassTopLevelLogNames = new HashSet<>(Arrays.asList("/aws/greengrass/GreengrassSystem/GGCloudSpooler",
             "/aws/greengrass/GreengrassSystem/GGConnManager",
             "/aws/greengrass/GreengrassSystem/GGDeviceCertificateManager",
             "/aws/greengrass/GreengrassSystem/GGIPDetector",
@@ -32,7 +32,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             "/aws/greengrass/GreengrassSystem/GGShadowService",
             "/aws/greengrass/GreengrassSystem/GGShadowSyncManager",
             "/aws/greengrass/GreengrassSystem/GGTES",
-            "/aws/greengrass/GreengrassSystem/runtime");
+            "/aws/greengrass/GreengrassSystem/runtime"));
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
@@ -45,6 +45,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     CloudWatchLogsClientProvider cloudWatchLogsClientProvider;
     @Inject
     GGVariables ggVariables;
+    @Inject
+    DiagnosticsHelper diagnosticsHelper;
 
     @Inject
     public BasicGroupQueryHelper() {
@@ -57,7 +59,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 !queryArguments.listFunctions &&
                 !queryArguments.listDevices &&
                 !queryArguments.downloadLogs &&
-                !queryArguments.watchLogs) {
+                !queryArguments.watchLogs &&
+                !queryArguments.diagnose) {
             throw new RuntimeException("No query specified");
         }
 
@@ -129,11 +132,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.downloadLogs) {
-            List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
-
-            List<Tuple3<LogGroup, LogStream, String>> logs = logEvents.stream()
-                    .map(this::formatLogEvents)
-                    .collect(Collectors.toList());
+            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
 
             File directory = cleanAndCreateDirectory(queryArguments.groupName);
 
@@ -175,7 +174,37 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             } while (true);
         }
 
+        if (queryArguments.diagnose) {
+            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
+
+            if (!topLevelLogsPresent(logs)) {
+                log.error("Not all of the Greengrass logs are present in CloudWatch. Turn on CloudWatch logging in your Greengrass group, redeploy, and try again.");
+                return null;
+            }
+
+            diagnosticsHelper.runDiagnostics(logs);
+
+            return null;
+        }
+
         throw new RuntimeException("This should never happen.  This is a bug.");
+    }
+
+    private boolean topLevelLogsPresent(List<Tuple3<LogGroup, LogStream, String>> logs) {
+        Set<String> presentLogGroups = logs.stream()
+                .map(log -> log._1.logGroupName())
+                .collect(Collectors.toSet());
+
+        return presentLogGroups.containsAll(greengrassTopLevelLogNames);
+    }
+
+    @NotNull
+    private List<Tuple3<LogGroup, LogStream, String>> getLatestLogMessagesForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
+        List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
+
+        return logEvents.stream()
+                .map(this::formatLogEvents)
+                .collect(Collectors.toList());
     }
 
     @NotNull
@@ -196,9 +225,9 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         LogGroup logGroup = logGroupStreamAndEvents._1;
-        String trimmedLogStreamName = logGroup.logGroupName().replaceAll("^.*/([^/].*)$", "$1");
+        String trimmedLogGroupName = diagnosticsHelper.trimLogGroupName(logGroup);
 
-        String header = trimmedLogStreamName + " - ";
+        String header = trimmedLogGroupName + " - ";
 
         outputLogEvents.forEach(event -> printLogEvent(header, event.message()));
     }
