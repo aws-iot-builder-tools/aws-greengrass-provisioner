@@ -340,16 +340,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         if (defaultFunctionIsolationMode.equals(FunctionIsolationMode.NO_CONTAINER)) {
             log.warn("Default isolation mode is no container");
 
-            functionDefinitionVersionBuilder.defaultConfig(
-                    FunctionDefaultConfig.builder()
-                            .execution(FunctionDefaultExecutionConfig.builder()
-                                    .isolationMode(FunctionIsolationMode.NO_CONTAINER)
-                                    .build())
-                            .build());
-
             // Scrub all functions without an isolation mode specified
             functionsToScrubBuilder.addAll(functionsWithoutIsolationModeSpecified);
+        } else {
+            log.info("Default isolation mode is Greengrass container");
         }
+
+        functionDefinitionVersionBuilder.defaultConfig(
+                FunctionDefaultConfig.builder()
+                        .execution(FunctionDefaultExecutionConfig.builder()
+                                .isolationMode(defaultFunctionIsolationMode)
+                                .build())
+                        .build());
 
         // Get the list of functions we need to scrub
         Set<Function> functionsToScrub = functionsToScrubBuilder.build();
@@ -982,7 +984,16 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
         FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
 
-        return functionDefinition.defaultConfig().execution().isolationMode();
+        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = Optional.ofNullable(functionDefinition.defaultConfig())
+                .map(FunctionDefaultConfig::execution)
+                .map(FunctionDefaultExecutionConfig::isolationMode);
+
+        if (!optionalFunctionIsolationMode.isPresent()) {
+            log.warn("Default function isolation mode was not present, defaulting to Greengrass container");
+            return FunctionIsolationMode.GREENGRASS_CONTAINER;
+        }
+
+        return optionalFunctionIsolationMode.get();
     }
 
     @Override

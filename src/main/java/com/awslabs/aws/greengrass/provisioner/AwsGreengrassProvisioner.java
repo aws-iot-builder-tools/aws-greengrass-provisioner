@@ -69,7 +69,7 @@ public class AwsGreengrassProvisioner implements Runnable {
         return getInjector().getInstance(AwsGreengrassProvisioner.class);
     }
 
-    private static Injector getInjector() {
+    public static Injector getInjector() {
         if (!optionalInjector.isPresent()) {
             optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule()));
         }
