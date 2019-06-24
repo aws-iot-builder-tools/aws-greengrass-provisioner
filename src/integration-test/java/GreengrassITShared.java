@@ -1,13 +1,11 @@
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicIoHelper;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicThreadHelper;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.SingleThreadedExecutorHelper;
+import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.UUID;
+import java.util.Optional;
 
 class GreengrassITShared {
     static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
@@ -34,16 +32,7 @@ class GreengrassITShared {
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    final String GROUP_NAME = new BasicIoHelper().getUuid();
-    final String GROUP_OPTION = String.join(" ", "-g", GROUP_NAME);
-    final String CDD_SKELETON_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", GROUP_OPTION);
-    final String FAIL_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", GROUP_OPTION);
-    final String PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, PYTHON_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
-    final String LIFX_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", GROUP_OPTION);
-    final String NODE_WEBSERVER_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", GROUP_OPTION);
-    final String NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
-    final String ALL_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION);
-    final String EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND = String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", GROUP_OPTION, " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
+    final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
 
     static void cleanDirectories() throws IOException {
         FileUtils.deleteDirectory(TEMP_DEPLOYMENTS);
@@ -53,12 +42,7 @@ class GreengrassITShared {
     }
 
     static ThreadHelper getThreadHelper() {
-        SingleThreadedExecutorHelper singleThreadedExecutorHelper = new SingleThreadedExecutorHelper();
-
-        BasicThreadHelper basicThreadHelper = new BasicThreadHelper();
-        basicThreadHelper.executorHelper = singleThreadedExecutorHelper;
-
-        return basicThreadHelper;
+        return AwsGreengrassProvisioner.getInjector().getInstance(ThreadHelper.class);
     }
 
     static void beforeTestSetup() throws IOException {
@@ -68,5 +52,49 @@ class GreengrassITShared {
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS);
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FOUNDATION, GreengrassITShared.TEMP_FOUNDATION);
         FileUtils.copyFile(GreengrassITShared.NODEJS_SDK_FROM_BUILD, GreengrassITShared.NODEJS_SDK_REQUIRED_FOR_TESTING);
+    }
+
+    private String getGroupOption(Optional<String> groupName) {
+        return String.join(" ", "-g", groupName.orElse(GROUP_NAME));
+    }
+
+    String getCddSkeletonDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getFailDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getUpdateGroupCommand(String groupName, String functionName, String functionAlias) {
+        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--add-function", functionName, "--function-alias", functionAlias);
+    }
+
+    String getPythonHelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, PYTHON_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getLifxDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getNodeWebserverDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getNodeHelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getAllHelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getEc2Arm32NodeHelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName), " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
+    }
+
+    String[] split(String input) {
+        return input.split(" ");
     }
 };

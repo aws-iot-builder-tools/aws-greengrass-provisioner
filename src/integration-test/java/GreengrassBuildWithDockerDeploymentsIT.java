@@ -1,6 +1,6 @@
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.AwsCredentialsProvider;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGlobalDefaultHelper;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicProcessHelper;
+import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import org.hamcrest.Matcher;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
@@ -10,7 +10,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.MountableFile;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -22,8 +21,6 @@ import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.*;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 
 public class GreengrassBuildWithDockerDeploymentsIT {
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
@@ -64,14 +61,11 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private String getHome() {
-        BasicGlobalDefaultHelper basicGlobalDefaultHelper = new BasicGlobalDefaultHelper();
-        return basicGlobalDefaultHelper.getHomeDirectory().get();
+        return AwsGreengrassProvisioner.getInjector().getInstance(GlobalDefaultHelper.class).getHomeDirectory().get();
     }
 
     private String getBranch() {
-        BasicProcessHelper basicProcessHelper = new BasicProcessHelper();
-        basicProcessHelper.awsCredentialsProvider = mock(AwsCredentialsProvider.class);
-        doReturn(DefaultCredentialsProvider.create().resolveCredentials()).when(basicProcessHelper.awsCredentialsProvider).get();
+        ProcessHelper processHelper = AwsGreengrassProvisioner.getInjector().getInstance(ProcessHelper.class);
 
         List<String> programAndArguments = new ArrayList<>();
         programAndArguments.add("git");
@@ -79,11 +73,11 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         programAndArguments.add("--short");
         programAndArguments.add("HEAD");
 
-        ProcessBuilder processBuilder = basicProcessHelper.getProcessBuilder(programAndArguments);
+        ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
 
         StringBuilder stringBuilder = new StringBuilder();
 
-        basicProcessHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stringBuilder::append), Optional.empty());
+        processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stringBuilder::append), Optional.empty());
 
         String branch = stringBuilder.toString();
 
@@ -154,49 +148,49 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 1: Expected failure with invalid deployment name in Docker
     @Test
     public void shouldFailWithDocker() {
-        runContainer(greengrassITShared.FAIL_DEPLOYMENT_COMMAND, not(equalTo(0)));
+        runContainer(greengrassITShared.getFailDeploymentCommand(Optional.empty()), not(equalTo(0)));
     }
 
     // Test set 2: Expected success with CDD skeleton with Docker
     @Test
     public void shouldBuildJavaFunctionWithDocker() {
-        runContainer(greengrassITShared.CDD_SKELETON_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 3: Expected success with Python Hello World with Docker
     @Test
     public void shouldBuildPythonFunctionWithDocker() {
-        runContainer(greengrassITShared.PYTHON_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getPythonHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildPythonFunctionWithDependenciesWithDocker() {
-        runContainer(greengrassITShared.LIFX_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getLifxDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 5: Expected success with Node Hello World with Docker
     @Test
     public void shouldBuildNodeFunctionWithDocker() {
-        runContainer(greengrassITShared.NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getNodeHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 6: Expected success with all three languages in one build with Docker
     @Test
     public void shouldBuildCombinedFunctionWithDocker() {
-        runContainer(greengrassITShared.ALL_HELLO_WORLD_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getAllHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 7: Expected failure to launch an EC2 instance with ARM32 with Docker
     @Test
     public void shouldFailEc2LaunchWithArm32WithDocker() {
-        runContainer(greengrassITShared.EC2_ARM32_NODE_HELLO_WORLD_DEPLOYMENT_COMMAND, not(equalTo(0)));
+        runContainer(greengrassITShared.getEc2Arm32NodeHelloWorldDeploymentCommand(Optional.empty()), not(equalTo(0)));
     }
 
     // Test set 8: Expected success with Node Express function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildNodeFunctionWithDependenciesWithDocker() {
-        runContainer(greengrassITShared.NODE_WEBSERVER_DEPLOYMENT_COMMAND, equalTo(0));
+        runContainer(greengrassITShared.getNodeWebserverDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     private void runContainer(String nodeHelloWorldDeploymentCommand, Matcher<Integer> integerMatcher) {

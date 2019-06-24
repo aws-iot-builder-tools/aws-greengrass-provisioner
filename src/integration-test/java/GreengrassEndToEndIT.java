@@ -1,7 +1,10 @@
+import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGConstants;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGVariables;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicIoHelper;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
@@ -76,25 +79,23 @@ public class GreengrassEndToEndIT {
 
         replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
-        BasicGGConstants basicGGConstants = new BasicGGConstants();
-        BasicGGVariables basicGGVariables = new BasicGGVariables();
-        basicGGVariables.ggConstants = basicGGConstants;
+        GGVariables ggVariables = AwsGreengrassProvisioner.getInjector().getInstance(GGVariables.class);
         String groupName = greengrassITShared.GROUP_NAME;
-        oemArchiveName = new File(basicGGVariables.getOemArchiveName(groupName));
+        oemArchiveName = new File(ggVariables.getOemArchiveName(groupName));
         coreName = greengrassITShared.GROUP_NAME + "_Core";
 
-        ioHelper = new BasicIoHelper();
+        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
 
         greengrassBuildWithoutDockerDeploymentsIT = new GreengrassBuildWithoutDockerDeploymentsIT();
         greengrassBuildWithoutDockerDeploymentsIT.greengrassITShared = greengrassITShared;
 
         BasicMqttOverWebsocketsProvider basicMqttOverWebsocketsProvider = new BasicMqttOverWebsocketsProvider();
-        String clientId = new BasicIoHelper().getUuid();
+        String clientId = ioHelper.getUuid();
 
         mqttClient = basicMqttOverWebsocketsProvider.getMqttClient(clientId);
         mqttClient.connect();
 
-        jsonHelper = new BasicJsonHelper();
+        jsonHelper = AwsGreengrassProvisioner.getInjector().getInstance(JsonHelper.class);
 
         flag = new AtomicBoolean(false);
 
