@@ -518,7 +518,29 @@ public class BasicFunctionHelper implements FunctionHelper {
         allFunctions.addAll(pythonFunctions);
         allFunctions.addAll(nodeFunctions);
 
+        if (allFunctions.size() != functionConfs.size()) {
+            // If there is a mismatch here it means that some of the functions are not able to be built
+            List<FunctionConf> builtFunctionConfs = allFunctions.stream()
+                    .map(BuildableFunction::getFunctionConf)
+                    .collect(Collectors.toList());
+
+            List<FunctionConf> functionsNotBuilt = functionConfs.stream()
+                    .filter(functionConf -> !builtFunctionConfs.contains(functionConf))
+                    .collect(Collectors.toList());
+
+            throwRuntimeExceptionForMissingFunctions(functionsNotBuilt);
+        }
+
         return allFunctions;
+    }
+
+    private void throwRuntimeExceptionForMissingFunctions(List<FunctionConf> functionsNotBuilt) {
+        log.error("The following function(s) were not built:");
+
+        functionsNotBuilt
+                .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName()));
+
+        throw new RuntimeException("This is a bug, cannot continue");
     }
 
     @Override
