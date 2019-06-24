@@ -340,16 +340,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         if (defaultFunctionIsolationMode.equals(FunctionIsolationMode.NO_CONTAINER)) {
             log.warn("Default isolation mode is no container");
 
-            functionDefinitionVersionBuilder.defaultConfig(
-                    FunctionDefaultConfig.builder()
-                            .execution(FunctionDefaultExecutionConfig.builder()
-                                    .isolationMode(FunctionIsolationMode.NO_CONTAINER)
-                                    .build())
-                            .build());
-
             // Scrub all functions without an isolation mode specified
             functionsToScrubBuilder.addAll(functionsWithoutIsolationModeSpecified);
+        } else {
+            log.info("Default isolation mode is Greengrass container");
         }
+
+        functionDefinitionVersionBuilder.defaultConfig(
+                FunctionDefaultConfig.builder()
+                        .execution(FunctionDefaultExecutionConfig.builder()
+                                .isolationMode(defaultFunctionIsolationMode)
+                                .build())
+                        .build());
 
         // Get the list of functions we need to scrub
         Set<Function> functionsToScrub = functionsToScrubBuilder.build();
