@@ -32,7 +32,7 @@ class GreengrassITShared {
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
+    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
 
     static void cleanDirectories() throws IOException {
         FileUtils.deleteDirectory(TEMP_DEPLOYMENTS);
@@ -54,6 +54,10 @@ class GreengrassITShared {
         FileUtils.copyFile(GreengrassITShared.NODEJS_SDK_FROM_BUILD, GreengrassITShared.NODEJS_SDK_REQUIRED_FOR_TESTING);
     }
 
+    public String getGroupName() {
+        return GROUP_NAME;
+    }
+
     private String getGroupOption(Optional<String> groupName) {
         return String.join(" ", "-g", groupName.orElse(GROUP_NAME));
     }
@@ -66,8 +70,12 @@ class GreengrassITShared {
         return String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
-    String getUpdateGroupCommand(String groupName, String functionName, String functionAlias) {
+    String getAddFunctionCommand(String groupName, String functionName, String functionAlias) {
         return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--add-function", functionName, "--function-alias", functionAlias);
+    }
+
+    String getRemoveFunctionCommand(String groupName, String functionName, String functionAlias) {
+        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--remove-function", functionName, "--function-alias", functionAlias);
     }
 
     String getPythonHelloWorldDeploymentCommand(Optional<String> groupName) {

@@ -1,9 +1,4 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGConstants;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicGGVariables;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicIoHelper;
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
@@ -80,9 +75,9 @@ public class GreengrassEndToEndIT {
         replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
         GGVariables ggVariables = AwsGreengrassProvisioner.getInjector().getInstance(GGVariables.class);
-        String groupName = greengrassITShared.GROUP_NAME;
+        String groupName = greengrassITShared.getGroupName();
         oemArchiveName = new File(ggVariables.getOemArchiveName(groupName));
-        coreName = greengrassITShared.GROUP_NAME + "_Core";
+        coreName = greengrassITShared.getGroupName() + "_Core";
 
         ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
 

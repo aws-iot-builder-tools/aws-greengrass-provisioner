@@ -15,7 +15,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class GreengrassUpdateWithoutDockerIT {
-    public static final String HELLO_WORLD_NODE = "HelloWorldNode";
+    private static final String HELLO_WORLD_NODE = "HelloWorldNode";
+    private static final String HELLO_WORLD_PYTHON = "HelloWorldPython";
     private static Logger log = LoggerFactory.getLogger(GreengrassUpdateWithoutDockerIT.class);
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -76,7 +77,7 @@ public class GreengrassUpdateWithoutDockerIT {
         Assert.assertFalse(optionalGroup1HelloWorldNodeFunctionBeforeUpdate.isPresent());
 
         // Update group 1 with the function
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getUpdateGroupCommand(group1Name, helloWorldNodeFunctionName, functionAlias)));
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getAddFunctionCommand(group1Name, helloWorldNodeFunctionName, functionAlias)));
 
         // Make sure the function is present in group 1 after the update
         GroupInformation group1InformationAfterUpdate = greengrassHelper.getGroupInformation(group1Name)
@@ -85,6 +86,43 @@ public class GreengrassUpdateWithoutDockerIT {
         Optional<Function> optionalGroup1HelloWorldNodeFunctionAfterUpdate = getFunctionFromGroupInformation(group1InformationAfterUpdate, HELLO_WORLD_NODE);
 
         Assert.assertTrue(optionalGroup1HelloWorldNodeFunctionAfterUpdate.isPresent());
+    }
+
+    // Test set 2: Build a group with Python Hello World, remove the Python Hello World function
+    @Test
+    public void shouldRemovePythonFunctionFromGroup() {
+        // Create one group with a known name
+        Optional<String> optionalGroupName = Optional.of(ioHelper.getUuid());
+
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPythonHelloWorldDeploymentCommand(optionalGroupName)));
+
+        String groupName = optionalGroupName.get();
+
+        // Get the information for the group so we can pull the Hello World function out of it
+        GroupInformation groupInformation = greengrassHelper.getGroupInformation(groupName)
+                .orElseThrow(() -> new RuntimeException("Group information not present"));
+
+        // Pull the Hello World function out of the group
+        Optional<Function> optionalGroupHelloWorldPythonFunction = getFunctionFromGroupInformation(groupInformation, HELLO_WORLD_PYTHON);
+
+        // Make sure the function is present
+        Assert.assertTrue(optionalGroupHelloWorldPythonFunction.isPresent());
+
+        // Get the function information, extract the short name, and create a new alias
+        Function helloWorldPythonFunction = optionalGroupHelloWorldPythonFunction.get();
+        String helloWorldPythonFunctionName = extractFunctionName(helloWorldPythonFunction);
+        String helloWorldPythonFunctionAlias = extractFunctionAlias(helloWorldPythonFunction);
+
+        // Remove the function from the group
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getRemoveFunctionCommand(groupName, helloWorldPythonFunctionName, helloWorldPythonFunctionAlias)));
+
+        // Make sure the function is not present in the group after the update
+        GroupInformation groupInformationAfterUpdate = greengrassHelper.getGroupInformation(groupName)
+                .orElseThrow(() -> new RuntimeException("Group information not present after update"));
+
+        Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON);
+
+        Assert.assertFalse(optionalGroupHelloWorldPythonFunctionAfterUpdate.isPresent());
     }
 
     @NotNull
@@ -96,9 +134,16 @@ public class GreengrassUpdateWithoutDockerIT {
                 .findFirst();
     }
 
-    private String extractFunctionName(Function helloWorldNodeFunction) {
-        String returnValue = helloWorldNodeFunction.functionArn().replaceAll("^.*:function:", "");
+    private String extractFunctionName(Function function) {
+        String returnValue = function.functionArn().replaceAll("^.*:function:", "");
         returnValue = returnValue.replaceAll(":.*$", "");
+
+        return returnValue;
+    }
+
+    private String extractFunctionAlias(Function function) {
+        String returnValue = function.functionArn().replaceAll("^.*:function:", "");
+        returnValue = returnValue.replaceAll("^.*:", "");
 
         return returnValue;
     }
