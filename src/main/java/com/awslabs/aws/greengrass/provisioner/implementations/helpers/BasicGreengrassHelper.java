@@ -984,7 +984,16 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
         FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
 
-        return functionDefinition.defaultConfig().execution().isolationMode();
+        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = Optional.ofNullable(functionDefinition.defaultConfig())
+                .map(FunctionDefaultConfig::execution)
+                .map(FunctionDefaultExecutionConfig::isolationMode);
+
+        if (!optionalFunctionIsolationMode.isPresent()) {
+            log.warn("Default function isolation mode was not present, defaulting to Greengrass container");
+            return FunctionIsolationMode.GREENGRASS_CONTAINER;
+        }
+
+        return optionalFunctionIsolationMode.get();
     }
 
     @Override
