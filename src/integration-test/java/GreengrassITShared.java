@@ -30,6 +30,7 @@ class GreengrassITShared {
     static final String LIFX_DEPLOYMENT = "lifx.conf";
     static final String NODE_WEBSERVER_DEPLOYMENT = "web-server-node.conf";
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
+    static final String X86_64_SAMPLE_C_DEPLOYMENT = "X86_64SampleC.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
     private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
@@ -92,6 +93,10 @@ class GreengrassITShared {
 
     String getNodeHelloWorldDeploymentCommand(Optional<String> groupName) {
         return String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getX86_64SampleCDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, X86_64_SAMPLE_C_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getAllHelloWorldDeploymentCommand(Optional<String> groupName) {

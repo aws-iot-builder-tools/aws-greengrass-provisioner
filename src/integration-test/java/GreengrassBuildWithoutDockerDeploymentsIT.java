@@ -79,4 +79,10 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     public void shouldBuildNodeFunctionWithDependenciesWithoutDocker() {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getNodeWebserverDeploymentCommand(Optional.empty())));
     }
+
+    // Test set 9: Expected success with X86_64 Sample C function without Docker
+    @Test
+    public void shouldBuildX86_64SampleCWithoutDocker() {
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getX86_64SampleCDeploymentCommand(Optional.empty())));
+    }
 }
