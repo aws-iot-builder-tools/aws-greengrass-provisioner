@@ -2,17 +2,11 @@ package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.data.diagnostics.*;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
-import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicGradleBuilder;
-import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicMavenBuilder;
-import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicNodeBuilder;
-import com.awslabs.aws.greengrass.provisioner.implementations.builders.BasicPythonBuilder;
+import com.awslabs.aws.greengrass.provisioner.implementations.builders.*;
 import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.*;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
+import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
@@ -64,6 +58,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(LambdaHelper.class).to(BasicLambdaHelper.class);
         bind(PythonBuilder.class).to(BasicPythonBuilder.class);
         bind(NodeBuilder.class).to(BasicNodeBuilder.class);
+        bind(ExecutableBuilder.class).to(BasicExecutableBuilder.class);
         bind(ProcessHelper.class).to(BasicProcessHelper.class);
         bind(MavenBuilder.class).to(BasicMavenBuilder.class);
         bind(GradleBuilder.class).to(BasicGradleBuilder.class);

@@ -343,11 +343,11 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             String path = temp.getString(PATH);
 
-            Optional<String> name = getName(temp);
-            name = makeNameSafe(path, name);
+            Optional<String> optionalName = getName(temp);
+            String name = makeNameSafe(path, optionalName);
 
             LocalDeviceResource localDeviceResource = com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalDeviceResource.builder()
-                    .name(name.get())
+                    .name(name)
                     .path(path)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
@@ -372,11 +372,11 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .recover(ConfigException.Missing.class, throwable -> sourcePath)
                     .get();
 
-            Optional<String> name = getName(temp);
-            name = makeNameSafe(sourcePath, name);
+            Optional<String> optionalName = getName(temp);
+            String name = makeNameSafe(sourcePath, optionalName);
 
             LocalVolumeResource localVolumeResource = ImmutableLocalVolumeResource.builder()
-                    .name(name.get())
+                    .name(name)
                     .sourcePath(sourcePath)
                     .destinationPath(destinationPath)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
@@ -398,11 +398,11 @@ public class BasicFunctionHelper implements FunctionHelper {
             String uri = temp.getString(URI);
             String path = temp.getString(PATH);
 
-            Optional<String> name = getName(temp);
-            name = makeNameSafe(path, name);
+            Optional<String> optionalName = getName(temp);
+            String name = makeNameSafe(path, optionalName);
 
             LocalS3Resource localS3Resource = ImmutableLocalS3Resource.builder()
-                    .name(name.get())
+                    .name(name)
                     .uri(uri)
                     .path(path)
                     .build();
@@ -444,11 +444,11 @@ public class BasicFunctionHelper implements FunctionHelper {
                 throw new RuntimeException("SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [" + arn + "]");
             }
 
-            Optional<String> name = getName(temp);
-            name = makeNameSafe(path, name);
+            Optional<String> optionalName = getName(temp);
+            String name = makeNameSafe(path, optionalName);
 
             LocalSageMakerResource localSageMakerResource = ImmutableLocalSageMakerResource.builder()
-                    .name(name.get())
+                    .name(name)
                     .arn(arn)
                     .path(path)
                     .build();
@@ -464,14 +464,14 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .get();
     }
 
-    private Optional<String> makeNameSafe(String path, Optional<String> name) {
+    private String makeNameSafe(String path, Optional<String> name) {
         // Device names can't have special characters in them - https://docs.aws.amazon.com/greengrass/latest/apireference/createresourcedefinition-post.html
-        name = Optional.of(name.orElse(path)
+        return Optional.of(name.orElse(path)
                 .replaceAll("[^a-zA-Z0-9:_-]", "-")
                 .replaceFirst("^-", "")
                 .replaceFirst("-$", "")
-                .trim());
-        return name;
+                .trim())
+                .orElseThrow(() -> new RuntimeException("Name cannot be empty"));
     }
 
     private void setEnvironmentVariables(ModifiableFunctionConf functionConf, Config config) {
@@ -512,13 +512,41 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .map(functionConf -> new BuildableNodeFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
+        List<BuildableExecutableFunction> executableFunctions = functionConfs.stream()
+                .filter(getExecutablePredicate())
+                .map(functionConf -> new BuildableExecutableFunction(functionConf, lambdaRole))
+                .collect(Collectors.toList());
+
         List<BuildableFunction> allFunctions = new ArrayList<>();
         allFunctions.addAll(javaMavenFunctions);
         allFunctions.addAll(javaGradleFunctions);
         allFunctions.addAll(pythonFunctions);
         allFunctions.addAll(nodeFunctions);
+        allFunctions.addAll(executableFunctions);
+
+        if (allFunctions.size() != functionConfs.size()) {
+            // If there is a mismatch here it means that some of the functions are not able to be built
+            List<FunctionConf> builtFunctionConfs = allFunctions.stream()
+                    .map(BuildableFunction::getFunctionConf)
+                    .collect(Collectors.toList());
+
+            List<FunctionConf> functionsNotBuilt = functionConfs.stream()
+                    .filter(functionConf -> !builtFunctionConfs.contains(functionConf))
+                    .collect(Collectors.toList());
+
+            throwRuntimeExceptionForNonBuildableFunctions(functionsNotBuilt);
+        }
 
         return allFunctions;
+    }
+
+    private void throwRuntimeExceptionForNonBuildableFunctions(List<FunctionConf> functionsNotBuilt) {
+        log.error("The following function(s) are not buildable:");
+
+        functionsNotBuilt
+                .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName()));
+
+        throw new RuntimeException("This is a bug, cannot continue");
     }
 
     @Override
@@ -538,10 +566,13 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
-        Predicate<ModifiableFunctionConf> java8Predicate = functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
+    public Predicate<ModifiableFunctionConf> getExecutablePredicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.EXECUTABLE);
+    }
 
-        return java8Predicate;
+    @Override
+    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
     }
 
     @Override
@@ -559,8 +590,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         if (errors.size() != 0) {
             log.error("Errors detected in Lambda functions");
 
-            errors.stream()
-                    .forEach(this::logErrorInLambdaFunction);
+            errors.forEach(this::logErrorInLambdaFunction);
 
             System.exit(1);
         }
@@ -612,6 +642,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = new ArrayList<>();
 
         buildSteps.addAll(buildableFunctions.stream()
+                .filter(buildableFunction -> buildableFunction instanceof BuildableExecutableFunction)
+                .map(buildableFunction ->
+                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableExecutableFunction) buildableFunction))
+                .collect(Collectors.toList()));
+
+        buildSteps.addAll(buildableFunctions.stream()
                 .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
                 .map(buildableFunction ->
                         (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableJavaMavenFunction) buildableFunction))
@@ -648,6 +684,21 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
+        String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
+
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
+                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
+                .functionConf(functionConf)
+                .build();
+    }
+
+    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableExecutableFunction buildableExecutableFunction) {
+        ModifiableFunctionConf functionConf = buildableExecutableFunction.getFunctionConf();
+        Role lambdaRole = buildableExecutableFunction.getLambdaRole();
+
+        log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
+        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateExecutableFunctionIfNecessary(functionConf, lambdaRole);
         String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
         lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
 

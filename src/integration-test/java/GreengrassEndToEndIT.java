@@ -32,6 +32,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 
 public class GreengrassEndToEndIT {
@@ -61,13 +62,12 @@ public class GreengrassEndToEndIT {
     private AtomicBoolean flag;
     private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
     private Path functionDefaultsPath;
-    private GreengrassITShared greengrassITShared;
     private JsonHelper jsonHelper;
 
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
         GreengrassITShared.beforeTestSetup();
-        greengrassITShared = new GreengrassITShared();
+        GreengrassITShared greengrassITShared = new GreengrassITShared();
 
         // Since we're testing with Docker but not using the native Docker launch feature we need to set the default function isolation mode to no container
         functionDefaultsPath = new File("deployments/function.defaults.conf").toPath();
@@ -125,7 +125,7 @@ public class GreengrassEndToEndIT {
         // First build with the normal UID and GID configuration
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
-        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
+        setupJsonHelloWorldFunctionCheck(getNodeExpectedTopic());
 
         waitForContainerToStartSuccessfully(defaultTimeout);
 
@@ -142,13 +142,27 @@ public class GreengrassEndToEndIT {
     public void shouldStartWithNodeConfiguration() throws IOException, InterruptedException, MqttException {
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
-        setupHelloWorldFunctionCheck(getNodeExpectedTopic());
+        setupJsonHelloWorldFunctionCheck(getNodeExpectedTopic());
+
+        waitForContainerToStartSuccessfully(defaultTimeout);
+    }
+
+    @Test
+    public void shouldStartWithX86_64SampleConfiguration() throws IOException, InterruptedException, MqttException {
+        greengrassBuildWithoutDockerDeploymentsIT.shouldBuildX86_64SampleCWithoutDocker();
+
+        setupBinaryHelloWorldFunctionCheck(getX86_64SampleCTopic());
 
         waitForContainerToStartSuccessfully(defaultTimeout);
     }
 
     @NotNull
-    public String getNodeExpectedTopic() {
+    private String getX86_64SampleCTopic() {
+        return String.join("/", "hello", "world");
+    }
+
+    @NotNull
+    private String getNodeExpectedTopic() {
         return String.join("/", coreName, "node", "hello", "world");
     }
 
@@ -158,12 +172,12 @@ public class GreengrassEndToEndIT {
 
         String expectedTopic = String.join("/", coreName, "cdd", "skeleton", "output");
 
-        setupHelloWorldFunctionCheck(expectedTopic);
+        setupJsonHelloWorldFunctionCheck(expectedTopic);
 
         waitForContainerToStartSuccessfully(defaultTimeout);
     }
 
-    private void setupHelloWorldFunctionCheck(String expectedTopic) throws MqttException {
+    private void setupJsonHelloWorldFunctionCheck(String expectedTopic) throws MqttException {
         mqttClient.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable cause) {
@@ -176,6 +190,30 @@ public class GreengrassEndToEndIT {
                 String payloadString = new String(message.getPayload());
                 Map<String, Object> payloadMap = jsonHelper.fromJson(Map.class, payloadString.getBytes());
                 Assert.assertThat(payloadMap, IsMapContaining.hasKey("message"));
+                flag.set(true);
+            }
+
+            @Override
+            public void deliveryComplete(IMqttDeliveryToken token) {
+
+            }
+        });
+
+        mqttClient.subscribe(expectedTopic);
+    }
+
+    private void setupBinaryHelloWorldFunctionCheck(String expectedTopic) throws MqttException {
+        mqttClient.setCallback(new MqttCallback() {
+            @Override
+            public void connectionLost(Throwable cause) {
+
+            }
+
+            @Override
+            public void messageArrived(String topic, MqttMessage message) {
+                Assert.assertThat(topic, is(expectedTopic));
+                String payloadString = new String(message.getPayload());
+                Assert.assertThat(payloadString, containsString("hello world"));
                 flag.set(true);
             }
 

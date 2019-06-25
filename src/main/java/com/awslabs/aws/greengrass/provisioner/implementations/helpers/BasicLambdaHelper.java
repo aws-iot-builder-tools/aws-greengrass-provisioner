@@ -2,11 +2,9 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.Language;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
+import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
@@ -21,11 +19,14 @@ import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.Optional;
 
 public class BasicLambdaHelper implements LambdaHelper {
+    public static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
+    public static final String ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT = "ZIP archive for executable/native function not present ";
     private final Logger log = LoggerFactory.getLogger(BasicLambdaHelper.class);
     @Inject
     LambdaClient lambdaClient;
@@ -39,6 +40,8 @@ public class BasicLambdaHelper implements LambdaHelper {
     PythonBuilder pythonBuilder;
     @Inject
     NodeBuilder nodeBuilder;
+    @Inject
+    ExecutableBuilder executableBuilder;
     @Inject
     LoggingHelper loggingHelper;
 
@@ -54,6 +57,24 @@ public class BasicLambdaHelper implements LambdaHelper {
         return Try.of(() -> lambdaClient.getFunction(getFunctionRequest) != null)
                 .recover(ResourceNotFoundException.class, throwable -> false)
                 .get();
+    }
+
+    @Override
+    public LambdaFunctionArnInfo buildAndCreateExecutableFunctionIfNecessary(FunctionConf functionConf, Role role) {
+        String zipFilePath = String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
+
+        File zipFile = new File(zipFilePath);
+
+        if (!zipFile.exists()) {
+            log.warn(ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT + "[" + zipFile.getName() + "], attempting build");
+            executableBuilder.buildExecutableFunctionIfNecessary(functionConf);
+        }
+
+        if (!zipFile.exists()) {
+            throw new RuntimeException(ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT + "[" + zipFile.getName() + "]");
+        }
+
+        return createFunctionIfNecessary(functionConf, role, zipFilePath);
     }
 
     @Override
@@ -128,13 +149,18 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
-        CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
+
+        CreateFunctionRequest.Builder createFunctionRequestBuilder = CreateFunctionRequest.builder()
                 .functionName(groupFunctionName)
-                .runtime(functionConf.getLanguage().getRuntime())
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
-                .code(functionCode)
-                .build();
+                .code(functionCode);
+
+        if (functionConf.getLanguage().equals(Language.EXECUTABLE)) {
+            createFunctionRequestBuilder.runtime(ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE);
+        } else {
+            createFunctionRequestBuilder.runtime(functionConf.getLanguage().getRuntime());
+        }
 
         // Sometimes the Lambda IAM role isn't immediately visible so we need retries
         RetryPolicy<CreateFunctionResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<CreateFunctionResponse>()
@@ -147,7 +173,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
             Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                    lambdaClient.createFunction(createFunctionRequest));
+                    lambdaClient.createFunction(createFunctionRequestBuilder.build()));
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");

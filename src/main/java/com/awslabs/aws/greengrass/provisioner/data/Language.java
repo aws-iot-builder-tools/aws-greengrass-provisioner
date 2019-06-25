@@ -10,7 +10,8 @@ public enum Language {
     NODEJS8_10(Runtime.NODEJS8_10),
     JAVA8(Runtime.JAVA8),
     PYTHON2_7(Runtime.PYTHON2_7),
-    PYTHON3_7(Runtime.PYTHON3_7);
+    PYTHON3_7(Runtime.PYTHON3_7),
+    EXECUTABLE(null); // Raw executables like C functions
 
     private final Runtime runtime;
 
