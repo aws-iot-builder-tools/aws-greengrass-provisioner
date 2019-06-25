@@ -9,6 +9,8 @@ import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
 import java.util.Optional;
 
 public interface LambdaHelper {
+    LambdaFunctionArnInfo buildAndCreateExecutableFunctionIfNecessary(FunctionConf functionConf, Role role);
+
     LambdaFunctionArnInfo buildAndCreateJavaFunctionIfNecessary(FunctionConf functionConf, Role role);
 
     LambdaFunctionArnInfo buildAndCreatePythonFunctionIfNecessary(FunctionConf functionConf, Role role);

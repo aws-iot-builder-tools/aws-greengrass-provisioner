@@ -512,11 +512,17 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .map(functionConf -> new BuildableNodeFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
+        List<BuildableExecutableFunction> executableFunctions = functionConfs.stream()
+                .filter(getExecutablePredicate())
+                .map(functionConf -> new BuildableExecutableFunction(functionConf, lambdaRole))
+                .collect(Collectors.toList());
+
         List<BuildableFunction> allFunctions = new ArrayList<>();
         allFunctions.addAll(javaMavenFunctions);
         allFunctions.addAll(javaGradleFunctions);
         allFunctions.addAll(pythonFunctions);
         allFunctions.addAll(nodeFunctions);
+        allFunctions.addAll(executableFunctions);
 
         if (allFunctions.size() != functionConfs.size()) {
             // If there is a mismatch here it means that some of the functions are not able to be built
@@ -528,14 +534,14 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .filter(functionConf -> !builtFunctionConfs.contains(functionConf))
                     .collect(Collectors.toList());
 
-            throwRuntimeExceptionForMissingFunctions(functionsNotBuilt);
+            throwRuntimeExceptionForNonBuildableFunctions(functionsNotBuilt);
         }
 
         return allFunctions;
     }
 
-    private void throwRuntimeExceptionForMissingFunctions(List<FunctionConf> functionsNotBuilt) {
-        log.error("The following function(s) were not built:");
+    private void throwRuntimeExceptionForNonBuildableFunctions(List<FunctionConf> functionsNotBuilt) {
+        log.error("The following function(s) are not buildable:");
 
         functionsNotBuilt
                 .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName()));
@@ -560,10 +566,13 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
-        Predicate<ModifiableFunctionConf> java8Predicate = functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
+    public Predicate<ModifiableFunctionConf> getExecutablePredicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.EXECUTABLE);
+    }
 
-        return java8Predicate;
+    @Override
+    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
     }
 
     @Override
@@ -581,8 +590,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         if (errors.size() != 0) {
             log.error("Errors detected in Lambda functions");
 
-            errors.stream()
-                    .forEach(this::logErrorInLambdaFunction);
+            errors.forEach(this::logErrorInLambdaFunction);
 
             System.exit(1);
         }
@@ -634,6 +642,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = new ArrayList<>();
 
         buildSteps.addAll(buildableFunctions.stream()
+                .filter(buildableFunction -> buildableFunction instanceof BuildableExecutableFunction)
+                .map(buildableFunction ->
+                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableExecutableFunction) buildableFunction))
+                .collect(Collectors.toList()));
+
+        buildSteps.addAll(buildableFunctions.stream()
                 .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
                 .map(buildableFunction ->
                         (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableJavaMavenFunction) buildableFunction))
@@ -670,6 +684,21 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
         LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
+        String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
+
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
+                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
+                .functionConf(functionConf)
+                .build();
+    }
+
+    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableExecutableFunction buildableExecutableFunction) {
+        ModifiableFunctionConf functionConf = buildableExecutableFunction.getFunctionConf();
+        Role lambdaRole = buildableExecutableFunction.getLambdaRole();
+
+        log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
+        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateExecutableFunctionIfNecessary(functionConf, lambdaRole);
         String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
         lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
 

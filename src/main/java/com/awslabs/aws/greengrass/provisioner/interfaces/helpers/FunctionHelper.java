@@ -30,6 +30,8 @@ public interface FunctionHelper {
 
     Predicate<ModifiableFunctionConf> getNodePredicate();
 
+    Predicate<ModifiableFunctionConf> getExecutablePredicate();
+
     Predicate<ModifiableFunctionConf> getJavaPredicate();
 
     Map<Function, ModifiableFunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions);
