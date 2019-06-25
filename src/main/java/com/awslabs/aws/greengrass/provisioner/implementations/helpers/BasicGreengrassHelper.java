@@ -623,6 +623,14 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 return DeploymentStatus.FAILED;
             }
 
+            if (errorMessage.contains("user or group doesn't have permission on the file")) {
+                return DeploymentStatus.FAILED;
+            }
+
+            if (errorMessage.contains("file doesn't exist")) {
+                return DeploymentStatus.FAILED;
+            }
+
             // Possible error messages we've encountered
             //   "The security token included in the request is invalid."
             //   "We're having a problem right now.  Please try again in a few minutes."
