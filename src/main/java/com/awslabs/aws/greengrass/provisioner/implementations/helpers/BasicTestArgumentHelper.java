@@ -13,7 +13,7 @@ import java.util.List;
 
 public class BasicTestArgumentHelper implements TestArgumentHelper {
     private static final String DTOUTPUT = "/dtoutput";
-    private static final String DT_ZIP = "/devicetester_greengrass_linux_1.3.1.zip";
+    private static final String DT_ZIP = "/devicetester_greengrass_linux_1.3.2.zip";
     private final Logger log = LoggerFactory.getLogger(BasicTestArgumentHelper.class);
     @Inject
     IoHelper ioHelper;
