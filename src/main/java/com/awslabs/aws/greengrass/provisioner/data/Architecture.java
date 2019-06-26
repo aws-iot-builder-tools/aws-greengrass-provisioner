@@ -11,9 +11,9 @@ import java.util.stream.Collectors;
 import static com.google.common.io.Resources.getResource;
 
 public enum Architecture {
-    ARM32("greengrass-linux-armv7l-1.9.1.tar.gz"),
-    X86_64("greengrass-linux-x86-64-1.9.1.tar.gz"),
-    ARM64("greengrass-linux-aarch64-1.9.1.tar.gz");
+    ARM32("greengrass-linux-armv7l-1.9.2.tar.gz"),
+    X86_64("greengrass-linux-x86-64-1.9.2.tar.gz"),
+    ARM64("greengrass-linux-aarch64-1.9.2.tar.gz");
 
     private final String filename;
 

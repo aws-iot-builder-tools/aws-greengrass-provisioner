@@ -41,7 +41,7 @@ public class GreengrassEndToEndIT {
     private static final String STARTUP_SH = "/startup.sh";
     private static final String GREENGRASS_ENTRYPOINT_SH = "./greengrass-entrypoint.sh";
     // TODO: Temporarily using Docker Hub, should migrate this to ECR to get guaranteed official images
-    private static final String AMAZON_AWS_IOT_GREENGRASS_1_9_1_AMAZON_LINUX = "amazon/aws-iot-greengrass:1.9.1-amazonlinux";
+    private static final String AMAZON_AWS_IOT_GREENGRASS_1_9_2_AMAZON_LINUX = "amazon/aws-iot-greengrass:1.9.2-amazonlinux";
     /**
      * Makes regex DOT character match newlines
      */
@@ -250,7 +250,7 @@ public class GreengrassEndToEndIT {
 
         String command = "bash " + STARTUP_SH;
 
-        GenericContainer greengrass = new GenericContainer(AMAZON_AWS_IOT_GREENGRASS_1_9_1_AMAZON_LINUX)
+        GenericContainer greengrass = new GenericContainer(AMAZON_AWS_IOT_GREENGRASS_1_9_2_AMAZON_LINUX)
                 .withCopyFileToContainer(MountableFile.forHostPath(tempScript.toPath()), STARTUP_SH)
                 .withCopyFileToContainer(MountableFile.forHostPath(oemArchiveName.toPath()), GREENGRASS_OEM_TAR)
                 .withExposedPorts(8883, 8000)
