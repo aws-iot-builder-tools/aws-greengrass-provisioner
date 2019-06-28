@@ -871,12 +871,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
         log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + host + "] and run 'screen -r' to see the progress");
-        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of("greengrass"));
+        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of("greengrass"), true);
         session.disconnect();
         return true;
     }
 
-    private void runCommandInScreen(Session session, String command, Optional<String> screenSessionName) throws JSchException, IOException {
+    private void runCommandInScreen(Session session, String command, Optional<String> screenSessionName, boolean keepSessionOpen) throws JSchException, IOException {
         AtomicBoolean screenAvailable = new AtomicBoolean(false);
 
         Consumer<String> screenAvailabilityChecker = getScreenAvailabilityChecker(screenAvailable);
@@ -899,6 +899,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             // TODO: This wait could be removed with better response handling
             waitForFlagToToggle(screenSessionNameAvailable, SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+        }
+
+        if (keepSessionOpen) {
+            command = "bash -c \"" + command + "; exec bash\"";
         }
 
         ioHelper.runCommand(session, String.join(" ", "screen", sessionNameOptions, "-d", "-m", command));
