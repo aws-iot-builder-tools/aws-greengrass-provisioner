@@ -1,11 +1,16 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.*;
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfoAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.*;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
+import com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalS3Resource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalSageMakerResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalVolumeResource;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
