@@ -160,6 +160,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         deploymentConfBuilder.groupName(groupName);
 
+        try {
+            deploymentConfBuilder.isSyncShadow(config.getBoolean("conf.core.syncShadow"));
+        } catch (ConfigException.Missing e) {
+            log.warn("No value specified for core syncShadow, defaulting to true");
+            deploymentConfBuilder.isSyncShadow(true);
+        }
+
         deploymentConfBuilder.coreRoleName(config.getString("conf.core.roleName"));
         deploymentConfBuilder.coreRoleAssumeRolePolicy(config.getObject("conf.core.roleAssumeRolePolicy").render(ConfigRenderOptions.concise()));
         deploymentConfBuilder.coreRolePolicies(config.getStringList("conf.core.rolePolicies"));
@@ -383,7 +390,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////////////
 
         log.info("Creating core definition");
-        String coreDefinitionVersionArn = greengrassHelper.createCoreDefinitionAndVersion(ggVariables.getCoreDefinitionName(deploymentArguments.groupName), coreCertificateArn, coreThingArn);
+        String coreDefinitionVersionArn = greengrassHelper.createCoreDefinitionAndVersion(ggVariables.getCoreDefinitionName(deploymentArguments.groupName), coreCertificateArn, coreThingArn, deploymentConf.isSyncShadow());
 
         //////////////////////////////////////////////
         // Create a logger definition and a version //

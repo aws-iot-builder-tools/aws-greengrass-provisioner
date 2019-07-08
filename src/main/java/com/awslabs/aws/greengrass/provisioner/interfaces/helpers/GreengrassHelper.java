@@ -23,7 +23,7 @@ public interface GreengrassHelper {
 
     void associateRoleToGroup(String groupId, Role greengrassRole);
 
-    String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn);
+    String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn, boolean syncShadow);
 
     /**
      * Build a Function object for a new function
