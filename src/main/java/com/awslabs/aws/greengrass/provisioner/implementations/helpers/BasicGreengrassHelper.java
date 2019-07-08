@@ -169,7 +169,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn) {
+    public String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn, boolean syncShadow) {
         String uuid = ioHelper.getUuid();
 
         String coreDefinitionId = getCoreDefinitionId(coreDefinitionName);
@@ -186,7 +186,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         Core core = Core.builder()
                 .certificateArn(coreCertificateArn)
                 .id(uuid)
-                .syncShadow(true)
+                .syncShadow(syncShadow)
                 .thingArn(coreThingArn)
                 .build();
 
