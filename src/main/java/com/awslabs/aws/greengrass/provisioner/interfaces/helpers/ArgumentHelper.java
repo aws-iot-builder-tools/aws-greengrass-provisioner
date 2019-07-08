@@ -22,7 +22,8 @@ public interface ArgumentHelper<T extends Arguments> {
         stringBuilder.append(architectureString);
         stringBuilder.append("] is not a valid architecture.");
         stringBuilder.append("\r\n");
-        stringBuilder.append("Valid options are: " + Architecture.getList());
+        stringBuilder.append("Valid options are: ");
+        stringBuilder.append(Architecture.getList());
 
         throw new RuntimeException(stringBuilder.toString());
     }

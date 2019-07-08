@@ -586,59 +586,61 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GetDeploymentStatusResponse getDeploymentStatusResponse = greengrassClient.getDeploymentStatus(getDeploymentStatusRequest);
         String deploymentStatus = getDeploymentStatusResponse.deploymentStatus();
 
-        if (deploymentStatus.equals(IN_PROGRESS) || deploymentStatus.equals(SUCCESS)) {
-            return DeploymentStatus.SUCCESSFUL;
-        } else if (deploymentStatus.equals(FAILURE)) {
-            String errorMessage = getDeploymentStatusResponse.errorMessage();
+        switch (deploymentStatus) {
+            case IN_PROGRESS:
+            case SUCCESS:
+                return DeploymentStatus.SUCCESSFUL;
+            case FAILURE:
+                String errorMessage = getDeploymentStatusResponse.errorMessage();
 
-            log.error("Greengrass service reported an error [" + errorMessage + "]");
+                log.error("Greengrass service reported an error [" + errorMessage + "]");
 
-            if (errorMessage.contains("Greengrass does not have permission to read the object")) {
-                // Greengrass probably can't read a SageMaker model
-                log.error("If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored.");
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("Greengrass does not have permission to read the object")) {
+                    // Greengrass probably can't read a SageMaker model
+                    log.error("If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored.");
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("refers to a resource transfer-learning-example with nonexistent S3 object")) {
-                log.error("If you are using a SageMaker model your model appears to no longer exist in S3.");
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("refers to a resource transfer-learning-example with nonexistent S3 object")) {
+                    log.error("If you are using a SageMaker model your model appears to no longer exist in S3.");
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("group config is invalid")) {
-                // Can't succeed if the definition is not valid
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("group config is invalid")) {
+                    // Can't succeed if the definition is not valid
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("We cannot deploy because the group definition is invalid or corrupted")) {
-                // Can't succeed if the definition is not valid
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("We cannot deploy because the group definition is invalid or corrupted")) {
+                    // Can't succeed if the definition is not valid
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("Artifact download retry exceeded the max retries")) {
-                // Can't succeed if the artifact can't be downloaded
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("Artifact download retry exceeded the max retries")) {
+                    // Can't succeed if the artifact can't be downloaded
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("Greengrass is not configured to run lambdas with root permissions")) {
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("Greengrass is not configured to run lambdas with root permissions")) {
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("user or group doesn't have permission on the file")) {
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("user or group doesn't have permission on the file")) {
+                    return DeploymentStatus.FAILED;
+                }
 
-            if (errorMessage.contains("file doesn't exist")) {
-                return DeploymentStatus.FAILED;
-            }
+                if (errorMessage.contains("file doesn't exist")) {
+                    return DeploymentStatus.FAILED;
+                }
 
-            // Possible error messages we've encountered
-            //   "The security token included in the request is invalid."
-            //   "We're having a problem right now.  Please try again in a few minutes."
+                // Possible error messages we've encountered
+                //   "The security token included in the request is invalid."
+                //   "We're having a problem right now.  Please try again in a few minutes."
 
-            return DeploymentStatus.NEEDS_NEW_DEPLOYMENT;
-        } else if (deploymentStatus.equals(BUILDING)) {
-            log.info("Deployment is being built...");
-            return DeploymentStatus.BUILDING;
+                return DeploymentStatus.NEEDS_NEW_DEPLOYMENT;
+            case BUILDING:
+                log.info("Deployment is being built...");
+                return DeploymentStatus.BUILDING;
         }
 
         log.error("Unexpected deployment status [" + deploymentStatus + "]");

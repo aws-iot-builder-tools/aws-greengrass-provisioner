@@ -110,4 +110,4 @@ class GreengrassITShared {
     String[] split(String input) {
         return input.split(" ");
     }
-};
+}

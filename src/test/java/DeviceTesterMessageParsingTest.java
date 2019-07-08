@@ -203,7 +203,7 @@ public class DeviceTesterMessageParsingTest {
     public void shouldModifyAllStringsWhenTrimmed() {
         // Validates that the trimming regex isn't broken
         ALL_STRINGS.toStream()
-                .forEach(string -> Assert.assertFalse(string.equals(trimJavaLoggerInfo(string))));
+                .forEach(string -> Assert.assertNotEquals(string, trimJavaLoggerInfo(string)));
     }
 
     @Test
