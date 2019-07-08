@@ -186,7 +186,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         Core core = Core.builder()
                 .certificateArn(coreCertificateArn)
                 .id(uuid)
-                .syncShadow(false)
+                .syncShadow(true)
                 .thingArn(coreThingArn)
                 .build();
 

@@ -3,6 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.conf.*;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableDeploymentConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
 import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;

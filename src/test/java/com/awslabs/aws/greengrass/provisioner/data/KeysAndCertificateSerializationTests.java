@@ -21,7 +21,7 @@ public class KeysAndCertificateSerializationTests {
                 .privateKey("privateKey123")
                 .publicKey("publicKey123")
                 .build();
-        keysAndCertificate = ImmutableKeysAndCertificate.builder()
+        keysAndCertificate = com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate.builder()
                 .certificateArn("certificateArn123")
                 .certificateId("certificateId123")
                 .certificatePem("certificatePem123")
