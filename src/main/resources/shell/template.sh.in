@@ -146,6 +146,7 @@ YUM=`which yum`
 YUM_MISSING=$?
 
 if [ $YUM_MISSING -eq 0 ]; then
+    INSTALLER_UPDATE=$YUM
     INSTALLER=$YUM
 
     # Amazon Linux on EC2 needs this
@@ -173,6 +174,7 @@ if [ $YUM_MISSING -eq 0 ]; then
 
     INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
 else
+    INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
     INSTALLER=apt-get
     # Avoid preinst and postinst tasks from asking questions
     export DEBIAN_FRONTEND=noninteractive
@@ -231,7 +233,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
 
     COUNTER=0
 
-    until $INSTALLER update -y || (( COUNTER++ >= 3 ));
+    until $INSTALLER_UPDATE update -y || (( COUNTER++ >= 3 ));
     do
       echo "Package manager update failed, trying again"
       sleep 2
