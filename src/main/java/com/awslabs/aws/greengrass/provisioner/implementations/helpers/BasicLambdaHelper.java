@@ -25,8 +25,8 @@ import java.time.Duration;
 import java.util.Optional;
 
 public class BasicLambdaHelper implements LambdaHelper {
-    public static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
-    public static final String ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT = "ZIP archive for executable/native function not present ";
+    private static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
+    private static final String ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT = "ZIP archive for executable/native function not present ";
     private final Logger log = LoggerFactory.getLogger(BasicLambdaHelper.class);
     @Inject
     LambdaClient lambdaClient;
@@ -37,7 +37,9 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Inject
     GradleBuilder gradleBuilder;
     @Inject
-    PythonBuilder pythonBuilder;
+    Python2Builder python2Builder;
+    @Inject
+    Python3Builder python3Builder;
     @Inject
     NodeBuilder nodeBuilder;
     @Inject
@@ -100,17 +102,33 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreatePythonFunctionIfNecessary(FunctionConf functionConf, Role role) {
-        Optional<String> error = pythonBuilder.verifyHandlerExists(functionConf);
+    public LambdaFunctionArnInfo buildAndCreatePython2FunctionIfNecessary(FunctionConf functionConf, Role role) {
+        Optional<String> error = python2Builder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
             return ImmutableLambdaFunctionArnInfo.builder()
                     .error(error).build();
         }
 
-        pythonBuilder.buildFunctionIfNecessary(functionConf);
+        python2Builder.buildFunctionIfNecessary(functionConf);
 
-        String zipFilePath = pythonBuilder.getArchivePath(functionConf);
+        String zipFilePath = python2Builder.getArchivePath(functionConf);
+
+        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+    }
+
+    @Override
+    public LambdaFunctionArnInfo buildAndCreatePython3FunctionIfNecessary(FunctionConf functionConf, Role role) {
+        Optional<String> error = python3Builder.verifyHandlerExists(functionConf);
+
+        if (error.isPresent()) {
+            return ImmutableLambdaFunctionArnInfo.builder()
+                    .error(error).build();
+        }
+
+        python3Builder.buildFunctionIfNecessary(functionConf);
+
+        String zipFilePath = python3Builder.getArchivePath(functionConf);
 
         return createFunctionIfNecessary(functionConf, role, zipFilePath);
     }

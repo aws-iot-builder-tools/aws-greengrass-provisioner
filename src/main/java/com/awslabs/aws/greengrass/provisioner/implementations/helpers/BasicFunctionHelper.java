@@ -502,9 +502,14 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .map(functionConf -> new BuildableJavaGradleFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildablePythonFunction> pythonFunctions = functionConfs.stream()
-                .filter(getPythonPredicate())
-                .map(functionConf -> new BuildablePythonFunction(functionConf, lambdaRole))
+        List<BuildablePython2Function> python2Functions = functionConfs.stream()
+                .filter(getPython2Predicate())
+                .map(functionConf -> new BuildablePython2Function(functionConf, lambdaRole))
+                .collect(Collectors.toList());
+
+        List<BuildablePython3Function> python3Functions = functionConfs.stream()
+                .filter(getPython3Predicate())
+                .map(functionConf -> new BuildablePython3Function(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
         List<BuildableNodeFunction> nodeFunctions = functionConfs.stream()
@@ -520,7 +525,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<BuildableFunction> allFunctions = new ArrayList<>();
         allFunctions.addAll(javaMavenFunctions);
         allFunctions.addAll(javaGradleFunctions);
-        allFunctions.addAll(pythonFunctions);
+        allFunctions.addAll(python2Functions);
+        allFunctions.addAll(python3Functions);
         allFunctions.addAll(nodeFunctions);
         allFunctions.addAll(executableFunctions);
 
@@ -550,11 +556,13 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getPythonPredicate() {
-        Predicate<ModifiableFunctionConf> python27Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
-        Predicate<ModifiableFunctionConf> python37Predicate = functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
+    public Predicate<ModifiableFunctionConf> getPython2Predicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
+    }
 
-        return python27Predicate.or(python37Predicate);
+    @Override
+    public Predicate<ModifiableFunctionConf> getPython3Predicate() {
+        return functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
     }
 
     @Override
@@ -660,9 +668,15 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .collect(Collectors.toList()));
 
         buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildablePythonFunction)
+                .filter(buildableFunction -> buildableFunction instanceof BuildablePython2Function)
                 .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildablePythonFunction) buildableFunction))
+                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildablePython2Function) buildableFunction))
+                .collect(Collectors.toList()));
+
+        buildSteps.addAll(buildableFunctions.stream()
+                .filter(buildableFunction -> buildableFunction instanceof BuildablePython3Function)
+                .map(buildableFunction ->
+                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildablePython3Function) buildableFunction))
                 .collect(Collectors.toList()));
 
         buildSteps.addAll(buildableFunctions.stream()
@@ -723,12 +737,35 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .build();
     }
 
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePythonFunction buildablePythonFunction) {
-        ModifiableFunctionConf functionConf = buildablePythonFunction.getFunctionConf();
-        Role lambdaRole = buildablePythonFunction.getLambdaRole();
+    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePython2Function buildablePython2Function) {
+        ModifiableFunctionConf functionConf = buildablePython2Function.getFunctionConf();
+        Role lambdaRole = buildablePython2Function.getLambdaRole();
 
         log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePythonFunctionIfNecessary(functionConf, lambdaRole);
+        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePython2FunctionIfNecessary(functionConf, lambdaRole);
+
+        if (lambdaFunctionArnInfo.getError().isPresent()) {
+            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
+                    .functionConf(functionConf)
+                    .error(lambdaFunctionArnInfo.getError())
+                    .build();
+        }
+
+        String pythonAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
+        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(pythonAliasArn).build();
+
+        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
+                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
+                .functionConf(functionConf)
+                .build();
+    }
+
+    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePython3Function buildablePython3Function) {
+        ModifiableFunctionConf functionConf = buildablePython3Function.getFunctionConf();
+        Role lambdaRole = buildablePython3Function.getLambdaRole();
+
+        log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
+        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePython3FunctionIfNecessary(functionConf, lambdaRole);
 
         if (lambdaFunctionArnInfo.getError().isPresent()) {
             return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()

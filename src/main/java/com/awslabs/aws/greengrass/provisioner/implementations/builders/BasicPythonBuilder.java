@@ -24,8 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-public class BasicPythonBuilder implements PythonBuilder {
-    private static final String PIP = "pip";
+public abstract class BasicPythonBuilder implements PythonBuilder {
     private static final String REQUIREMENTS_TXT = "requirements.txt";
     private final Logger log = LoggerFactory.getLogger(BasicPythonBuilder.class);
     private final String DIST_INFO = ".dist-info";
@@ -113,7 +112,7 @@ public class BasicPythonBuilder implements PythonBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependencies");
 
         List<String> programAndArguments = new ArrayList<>();
-        programAndArguments.add(PIP);
+        programAndArguments.add(getPip());
         programAndArguments.add("install");
         programAndArguments.add("--upgrade");
         programAndArguments.add("-r");
@@ -147,9 +146,11 @@ public class BasicPythonBuilder implements PythonBuilder {
         }
     }
 
+    protected abstract String getPip();
+
     private boolean isCorrectPipVersion() {
         List<String> programAndArguments = new ArrayList<>();
-        programAndArguments.add(PIP);
+        programAndArguments.add(getPip());
         programAndArguments.add("--version");
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);

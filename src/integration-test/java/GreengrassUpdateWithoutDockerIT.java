@@ -16,7 +16,8 @@ import java.util.Optional;
 
 public class GreengrassUpdateWithoutDockerIT {
     private static final String HELLO_WORLD_NODE = "HelloWorldNode";
-    private static final String HELLO_WORLD_PYTHON = "HelloWorldPython";
+    private static final String HELLO_WORLD_PYTHON2 = "HelloWorldPython2";
+    private static final String HELLO_WORLD_PYTHON3 = "HelloWorldPython3";
     private static Logger log = LoggerFactory.getLogger(GreengrassUpdateWithoutDockerIT.class);
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
@@ -40,14 +41,14 @@ public class GreengrassUpdateWithoutDockerIT {
         GreengrassITShared.cleanDirectories();
     }
 
-    // Test set 1: Build a group with Python Hello World, build another group with Node Hello World, add Node Hello World to first group
+    // Test set 1: Build a group with Python 2 Hello World, build another group with Node Hello World, add Node Hello World to first group
     @Test
     public void shouldAddNodeFunctionToGroup() {
         // Create two groups with different names so we can do the update later
         Optional<String> optionalGroup1Name = Optional.of(ioHelper.getUuid());
         Optional<String> optionalGroup2Name = Optional.of(ioHelper.getUuid());
 
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPythonHelloWorldDeploymentCommand(optionalGroup1Name)));
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroup1Name)));
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getNodeHelloWorldDeploymentCommand(optionalGroup2Name)));
 
         String group1Name = optionalGroup1Name.get();
@@ -88,13 +89,13 @@ public class GreengrassUpdateWithoutDockerIT {
         Assert.assertTrue(optionalGroup1HelloWorldNodeFunctionAfterUpdate.isPresent());
     }
 
-    // Test set 2: Build a group with Python Hello World, remove the Python Hello World function
+    // Test set 2: Build a group with Python 2 Hello World, remove the Python 2 Hello World function
     @Test
     public void shouldRemovePythonFunctionFromGroup() {
         // Create one group with a known name
         Optional<String> optionalGroupName = Optional.of(ioHelper.getUuid());
 
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPythonHelloWorldDeploymentCommand(optionalGroupName)));
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroupName)));
 
         String groupName = optionalGroupName.get();
 
@@ -103,7 +104,7 @@ public class GreengrassUpdateWithoutDockerIT {
                 .orElseThrow(() -> new RuntimeException("Group information not present"));
 
         // Pull the Hello World function out of the group
-        Optional<Function> optionalGroupHelloWorldPythonFunction = getFunctionFromGroupInformation(groupInformation, HELLO_WORLD_PYTHON);
+        Optional<Function> optionalGroupHelloWorldPythonFunction = getFunctionFromGroupInformation(groupInformation, HELLO_WORLD_PYTHON2);
 
         // Make sure the function is present
         Assert.assertTrue(optionalGroupHelloWorldPythonFunction.isPresent());
@@ -120,7 +121,7 @@ public class GreengrassUpdateWithoutDockerIT {
         GroupInformation groupInformationAfterUpdate = greengrassHelper.getGroupInformation(groupName)
                 .orElseThrow(() -> new RuntimeException("Group information not present after update"));
 
-        Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON);
+        Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON2);
 
         Assert.assertFalse(optionalGroupHelloWorldPythonFunctionAfterUpdate.isPresent());
     }

@@ -26,7 +26,8 @@ class GreengrassITShared {
     static final String ARM32_OPTION = "-a ARM32";
     static final String EC2_LAUNCH_OPTION = "--ec2-launch";
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
-    static final String PYTHON_HELLO_WORLD_DEPLOYMENT = "python-hello-world.conf";
+    static final String PYTHON2_HELLO_WORLD_DEPLOYMENT = "python2-hello-world.conf";
+    static final String PYTHON3_HELLO_WORLD_DEPLOYMENT = "python3-hello-world.conf";
     static final String LIFX_DEPLOYMENT = "lifx.conf";
     static final String NODE_WEBSERVER_DEPLOYMENT = "web-server-node.conf";
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
@@ -79,8 +80,12 @@ class GreengrassITShared {
         return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--remove-function", functionName, "--function-alias", functionAlias);
     }
 
-    String getPythonHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, PYTHON_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getPython2HelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getPython3HelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getLifxDeploymentCommand(Optional<String> groupName) {

@@ -13,7 +13,9 @@ public interface LambdaHelper {
 
     LambdaFunctionArnInfo buildAndCreateJavaFunctionIfNecessary(FunctionConf functionConf, Role role);
 
-    LambdaFunctionArnInfo buildAndCreatePythonFunctionIfNecessary(FunctionConf functionConf, Role role);
+    LambdaFunctionArnInfo buildAndCreatePython2FunctionIfNecessary(FunctionConf functionConf, Role role);
+
+    LambdaFunctionArnInfo buildAndCreatePython3FunctionIfNecessary(FunctionConf functionConf, Role role);
 
     LambdaFunctionArnInfo buildAndCreateNodeFunctionIfNecessary(FunctionConf functionConf, Role role);
 
