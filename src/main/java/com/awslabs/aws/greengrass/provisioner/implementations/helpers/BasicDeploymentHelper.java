@@ -61,9 +61,12 @@ import static org.awaitility.Awaitility.await;
 
 public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String USER_DIR = "user.dir";
-    private static final String AWS_AMI_ACCOUNT_ID = "099720109477";
+    private static final String UBUNTU_AMI_ACCOUNT_ID = "099720109477";
+    private static final String AWS_AMI_ACCOUNT_ID = "137112412989";
     private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-????????";
     private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-????????";
+    private static final String X86_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-x86_64-gp2";
+    private static final String ARM64_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-arm64-gp2";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to host via SSH";
     private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
     private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
@@ -345,8 +348,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create an AWS Greengrass Group and get its ID //
         ///////////////////////////////////////////////////
 
-        if (greengrassHelper.groupExists(deploymentArguments.groupName) &&
-                deploymentArguments.ec2Launch) {
+        if (greengrassHelper.groupExists(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
             throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
         }
 
@@ -710,9 +712,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Optional<String> optionalInstanceId = Optional.empty();
 
-        if (deploymentArguments.ec2Launch) {
+        if (deploymentArguments.ec2LinuxVersion != null) {
             log.info("Launching EC2 instance");
-            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture);
+            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion);
 
             if (!optionalInstanceId.isPresent()) {
                 // Something went wrong, bail out
@@ -816,7 +818,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 throw new RuntimeException("Public IP address returned from EC2 was NULL, skipping EC2 setup");
             }
 
-            attemptBootstrap(deploymentArguments, publicIpAddress, "ubuntu");
+            Optional<String> username = Optional.empty();
+
+            if (deploymentArguments.ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
+                username = Optional.of("ubuntu");
+            }
+
+            if (deploymentArguments.ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
+                username = Optional.of("ec2-user");
+            }
+
+            if (!username.isPresent()) {
+                throw new RuntimeException("Unexpected EC2 Linux version requested [" + deploymentArguments.ec2LinuxVersion + "], this is a bug 2 [couldn't determine SSH username]");
+            }
+
+            attemptBootstrap(deploymentArguments, publicIpAddress, username.get());
         }
 
         ///////////////////////////////////////////
@@ -961,20 +977,41 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
-    private Optional<String> launchEc2Instance(String groupName, Architecture architecture) {
+    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion) {
         String instanceTagName = String.join("-", "greengrass", groupName);
 
         Optional<String> nameFilter = Optional.empty();
         Optional<InstanceType> instanceType = Optional.empty();
+        Optional<String> accountId = Optional.empty();
 
-        if (architecture.equals(Architecture.X86_64)) {
-            nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
-            instanceType = Optional.of(InstanceType.T2_MICRO);
+        if (ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
+            accountId = Optional.of(UBUNTU_AMI_ACCOUNT_ID);
+
+            if (architecture.equals(Architecture.X86_64)) {
+                nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
+                instanceType = Optional.of(InstanceType.T2_MICRO);
+            }
+
+            if (architecture.equals(Architecture.ARM64)) {
+                nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
+                instanceType = Optional.of(InstanceType.A1_MEDIUM);
+            }
+        } else if (ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
+            accountId = Optional.of(AWS_AMI_ACCOUNT_ID);
+
+            if (architecture.equals(Architecture.X86_64)) {
+                nameFilter = Optional.of(X86_AMAZON_LINUX_2_AMI_FILTER);
+                instanceType = Optional.of(InstanceType.T2_MICRO);
+            }
+
+            if (architecture.equals(Architecture.ARM64)) {
+                nameFilter = Optional.of(ARM64_AMAZON_LINUX_2_AMI_FILTER);
+                instanceType = Optional.of(InstanceType.A1_MEDIUM);
+            }
         }
 
-        if (architecture.equals(Architecture.ARM64)) {
-            nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
-            instanceType = Optional.of(InstanceType.A1_MEDIUM);
+        if (!accountId.isPresent()) {
+            throw new RuntimeException("Unexpected EC2 Linux version requested [" + ec2LinuxVersion + "], this is a bug 1 [couldn't determine which AMI to use]");
         }
 
         if (!nameFilter.isPresent() || !instanceType.isPresent()) {
@@ -982,7 +1019,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         DescribeImagesRequest describeImagesRequest = DescribeImagesRequest.builder()
-                .owners(AWS_AMI_ACCOUNT_ID)
+                .owners(accountId.get())
                 .filters(Filter.builder().name("name").values(nameFilter.get()).build(),
                         Filter.builder().name("state").values("available").build())
                 .build();
@@ -991,7 +1028,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<Image> optionalImage = describeImagesResponse.images().stream().findFirst();
 
         if (!optionalImage.isPresent()) {
-            log.error("No Ubuntu 18.04 LTS image found in this region, not launching the instance");
+            log.error("No [" + ec2LinuxVersion + "] image found in this region, not launching the instance");
             return Optional.empty();
         }
 
