@@ -1025,7 +1025,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .build();
 
         DescribeImagesResponse describeImagesResponse = ec2Client.describeImages(describeImagesRequest);
-        Optional<Image> optionalImage = describeImagesResponse.images().stream().findFirst();
+        Optional<Image> optionalImage = describeImagesResponse.images()
+                .stream()
+                .sorted(Comparator.comparing(Image::creationDate).reversed())
+                .findFirst();
 
         if (!optionalImage.isPresent()) {
             log.error("No [" + ec2LinuxVersion + "] image found in this region, not launching the instance");
