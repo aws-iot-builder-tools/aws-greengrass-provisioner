@@ -289,8 +289,9 @@ if [ $NODEJS_8_10_MISSING -eq 1 ]; then
         git clone https://github.com/tj/n.git
         pushd .
         cd n
-        env "PATH=$PATH" make install
-        env "PATH=$PATH" n 8.10.0
+        export PATH="$PATH:/usr/local/bin"
+        make install
+        n 8.10.0
         NODEJS=`which node`
         ln -s $NODEJS `dirname $NODEJS`/nodejs8.10
         popd
