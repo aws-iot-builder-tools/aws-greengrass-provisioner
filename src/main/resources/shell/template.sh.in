@@ -237,7 +237,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     PIP3_MISSING=$?
 
     if [ $PIP3_MISSING -eq 1 ]; then
-        # Only install this stuff if pip is missing
+        # Only install this stuff if pip3 is missing
         PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
     else
         PIP3_PACKAGES=
