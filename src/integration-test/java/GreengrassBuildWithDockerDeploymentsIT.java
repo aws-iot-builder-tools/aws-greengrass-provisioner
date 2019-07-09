@@ -157,10 +157,10 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         runContainer(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
-    // Test set 3: Expected success with Python Hello World with Docker
+    // Test set 3: Expected success with Python 2 Hello World with Docker
     @Test
-    public void shouldBuildPythonFunctionWithDocker() {
-        runContainer(greengrassITShared.getPythonHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
+    public void shouldBuildPython2FunctionWithDocker() {
+        runContainer(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
@@ -191,6 +191,12 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     @Test
     public void shouldBuildNodeFunctionWithDependenciesWithDocker() {
         runContainer(greengrassITShared.getNodeWebserverDeploymentCommand(Optional.empty()), equalTo(0));
+    }
+
+    // Test set 9: Expected success with Python 3 Hello World with Docker
+    @Test
+    public void shouldBuildPython3FunctionWithDocker() {
+        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
     }
 
     private void runContainer(String nodeHelloWorldDeploymentCommand, Matcher<Integer> integerMatcher) {

@@ -43,10 +43,10 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty())));
     }
 
-    // Test set 3: Expected success with Python Hello World without Docker
+    // Test set 3: Expected success with Python 2 Hello World without Docker
     @Test
-    public void shouldBuildPythonFunctionWithoutDocker() {
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPythonHelloWorldDeploymentCommand(Optional.empty())));
+    public void shouldBuildPython2FunctionWithoutDocker() {
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty())));
     }
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) without Docker
@@ -84,5 +84,11 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     @Test
     public void shouldBuildX86_64SampleCWithoutDocker() {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getX86_64SampleCDeploymentCommand(Optional.empty())));
+    }
+
+    // Test set 10: Expected success with Python 3 Hello World without Docker
+    @Test
+    public void shouldBuildPython3FunctionWithoutDocker() {
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty())));
     }
 }
