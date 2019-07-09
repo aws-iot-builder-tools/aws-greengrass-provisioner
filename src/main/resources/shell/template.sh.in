@@ -219,6 +219,16 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
         PIP_PACKAGES=
     fi
 
+    PIP3=`which pip3`
+    PIP3_MISSING=$?
+
+    if [ $PIP3_MISSING -eq 1 ]; then
+        # Only install this stuff if pip is missing
+        PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
+    else
+        PIP3_PACKAGES=
+    fi
+
     COUNTER=0
 
     until $INSTALLER update -y || (( COUNTER++ >= 3 ));
@@ -233,7 +243,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
       exit 1
     fi
 
-    $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES git
+    $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PIP3_PACKAGES git
     $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
     $INSTALLER install -y mosh
 

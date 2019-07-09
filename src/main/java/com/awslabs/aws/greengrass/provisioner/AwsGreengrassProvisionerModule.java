@@ -55,8 +55,9 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(ConfigFileHelper.class).to(BasicConfigFileHelper.class);
         bind(GreengrassHelper.class).to(BasicGreengrassHelper.class);
         bind(IamHelper.class).to(BasicIamHelper.class);
+        bind(Python2Builder.class).to(BasicPython2Builder.class);
+        bind(Python3Builder.class).to(BasicPython3Builder.class);
         bind(LambdaHelper.class).to(BasicLambdaHelper.class);
-        bind(PythonBuilder.class).to(BasicPythonBuilder.class);
         bind(NodeBuilder.class).to(BasicNodeBuilder.class);
         bind(ExecutableBuilder.class).to(BasicExecutableBuilder.class);
         bind(ProcessHelper.class).to(BasicProcessHelper.class);

@@ -26,7 +26,9 @@ public interface FunctionHelper {
 
     List<BuildableFunction> getBuildableFunctions(List<ModifiableFunctionConf> functionConfs, Role lambdaRole);
 
-    Predicate<ModifiableFunctionConf> getPythonPredicate();
+    Predicate<ModifiableFunctionConf> getPython2Predicate();
+
+    Predicate<ModifiableFunctionConf> getPython3Predicate();
 
     Predicate<ModifiableFunctionConf> getNodePredicate();
 
