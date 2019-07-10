@@ -63,8 +63,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String USER_DIR = "user.dir";
     private static final String UBUNTU_AMI_ACCOUNT_ID = "099720109477";
     private static final String AWS_AMI_ACCOUNT_ID = "137112412989";
-    private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-????????";
-    private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-????????";
+    private static final String X86_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-??????????";
+    private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-??????????";
     private static final String X86_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-x86_64-gp2";
     private static final String ARM64_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-arm64-gp2";
     private static final String SSH_CONNECTED_MESSAGE = "Connected to host via SSH";
