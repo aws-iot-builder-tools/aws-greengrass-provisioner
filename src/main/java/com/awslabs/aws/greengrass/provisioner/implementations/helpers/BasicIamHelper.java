@@ -22,7 +22,8 @@ public class BasicIamHelper implements IamHelper {
     public BasicIamHelper() {
     }
 
-    private Role getRole(String name) {
+    @Override
+    public Role getRole(String name) {
         GetRoleRequest getRoleRequest = GetRoleRequest.builder().roleName(name).build();
 
         return Try.of(() -> iamClient.getRole(getRoleRequest).role())
