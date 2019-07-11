@@ -11,6 +11,18 @@ rootcheck () {
 
 rootcheck "${@}"
 
+if ls /var/lib/cloud/instances/*/* 1> /dev/null 2>&1; then
+    echo "Looks like we are running on EC2, waiting for cloud-init to finish"
+
+    while [ ! -f /var/lib/cloud/instances/*/boot-finished ]
+    do
+      echo "Waiting for boot-finished file to appear..."
+      sleep 2
+    done
+else
+    echo "Looks like we are not running on EC2, bootstrapping immediately"
+fi
+
 function untar_payload()
 {
 	match=$(grep --text --line-number '^PAYLOAD:$' $0 | cut -d ':' -f 1)
