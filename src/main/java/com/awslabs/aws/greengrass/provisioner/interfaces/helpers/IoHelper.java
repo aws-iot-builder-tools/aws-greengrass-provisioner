@@ -27,9 +27,13 @@ import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
     default void writeFile(File file, byte[] contents) {
+        createDirectoryIfNecessary(file.getParentFile().getPath());
+
         Try.withResources(() -> new FileOutputStream(file))
                 .of(fileOutputStream -> writeFile(fileOutputStream, contents))
                 .get();
+
+        makeWritable(file);
     }
 
     default Void writeFile(FileOutputStream fileOutputStream, byte[] contents) throws IOException {
@@ -39,11 +43,7 @@ public interface IoHelper {
     }
 
     default void writeFile(String filename, byte[] contents) {
-        Try.withResources(() -> new FileOutputStream(filename))
-                .of(fileOutputStream -> writeFile(fileOutputStream, contents))
-                .get();
-
-        makeWritable(filename);
+        writeFile(new File(filename), contents);
     }
 
     default String getUuid() {
@@ -105,10 +105,14 @@ public interface IoHelper {
         file.setReadable(true, false);
     }
 
-    default void makeWritable(String filename) {
-        File file = new File(filename);
+    default void makeWritable(File file) {
         // When using Docker the write gets set as root only, setting the second parameter to false makes it writable by all
         file.setWritable(true, false);
+    }
+
+    default void makeWritable(String filename) {
+        File file = new File(filename);
+        makeWritable(file);
     }
 
     default void createDirectoryIfNecessary(String path) {
