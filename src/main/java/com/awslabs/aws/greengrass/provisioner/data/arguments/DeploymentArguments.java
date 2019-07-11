@@ -17,6 +17,7 @@ public class DeploymentArguments extends Arguments {
     private final String SHORT_ECR_IMAGE_NAME_OPTION = "-i";
     private final String LONG_SCRIPT_OUTPUT_OPTION = "--script";
     private final String LONG_OEM_OUTPUT_OPTION = "--oem";
+    private final String LONG_OEM_JSON_OUTPUT_OPTION = "--oem-json";
     private final String LONG_GGD_OUTPUT_OPTION = "--ggd";
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
     private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
@@ -25,6 +26,9 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
     private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
     private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
+    private final String LONG_CORE_ROLE_NAME_OPTION = "--core-role-name";
+    private final String LONG_SERVICE_ROLE_EXISTS_OPTION = "--service-role-exists";
+    private final String LONG_CORE_POLICY_NAME_OPTION = "--core-policy-name";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -45,6 +49,8 @@ public class DeploymentArguments extends Arguments {
     public boolean scriptOutput;
     @Parameter(names = {LONG_OEM_OUTPUT_OPTION}, description = "Generate tar.gz with OEM files [oem.GROUP_NAME.sh] (config.json and certs)")
     public boolean oemOutput;
+    @Parameter(names = {LONG_OEM_JSON_OUTPUT_OPTION}, description = "Generate JSON with OEM files and store it in the specified location")
+    public String oemJsonOutput;
     @Parameter(names = {LONG_GGD_OUTPUT_OPTION}, description = "Generate Greengrass Device scripts [ggd.GROUP_NAME.sh]")
     public boolean ggdOutput;
     @Parameter(names = {LONG_NO_SYSTEMD_OPTION}, description = "Disable systemd support in config.json")
@@ -66,6 +72,12 @@ public class DeploymentArguments extends Arguments {
     public String s3Bucket;
     @Parameter(names = {LONG_S3_DIRECTORY_OPTION}, description = "S3 directory inside the bucket to store output files")
     public String s3Directory;
+    @Parameter(names = {LONG_CORE_ROLE_NAME_OPTION}, description = "The name of an existing role to use for the group")
+    public String coreRoleName;
+    @Parameter(names = {LONG_SERVICE_ROLE_EXISTS_OPTION}, description = "The service role already exists, do not try to create it")
+    public boolean serviceRoleExists;
+    @Parameter(names = {LONG_CORE_POLICY_NAME_OPTION}, description = "The name of an existing IoT policy to use for the group")
+    public String corePolicyName;
     @Parameter(names = "--help", help = true)
     private boolean help;
 

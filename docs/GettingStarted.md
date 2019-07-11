@@ -84,7 +84,7 @@ At this point you can to go the AWS IoT console on AWS, subscribe to the `hello/
 messages showing up every 5 seconds like this:
 
 ```
-Hello world! Sent from Greengrass Core running on platform: Linux-4.9.30-v7+-armv7l-with-debian-9.1 c9855443-944a-4184-992a-b810438c0273 mytestgroup_Core arn:aws:iot:us-east-1:541589084637:thing/mytestgroup_Core
+Hello world! Sent from Greengrass Core running on platform: Linux-4.9.30-v7+-armv7l-with-debian-9.1 c9855443-944a-4184-992a-b810438c0273 mytestgroup_Core arn:aws:iot:us-east-1:5xxxxxxxxxx7:thing/mytestgroup_Core
 ```
 
 ### Modify the code and redeploy

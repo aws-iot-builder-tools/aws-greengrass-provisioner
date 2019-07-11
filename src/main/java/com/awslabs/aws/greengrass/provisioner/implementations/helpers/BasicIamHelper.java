@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
 
 import javax.inject.Inject;
+import java.util.Optional;
 
 public class BasicIamHelper implements IamHelper {
     private final Logger log = LoggerFactory.getLogger(BasicIamHelper.class);
@@ -23,19 +24,19 @@ public class BasicIamHelper implements IamHelper {
     }
 
     @Override
-    public Role getRole(String name) {
+    public Optional<Role> getRole(String name) {
         GetRoleRequest getRoleRequest = GetRoleRequest.builder().roleName(name).build();
 
-        return Try.of(() -> iamClient.getRole(getRoleRequest).role())
+        return Optional.ofNullable(Try.of(() -> iamClient.getRole(getRoleRequest).role())
                 .recover(NoSuchEntityException.class, throwable -> null)
-                .get();
+                .get());
     }
 
     @Override
     public Role createRoleIfNecessary(String name, String assumeRolePolicyDocument) {
-        Role existingRole = getRole(name);
+        Optional<Role> optionalExistingRole = getRole(name);
 
-        if (existingRole != null) {
+        if (optionalExistingRole.isPresent()) {
             log.info("Updating assume role policy for existing role [" + name + "]");
             UpdateAssumeRolePolicyRequest updateAssumeRolePolicyRequest = UpdateAssumeRolePolicyRequest.builder()
                     .roleName(name)
@@ -44,7 +45,7 @@ public class BasicIamHelper implements IamHelper {
 
             iamClient.updateAssumeRolePolicy(updateAssumeRolePolicyRequest);
 
-            return existingRole;
+            return optionalExistingRole.get();
         }
 
         log.info("Creating new role [" + name + "]");
