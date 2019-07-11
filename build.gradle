@@ -49,6 +49,7 @@ def hamcrestVersion = '2.1'
 def awsIotCoreWebsocketsVersion = '0.3.7'
 def awaitilityVersion = '3.1.6'
 def immutablesValueVersion = '2.7.5'
+def awsLambdaJavaCoreVersion = '1.2.0'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirTemp = "$buildDir/temp"
@@ -221,6 +222,9 @@ dependencies {
     compile "org.testcontainers:testcontainers:$testContainersVersion"
 
     compile "org.awaitility:awaitility:$awaitilityVersion"
+
+    // To support AWS Lambda invocations
+    compile "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCoreVersion"
 
     testCompile "junit:junit:$junitVersion"
     testCompile "com.github.stefanbirkner:system-rules:$systemRulesVersion"
