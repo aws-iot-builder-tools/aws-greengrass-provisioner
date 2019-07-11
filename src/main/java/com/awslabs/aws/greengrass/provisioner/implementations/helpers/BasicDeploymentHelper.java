@@ -1068,7 +1068,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         RetryPolicy<AuthorizeSecurityGroupIngressResponse> securityGroupRetryPolicy = new RetryPolicy<AuthorizeSecurityGroupIngressResponse>()
                 .handleIf(throwable -> throwable.getMessage().contains(DOES_NOT_EXIST))
                 .withDelay(Duration.ofSeconds(5))
-                .withMaxRetries(3)
+                .withMaxRetries(6)
                 .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
                 .onRetriesExceeded(failure -> log.error("Security group never became visible. Cannot continue."));
 
