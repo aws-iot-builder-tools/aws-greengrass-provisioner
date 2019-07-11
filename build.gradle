@@ -150,6 +150,12 @@ repositories {
 }
 
 sourceSets {
+    main {
+        java {
+            srcDir "${buildDir.absolutePath}/generated/sources/annotationProcessor/java/main/generated"
+        }
+    }
+
     integrationTest {
         java {
             compileClasspath += sourceSets.main.output + configurations.testCompile

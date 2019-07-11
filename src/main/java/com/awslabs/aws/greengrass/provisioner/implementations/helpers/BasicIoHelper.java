@@ -1,9 +1,12 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.exceptions.SshRecoverableException;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.jcraft.jsch.*;
 import io.vavr.control.Try;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +19,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.ReadableByteChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -162,58 +166,56 @@ public class BasicIoHelper implements IoHelper {
     }
 
     private Session getSession(String hostname, String user, JSch jsch, String connectedMessage, String timeoutMessage, String refusedMessage, String errorMessage) {
-        Optional<Session> optionalSession = Optional.empty();
+        RetryPolicy<Session> sessionRetryPolicy = new RetryPolicy<Session>()
+                .handle(SshRecoverableException.class)
+                .withDelay(Duration.ofSeconds(10))
+                .withMaxRetries(3)
+                .onRetry(failure -> log.warn("Waiting for instance to become available [" + failure.getLastFailure().getMessage() + "]"))
+                .onRetriesExceeded(failure -> log.error("Instance never became available [" + failure.getFailure().getMessage() + "]"));
 
-        while (!optionalSession.isPresent()) {
-            optionalSession = Try.of(() -> getSession(hostname, user, jsch, connectedMessage))
-                    .recover(JSchException.class, throwable -> recoverFromConnectionIssueIfPossible(hostname, timeoutMessage, refusedMessage, errorMessage, throwable))
-                    .get();
-        }
-
-        return optionalSession.get();
+        return Failsafe.with(sessionRetryPolicy)
+                .get(() -> innerGetSession(hostname, user, jsch, connectedMessage, timeoutMessage, refusedMessage, errorMessage));
     }
 
-    private Optional<Session> getSession(String hostname, String user, JSch jsch, String connectedMessage) throws JSchException {
+    private Session innerGetSession(String hostname, String user, JSch jsch, String connectedMessage, String timeoutMessage, String refusedMessage, String errorMessage) throws JSchException {
         Session innerSession = jsch.getSession(user, hostname, 22);
         Properties config = new Properties();
         config.put("StrictHostKeyChecking", "no");
         innerSession.setConfig(config);
-        innerSession.connect(10000);
+
+        try {
+            innerSession.connect(10000);
+        } catch (JSchException e) {
+            recoverFromConnectionIssueIfPossible(hostname, timeoutMessage, refusedMessage, errorMessage, e);
+        }
 
         if (!connectedMessage.isEmpty()) {
             log.info(connectedMessage);
         }
 
-        return Optional.of(innerSession);
+        return innerSession;
     }
 
-    private Optional<Session> recoverFromConnectionIssueIfPossible(String hostname, String timeoutMessage, String refusedMessage, String errorMessage, JSchException throwable) {
+    private void recoverFromConnectionIssueIfPossible(String hostname, String timeoutMessage, String refusedMessage, String errorMessage, JSchException throwable) {
         String message = throwable.getMessage();
 
         if (message.contains("timeout")) {
-            log.warn(timeoutMessage);
-
-            sleep(5000);
-            return Optional.empty();
+            throw new SshRecoverableException(timeoutMessage);
         }
 
         if (message.contains("Connection refused")) {
-            log.warn(refusedMessage);
-
-            sleep(5000);
-            return Optional.empty();
+            throw new SshRecoverableException(refusedMessage);
         }
 
         if (message.contains("Auth fail")) {
-            throw new RuntimeException("Authentication error occurred, the SSH key may be missing or incorrect. Giving up.");
+            throw new SshRecoverableException("Authentication error occurred, the SSH key may be missing or incorrect. Giving up.");
         }
 
         if (throwable.getCause() instanceof UnknownHostException) {
             throw new RuntimeException(String.format("Host [%s] could not be resolved, is the hostname correct?", hostname));
         }
 
-        log.error(errorMessage, throwable.getMessage());
-        return Optional.empty();
+        throw new SshRecoverableException(throwable.getMessage());
     }
 
     @Override

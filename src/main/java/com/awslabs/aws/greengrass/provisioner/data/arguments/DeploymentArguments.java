@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data.arguments;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
+import com.awslabs.aws.greengrass.provisioner.data.EC2LinuxVersion;
 import com.beust.jcommander.Parameter;
 
 public class DeploymentArguments extends Arguments {
@@ -49,7 +50,8 @@ public class DeploymentArguments extends Arguments {
     @Parameter(names = {LONG_NO_SYSTEMD_OPTION}, description = "Disable systemd support in config.json")
     public boolean noSystemD;
     @Parameter(names = {LONG_EC2_LAUNCH_OPTION}, description = "Launch an EC2 instance for this deployment")
-    public boolean ec2Launch;
+    public String ec2Launch;
+    public EC2LinuxVersion ec2LinuxVersion;
     @Parameter(names = {LONG_DOCKER_LAUNCH_OPTION}, description = "Launch an this deployment in a Docker container locally")
     public boolean dockerLaunch;
     @Parameter(names = {LONG_LAUNCH_OPTION}, description = "Launch the bootstrapping script on a system via SSH")

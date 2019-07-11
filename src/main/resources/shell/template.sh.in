@@ -11,6 +11,18 @@ rootcheck () {
 
 rootcheck "${@}"
 
+if ls /var/lib/cloud/instances/*/* 1> /dev/null 2>&1; then
+    echo "Looks like we are running on EC2, waiting for cloud-init to finish"
+
+    while [ ! -f /var/lib/cloud/instances/*/boot-finished ]
+    do
+      echo "Waiting for boot-finished file to appear..."
+      sleep 2
+    done
+else
+    echo "Looks like we are not running on EC2, bootstrapping immediately"
+fi
+
 function untar_payload()
 {
 	match=$(grep --text --line-number '^PAYLOAD:$' $0 | cut -d ':' -f 1)
@@ -146,6 +158,7 @@ YUM=`which yum`
 YUM_MISSING=$?
 
 if [ $YUM_MISSING -eq 0 ]; then
+    INSTALLER_UPDATE=$YUM
     INSTALLER=$YUM
 
     # Amazon Linux on EC2 needs this
@@ -173,6 +186,7 @@ if [ $YUM_MISSING -eq 0 ]; then
 
     INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
 else
+    INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
     INSTALLER=apt-get
     # Avoid preinst and postinst tasks from asking questions
     export DEBIAN_FRONTEND=noninteractive
@@ -223,7 +237,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     PIP3_MISSING=$?
 
     if [ $PIP3_MISSING -eq 1 ]; then
-        # Only install this stuff if pip is missing
+        # Only install this stuff if pip3 is missing
         PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
     else
         PIP3_PACKAGES=
@@ -231,7 +245,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
 
     COUNTER=0
 
-    until $INSTALLER update -y || (( COUNTER++ >= 3 ));
+    until $INSTALLER_UPDATE update -y || (( COUNTER++ >= 3 ));
     do
       echo "Package manager update failed, trying again"
       sleep 2
@@ -287,8 +301,9 @@ if [ $NODEJS_8_10_MISSING -eq 1 ]; then
         git clone https://github.com/tj/n.git
         pushd .
         cd n
-        env "PATH=$PATH" make install
-        env "PATH=$PATH" n 8.10.0
+        export PATH="$PATH:/usr/local/bin"
+        make install
+        n 8.10.0
         NODEJS=`which node`
         ln -s $NODEJS `dirname $NODEJS`/nodejs8.10
         popd

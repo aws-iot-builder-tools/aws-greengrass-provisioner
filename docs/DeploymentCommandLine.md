@@ -41,6 +41,8 @@ Long form: `--ec2-launch`
 
 Launches an EC2 instance, sends the bootstrap script to it, and starts Greengrass Core on that instance.
 
+Valid options: `Ubuntu1804` and `AmazonLinux2` depending on which operating system should be launch on the EC2 instance.
+
 If no group name is specified with this option one will be randomly generated.
 
 If an architecture is specified it will attempt to launch an Ubuntu image on the specified platform (ARM64 and X86-64 are supported).

@@ -101,7 +101,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         // deploymentArguments.dockerScriptOutput = getValueOrDefault(deploymentArguments.dockerScriptOutput, getBooleanDefault(defaults, "conf.dockerScriptBuild"));
         deploymentArguments.ecrRepositoryNameString = getValueOrDefault(deploymentArguments.ecrRepositoryNameString, getStringDefault(defaults, "conf.ecrRepositoryName"));
         deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
-        deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getBooleanDefault(defaults, "conf.ec2Launch"));
+        deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getStringDefault(defaults, "conf.ec2Launch"));
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
         deploymentArguments.launch = getValueOrDefault(deploymentArguments.launch, getStringDefault(defaults, "conf.launch"));
         deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
@@ -113,11 +113,15 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.buildContainer = true;
         }
 
-        if (deploymentArguments.ec2Launch && deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
+        if (deploymentArguments.ec2Launch != null) {
+            deploymentArguments.ec2LinuxVersion = getEc2LinuxVersion(deploymentArguments.ec2Launch);
+        }
+
+        if ((deploymentArguments.ec2LinuxVersion != null) && deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
             throw new RuntimeException("The EC2 launch, Docker launch, and launch options are mutually exclusive.  Only specify one of them.");
         }
 
-        if (deploymentArguments.ec2Launch) {
+        if (deploymentArguments.ec2LinuxVersion != null) {
             // If we are launching an EC2 instance we need to build the scripts
             if (deploymentArguments.architectureString == null) {
                 log.warn("No architecture specified for EC2, defaulting to X86-64");
@@ -155,7 +159,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.groupName == null) {
-            if (!deploymentArguments.ec2Launch && !deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
+            if ((deploymentArguments.ec2LinuxVersion != null) && !deploymentArguments.dockerLaunch && (deploymentArguments.launch != null)) {
                 throw new RuntimeException("Group name is required for all operations");
             }
 
@@ -175,7 +179,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             deploymentArguments.architecture = getArchitecture(deploymentArguments.architectureString);
         }
 
-        if (deploymentArguments.ec2Launch && deploymentArguments.architecture.equals(Architecture.ARM32)) {
+        if ((deploymentArguments.ec2LinuxVersion != null) && deploymentArguments.architecture.equals(Architecture.ARM32)) {
             throw new RuntimeException("EC2 launch supports X86 and ARM64 only");
         }
 
