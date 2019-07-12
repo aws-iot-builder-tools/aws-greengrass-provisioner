@@ -26,10 +26,19 @@ import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
+    String TEMP_DIRECTORY = "/tmp/";
+
     default void writeFile(File file, byte[] contents) {
+        if ((isRunningInLambda()) && (!file.getAbsolutePath().startsWith(TEMP_DIRECTORY))) {
+            // If we are running in Lambda we can only put files in the temp directory
+            file = new File(TEMP_DIRECTORY + file.getAbsolutePath());
+        }
+
+        final File finalFile = file;
+
         createDirectoryIfNecessary(file.getParentFile().getPath());
 
-        Try.withResources(() -> new FileOutputStream(file))
+        Try.withResources(() -> new FileOutputStream(finalFile))
                 .of(fileOutputStream -> writeFile(fileOutputStream, contents))
                 .get();
 
@@ -230,6 +239,8 @@ public interface IoHelper {
     }
 
     boolean isRunningInDocker();
+
+    boolean isRunningInLambda();
 
     List<String> getPrivateKeyFilesForSsh() throws IOException;
 

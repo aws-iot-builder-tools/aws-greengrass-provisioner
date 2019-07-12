@@ -44,6 +44,11 @@ public class BasicIoHelper implements IoHelper {
     }
 
     @Override
+    public boolean isRunningInLambda() {
+        return System.getenv("LAMBDA_TASK_ROOT") != null;
+    }
+
+    @Override
     public List<String> getPrivateKeyFilesForSsh() throws IOException {
         Optional<String> optionalHomeDirectory = globalDefaultHelper.getHomeDirectory();
 
