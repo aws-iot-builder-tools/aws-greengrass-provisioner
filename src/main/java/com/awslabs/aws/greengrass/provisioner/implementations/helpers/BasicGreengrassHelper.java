@@ -595,6 +595,12 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
                 log.error("Greengrass service reported an error [" + errorMessage + "]");
 
+                if (errorMessage.contains("TES service role is not associated with this account")) {
+                    // No service role associated with this account
+                    log.error("A service role is not associated with this account for Greengrass. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]");
+                    return DeploymentStatus.FAILED;
+                }
+
                 if (errorMessage.contains("Greengrass does not have permission to read the object")) {
                     // Greengrass probably can't read a SageMaker model
                     log.error("If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored.");
