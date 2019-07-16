@@ -14,6 +14,19 @@ Resources:
             Action: sts:AssumeRole
             Principal:
               Service: greengrass.amazonaws.com
+  GreengrassCoreRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
+        - arn:aws:iam::aws:policy/AWSGreengrassFullAccess
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: greengrass.amazonaws.com
   MinimalGreengrassCoreIoTPolicy:
     Type: AWS::IoT::Policy
     Properties:

@@ -13,7 +13,7 @@ fi
 LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`ProvisionerLambdaFunction`].PhysicalResourceId' --output text)
 
 GROUP_NAME=$(uuidgen | sed s/^/A/ )
-CORE_ROLE_NAME=GreengrassCoreRole
+CORE_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`GreengrassCoreRole`].PhysicalResourceId' --output text)
 CORE_POLICY_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`MinimalGreengrassCoreIoTPolicy`].PhysicalResourceId' --output text)
 
 # Make sure the policy exists
