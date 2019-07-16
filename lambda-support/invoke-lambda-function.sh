@@ -19,8 +19,6 @@ CORE_POLICY_NAME=$(aws cloudformation describe-stack-resources --stack-name $STA
 # Make sure the policy exists
 aws iot get-policy --policy-name $CORE_POLICY_NAME > /dev/null
 
-PAYLOAD="{ \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\", \"privateKeyLocation\": \"/secretstuff/key.key\" }"
-echo $PAYLOAD
-echo $PAYLOAD | pbcopy
+PAYLOAD="{ \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\" }"
 
 aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" $GROUP_NAME.outfile.txt
