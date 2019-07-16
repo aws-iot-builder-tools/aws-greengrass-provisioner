@@ -980,55 +980,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion) {
         String instanceTagName = String.join("-", "greengrass", groupName);
 
-        Optional<String> nameFilter = Optional.empty();
-        Optional<InstanceType> instanceType = Optional.empty();
-        Optional<String> accountId = Optional.empty();
+        Optional<String> optionalAccountId = getAccountId(ec2LinuxVersion);
 
-        if (ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
-            accountId = Optional.of(UBUNTU_AMI_ACCOUNT_ID);
+        Optional<InstanceType> instanceType = getInstanceType(architecture);
 
-            if (architecture.equals(Architecture.X86_64)) {
-                nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
-                instanceType = Optional.of(InstanceType.T2_MICRO);
-            }
+        Optional<String> optionalNameFilter = getNameFilter(architecture, ec2LinuxVersion);
 
-            if (architecture.equals(Architecture.ARM64)) {
-                nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
-                instanceType = Optional.of(InstanceType.A1_MEDIUM);
-            }
-        } else if (ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
-            accountId = Optional.of(AWS_AMI_ACCOUNT_ID);
-
-            if (architecture.equals(Architecture.X86_64)) {
-                nameFilter = Optional.of(X86_AMAZON_LINUX_2_AMI_FILTER);
-                instanceType = Optional.of(InstanceType.T2_MICRO);
-            }
-
-            if (architecture.equals(Architecture.ARM64)) {
-                nameFilter = Optional.of(ARM64_AMAZON_LINUX_2_AMI_FILTER);
-                instanceType = Optional.of(InstanceType.A1_MEDIUM);
-            }
-        }
-
-        if (!accountId.isPresent()) {
+        if (!optionalAccountId.isPresent()) {
             throw new RuntimeException("Unexpected EC2 Linux version requested [" + ec2LinuxVersion + "], this is a bug 1 [couldn't determine which AMI to use]");
         }
 
-        if (!nameFilter.isPresent() || !instanceType.isPresent()) {
+        if (!optionalNameFilter.isPresent() || !instanceType.isPresent()) {
             throw new RuntimeException("Unexpected architecture [" + architecture + "] for EC2 launch");
         }
 
-        DescribeImagesRequest describeImagesRequest = DescribeImagesRequest.builder()
-                .owners(accountId.get())
-                .filters(Filter.builder().name("name").values(nameFilter.get()).build(),
-                        Filter.builder().name("state").values("available").build())
-                .build();
-
-        DescribeImagesResponse describeImagesResponse = ec2Client.describeImages(describeImagesRequest);
-        Optional<Image> optionalImage = describeImagesResponse.images()
-                .stream()
-                .sorted(Comparator.comparing(Image::creationDate).reversed())
-                .findFirst();
+        Optional<Image> optionalImage = getImage(optionalNameFilter.get(), optionalAccountId.get());
 
         if (!optionalImage.isPresent()) {
             log.error("No [" + ec2LinuxVersion + "] image found in this region, not launching the instance");
@@ -1126,6 +1092,66 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
 
         return Optional.of(instanceId);
+    }
+
+    @NotNull
+    public Optional<Image> getImage(String nameFilter, String accountId) {
+        DescribeImagesRequest describeImagesRequest = DescribeImagesRequest.builder()
+                .owners(accountId)
+                .filters(Filter.builder().name("name").values(nameFilter).build(),
+                        Filter.builder().name("state").values("available").build())
+                .build();
+
+        DescribeImagesResponse describeImagesResponse = ec2Client.describeImages(describeImagesRequest);
+
+        return describeImagesResponse.images()
+                .stream()
+                .sorted(Comparator.comparing(Image::creationDate).reversed())
+                .findFirst();
+    }
+
+    public Optional<String> getNameFilter(Architecture architecture, EC2LinuxVersion ec2LinuxVersion) {
+        Optional<String> nameFilter = Optional.empty();
+
+        if (ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
+            if (architecture.equals(Architecture.X86_64)) {
+                nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
+            } else if (architecture.equals(Architecture.ARM64)) {
+                nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
+            }
+        } else if (ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
+            if (architecture.equals(Architecture.X86_64)) {
+                nameFilter = Optional.of(X86_AMAZON_LINUX_2_AMI_FILTER);
+            } else if (architecture.equals(Architecture.ARM64)) {
+                nameFilter = Optional.of(ARM64_AMAZON_LINUX_2_AMI_FILTER);
+            }
+        }
+
+        return nameFilter;
+    }
+
+    public Optional<InstanceType> getInstanceType(Architecture architecture) {
+        Optional<InstanceType> instanceType = Optional.empty();
+
+        if (architecture.equals(Architecture.X86_64)) {
+            instanceType = Optional.of(InstanceType.T2_MICRO);
+        } else if (architecture.equals(Architecture.ARM64)) {
+            instanceType = Optional.of(InstanceType.A1_MEDIUM);
+        }
+
+        return instanceType;
+    }
+
+    public Optional<String> getAccountId(EC2LinuxVersion ec2LinuxVersion) {
+        Optional<String> accountId = Optional.empty();
+
+        if (ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
+            accountId = Optional.of(UBUNTU_AMI_ACCOUNT_ID);
+        } else if (ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
+            accountId = Optional.of(AWS_AMI_ACCOUNT_ID);
+        }
+
+        return accountId;
     }
 
     /**
