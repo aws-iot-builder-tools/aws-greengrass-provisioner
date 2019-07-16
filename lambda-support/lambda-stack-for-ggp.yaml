@@ -59,15 +59,15 @@ Resources:
           - Effect: Allow
             Action: greengrass:GetDeployment
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/group-id/deployments/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*" ] ]
           - Effect: Allow
             Action: greengrass:GetDeploymentArtifacts
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/group-id/deployments/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*" ] ]
           - Effect: Allow
             Action: greengrass:UpdateCoreDeploymentStatus
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/group-id/deployments/*/cores/arn%3Aaws%3Aiot%3Aregion%3Aaccount-id%3Athing%2F*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn%3Aaws%3Aiot%3A", !Ref "AWS::Region", "%3A", !Ref "AWS::AccountId", "%3Athing%2F*" ] ]
           - Effect: Allow
             Action:
               - greengrass:GetConnectivityInfo
