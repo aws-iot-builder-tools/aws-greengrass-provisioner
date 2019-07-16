@@ -9,7 +9,7 @@ is to allow a customer to bootstrap Greengrass and then configure it running GGP
 What is here?
 -------------
 
-- `launch-lambda-stack-for-ggp.sh` - This is a script that will build GGP and launch the CloudFormation stack to get it
+- `launch-lambda-stack-for-ggp.sh` - Builds GGP and launch the CloudFormation stack to get it
 set up as a Lambda function. It does the following tasks:
   - Creates a [Greengrass service role](https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html) and associates that service role with the Greengrass service
 if necessary. This is done with two Lambda functions. The first Lambda function detects if the customer already has a
@@ -20,5 +20,7 @@ This avoids potentially breaking a customer's configuration if they used a diffe
   - Builds a minimal role for the Greengrass core
   - Adds GGP as a Lambda function with the permissions necessary to create empty deployments
 
-- `invoke-lambda-function.sh` - This is a script that will invoke GGP as a Lambda function and attempt to create a new Greengrass
+- `invoke-lambda-function.sh` - Invokes GGP as a Lambda function and attempt to create a new Greengrass
 group with a random name and an empty deployment. It can be used to validate that the function works.
+
+- `extract-from-outfile.sh` - Extracts files from the output JSON saved from the `invoke-lambda-function.sh` script

@@ -3,6 +3,7 @@
 set -e
 
 STACK_NAME=$1
+GROUP_NAME=$2
 
 if [ -z "$STACK_NAME" ];
 then
@@ -10,9 +11,15 @@ then
   exit 1
 fi
 
-LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`ProvisionerLambdaFunction`].PhysicalResourceId' --output text)
+if [ -z "$GROUP_NAME" ];
+then
+  GROUP_NAME=$(uuidgen | sed s/^/A/ )
+  echo "Generating random group name"
+fi
 
-GROUP_NAME=$(uuidgen | sed s/^/A/ )
+echo "Group name $GROUP_NAME"
+
+LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`ProvisionerLambdaFunction`].PhysicalResourceId' --output text)
 CORE_ROLE_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`GreengrassCoreRole`].PhysicalResourceId' --output text)
 CORE_POLICY_NAME=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`MinimalGreengrassCoreIoTPolicy`].PhysicalResourceId' --output text)
 
