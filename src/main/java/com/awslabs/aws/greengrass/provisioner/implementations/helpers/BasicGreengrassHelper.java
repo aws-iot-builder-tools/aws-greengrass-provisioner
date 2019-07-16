@@ -601,6 +601,12 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                     return DeploymentStatus.FAILED;
                 }
 
+                if (errorMessage.contains("GreenGrass is not authorized to assume the Service Role associated with this account")) {
+                    // Service role may be missing
+                    log.error("The service role associated with this account may be missing. Check that the role returned from the CLI command 'aws greengrass get-service-role-for-account' still exists. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]");
+                    return DeploymentStatus.FAILED;
+                }
+
                 if (errorMessage.contains("Greengrass does not have permission to read the object")) {
                     // Greengrass probably can't read a SageMaker model
                     log.error("If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored.");
