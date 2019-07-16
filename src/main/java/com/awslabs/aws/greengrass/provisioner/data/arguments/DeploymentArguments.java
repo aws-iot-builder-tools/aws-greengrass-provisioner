@@ -29,6 +29,7 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_CORE_ROLE_NAME_OPTION = "--core-role-name";
     private final String LONG_SERVICE_ROLE_EXISTS_OPTION = "--service-role-exists";
     private final String LONG_CORE_POLICY_NAME_OPTION = "--core-policy-name";
+    public static final String LONG_FORCE_CREATE_NEW_KEYS_OPTION = "--force-create-new-keys";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -78,6 +79,8 @@ public class DeploymentArguments extends Arguments {
     public boolean serviceRoleExists;
     @Parameter(names = {LONG_CORE_POLICY_NAME_OPTION}, description = "The name of an existing IoT policy to use for the group")
     public String corePolicyName;
+    @Parameter(names = {LONG_FORCE_CREATE_NEW_KEYS_OPTION}, description = "Force creation of new keys for the core if they cannot be found")
+    public boolean forceCreateNewKeysOption;
     @Parameter(names = "--help", help = true)
     private boolean help;
 
