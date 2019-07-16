@@ -74,6 +74,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String DOES_NOT_EXIST = "does not exist";
     private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
     private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
+    private static final String EMPTY = "EMPTY";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -129,6 +130,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     ExceptionHelper exceptionHelper;
     @Inject
     S3ClientProvider s3ClientProvider;
+    @Inject
+    JsonHelper jsonHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -329,20 +332,43 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Load the deployment configuration //
         ///////////////////////////////////////
 
-        DeploymentConf deploymentConf = Try.of(() -> getDeploymentConf(deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
-                .get();
+        DeploymentConf deploymentConf;
 
-        // Create the service role
-        Role greengrassServiceRole = createServiceRole(deploymentConf);
+        if (isEmptyDeployment(deploymentArguments)) {
+            deploymentConf = getEmptyDeploymentConf(deploymentArguments);
+        } else {
+            deploymentConf = Try.of(() -> getDeploymentConf(deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
+                    .get();
+        }
 
-        // Create the role for the core
-        Role greengrassRole = createGreengrassRole(deploymentConf);
+        // Create the service role and role alias, if necessary
+        Optional<Role> optionalGreengrassServiceRole;
+        Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse = Optional.empty();
 
-        ///////////////////////////
-        // Create the role alias //
-        ///////////////////////////
+        if (!deploymentArguments.serviceRoleExists) {
+            // If the service role does not exist we should create it
+            Role greengrassServiceRole = createServiceRole(deploymentConf);
+            optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, GREENGRASS_SERVICE_ROLE_NAME));
+            optionalGreengrassServiceRole = Optional.of(greengrassServiceRole);
+        } else {
+            // The service role exists already, do not try to create or modify it
+            optionalGreengrassServiceRole = Optional.empty();
+        }
 
-        CreateRoleAliasResponse createRoleAliasResponse = iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, GREENGRASS_SERVICE_ROLE_NAME);
+        // Create the role for the core, if necessary
+        Role greengrassRole;
+
+        if (deploymentArguments.coreRoleName != null) {
+            Optional<Role> optionalGreengrassRole = iamHelper.getRole(deploymentArguments.coreRoleName);
+
+            if (!optionalGreengrassRole.isPresent()) {
+                throw new RuntimeException("Greengrass core role is not present or GetRole failed due to insufficient permissions on [" + deploymentArguments.coreRoleName + "]");
+            }
+
+            greengrassRole = optionalGreengrassRole.get();
+        } else {
+            greengrassRole = createGreengrassRole(deploymentConf);
+        }
 
         ///////////////////////////////////////////////////
         // Create an AWS Greengrass Group and get its ID //
@@ -372,13 +398,30 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         String coreCertificateArn = coreKeysAndCertificate.getCertificateArn();
 
+        ////////////////////////////////////////////////
+        // Policy creation for the core, if necessary //
+        ////////////////////////////////////////////////
+
+        String corePolicyName;
+
+        if (deploymentArguments.corePolicyName == null) {
+            log.info("Creating policy for core");
+            iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCorePolicy());
+            corePolicyName = ggVariables.getCorePolicyName(deploymentArguments.groupName);
+        } else {
+            corePolicyName = deploymentArguments.corePolicyName;
+        }
+
         //////////////////////////////////
-        // Policy creation for the core //
+        // Attach policy to certificate //
         //////////////////////////////////
 
-        log.info("Creating and attaching policies to core");
-        iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCorePolicy());
-        iotHelper.attachPrincipalPolicy(ggVariables.getCorePolicyName(deploymentArguments.groupName), coreCertificateArn);
+        iotHelper.attachPrincipalPolicy(corePolicyName, coreCertificateArn);
+
+        /////////////////////////////////
+        // Attach thing to certificate //
+        /////////////////////////////////
+
         iotHelper.attachThingPrincipal(ggVariables.getCoreThingName(deploymentArguments.groupName), coreCertificateArn);
 
         ////////////////////////////////////////////////
@@ -405,8 +448,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create the Lambda role for the functions //
         //////////////////////////////////////////////
 
-        log.info("Creating Lambda role");
-        Role lambdaRole = iamHelper.createRoleIfNecessary(deploymentConf.getLambdaRoleName(), deploymentConf.getLambdaRoleAssumeRolePolicy());
+        Optional<Role> optionalLambdaRole = Optional.empty();
+
+        if (!deploymentConf.getFunctions().isEmpty()) {
+            log.info("Creating Lambda role");
+
+            if (!deploymentConf.getLambdaRoleName().isPresent()) {
+                throw new RuntimeException("Lambda role name not specified");
+            }
+
+            if (!deploymentConf.getLambdaRoleAssumeRolePolicy().isPresent()) {
+                throw new RuntimeException("Lambda assume role policy not specified");
+            }
+
+            optionalLambdaRole = Optional.of(iamHelper.createRoleIfNecessary(deploymentConf.getLambdaRoleName().get(), deploymentConf.getLambdaRoleAssumeRolePolicy().get()));
+        }
 
         ////////////////////////////////////////////////////////
         // Start building the subscription and function lists //
@@ -420,7 +476,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         FunctionIsolationMode defaultFunctionIsolationMode;
 
-        if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
+        if (isEmptyDeployment(deploymentArguments)) {
+            // If we're doing an empty deployment default to no container mode
+            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
+        } else if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
             // If we're doing a Docker launch we always use no container
             log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
             defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
@@ -532,17 +591,24 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Build the functions //
         /////////////////////////
 
-        // Get a list of the buildable functions
-        List<BuildableFunction> buildableFunctions = functionHelper.getBuildableFunctions(functionConfs, lambdaRole);
+        Map<Function, ModifiableFunctionConf> functionToConfMap = new HashMap<>();
 
-        // Install Java dependencies if necessary
-        buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
-                .findFirst()
-                .ifPresent(buildableFunction -> functionHelper.installJavaDependencies());
+        // Only try to create functions if we have a Lambda role
+        if (optionalLambdaRole.isPresent()) {
+            Role lambdaRole = optionalLambdaRole.get();
 
-        // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
-        Map<Function, ModifiableFunctionConf> functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(buildableFunctions);
+            // Get a list of the buildable functions
+            List<BuildableFunction> buildableFunctions = functionHelper.getBuildableFunctions(functionConfs, lambdaRole);
+
+            // Install Java dependencies if necessary
+            buildableFunctions.stream()
+                    .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
+                    .findFirst()
+                    .ifPresent(buildableFunction -> functionHelper.installJavaDependencies());
+
+            // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
+            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(buildableFunctions);
+        }
 
         ///////////////////////////////////////////
         // Find GGD configs and its mapping info //
@@ -696,7 +762,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         /////////////////////////////////////////////
 
         buildOutputFiles(deploymentArguments,
-                createRoleAliasResponse,
+                optionalCreateRoleAliasResponse,
                 groupId,
                 coreThingName,
                 coreThingArn,
@@ -760,7 +826,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
-        Try.of(() -> createAndWaitForDeployment(Optional.of(greengrassServiceRole), Optional.of(greengrassRole), groupId, groupVersionId))
+        Try.of(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(greengrassRole), groupId, groupVersionId))
                 .get();
 
         //////////////////////////////////////////////
@@ -852,6 +918,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         return null;
+    }
+
+    public boolean isEmptyDeployment(DeploymentArguments deploymentArguments) {
+        return deploymentArguments.deploymentConfigFilename.equals(EMPTY);
+    }
+
+    private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
+        return ImmutableDeploymentConf.builder()
+                .isSyncShadow(true)
+                .name(EMPTY)
+                .groupName(deploymentArguments.groupName)
+                .coreRoleName(deploymentArguments.coreRoleName)
+                .corePolicy(deploymentArguments.corePolicyName)
+                .functions(new ArrayList<>())
+                .build();
     }
 
     private void attemptBootstrap(DeploymentArguments deploymentArguments, String ipAddress, String user) {
@@ -1164,7 +1245,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         List<String> serviceRolePolicies = Arrays.asList("arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy",
                 "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess");
         log.info("Creating Greengrass service role [" + GREENGRASS_SERVICE_ROLE_NAME + "]");
-        Role greengrassServiceRole = iamHelper.createRoleIfNecessary(GREENGRASS_SERVICE_ROLE_NAME, deploymentConf.getCoreRoleAssumeRolePolicy());
+
+        if (!deploymentConf.getCoreRoleAssumeRolePolicy().isPresent()) {
+            throw new RuntimeException("Core assume role policy not specified when creating service role");
+        }
+
+        Role greengrassServiceRole = iamHelper.createRoleIfNecessary(GREENGRASS_SERVICE_ROLE_NAME, deploymentConf.getCoreRoleAssumeRolePolicy().get());
 
         serviceRolePolicies
                 .forEach(policy -> iamHelper.attachRolePolicy(greengrassServiceRole, policy));
@@ -1173,12 +1259,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return greengrassServiceRole;
     }
 
-    private void buildOutputFiles(DeploymentArguments deploymentArguments, CreateRoleAliasResponse createRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
+    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
         if (deploymentArguments.scriptOutput) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
 
-        if (deploymentArguments.oemOutput) {
+        if ((deploymentArguments.oemOutput) || (deploymentArguments.oemJsonOutput != null)) {
             oemVirtualTarEntries = Optional.of(new ArrayList<>());
         }
 
@@ -1241,11 +1327,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Add some extra files to the OEM deployment so that Docker based deployments can do a redeployment on startup //
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
+        // Only create these files if we know the role alias
+        if (optionalCreateRoleAliasResponse.isPresent()) {
+            CreateRoleAliasResponse createRoleAliasResponse = optionalCreateRoleAliasResponse.get();
+
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions));
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
+        }
 
         ///////////////////////
         // Build the scripts //
@@ -1313,13 +1404,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         if (oemVirtualTarEntries.isPresent()) {
-            String oemArchiveName = ggVariables.getOemArchiveName(deploymentArguments.groupName);
-            log.info("Writing OEM file [" + oemArchiveName + "]");
-            ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
-            ioHelper.makeExecutable(oemArchiveName);
+            if (deploymentArguments.oemJsonOutput != null) {
+                writeOemJsonOutput(oemVirtualTarEntries.get(), deploymentArguments.oemJsonOutput);
+            } else {
+                String oemArchiveName = ggVariables.getOemArchiveName(deploymentArguments.groupName);
+                log.info("Writing OEM file [" + oemArchiveName + "]");
+                ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
+                ioHelper.makeExecutable(oemArchiveName);
 
-            // Copy to S3 if necessary
-            copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, oemArchiveName);
+                // Copy to S3 if necessary
+                copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, oemArchiveName);
+            }
         }
 
         if (ggdVirtualTarEntries.isPresent()) {
@@ -1331,6 +1426,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             // Copy to S3 if necessary
             copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, ggdArchiveName);
         }
+    }
+
+    private void writeOemJsonOutput(List<VirtualTarEntry> oemVirtualTarEntries, String oemJsonFilename) {
+        Map<String, String> oemJson = oemVirtualTarEntries.stream()
+                .collect(Collectors.toMap(VirtualTarEntry::getFilename, entry -> new String(entry.getContent())));
+
+        log.info("Writing OEM JSON output to [" + oemJsonFilename + "]");
+        ioHelper.writeFile(oemJsonFilename, jsonHelper.toJson(oemJson).getBytes());
     }
 
     private void copyToS3IfNecessary(String s3Bucket, String s3Directory, String fileName) {
@@ -1467,7 +1570,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
      */
     private Role createGreengrassRole(DeploymentConf deploymentConf) {
         log.info("Creating Greengrass role [" + deploymentConf.getCoreRoleName() + "]");
-        Role greengrassRole = iamHelper.createRoleIfNecessary(deploymentConf.getCoreRoleName(), deploymentConf.getCoreRoleAssumeRolePolicy());
+
+        if (!deploymentConf.getCoreRoleAssumeRolePolicy().isPresent()) {
+            throw new RuntimeException("Core assume role policy not specified when creating Greengrass role");
+        }
+
+        Role greengrassRole = iamHelper.createRoleIfNecessary(deploymentConf.getCoreRoleName(), deploymentConf.getCoreRoleAssumeRolePolicy().get());
 
         log.info("Attaching role policies to Greengrass role [" + deploymentConf.getCoreRoleName() + "]");
 

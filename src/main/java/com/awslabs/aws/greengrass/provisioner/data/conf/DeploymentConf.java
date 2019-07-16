@@ -4,6 +4,7 @@ import org.immutables.value.Value;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Value.Immutable
 public abstract class DeploymentConf {
@@ -15,15 +16,15 @@ public abstract class DeploymentConf {
 
     public abstract String getCoreRoleName();
 
-    public abstract String getCoreRoleAssumeRolePolicy();
+    public abstract Optional<String> getCoreRoleAssumeRolePolicy();
 
     public abstract List<String> getCoreRolePolicies();
 
     public abstract String getCorePolicy();
 
-    public abstract String getLambdaRoleName();
+    public abstract Optional<String> getLambdaRoleName();
 
-    public abstract String getLambdaRoleAssumeRolePolicy();
+    public abstract Optional<String> getLambdaRoleAssumeRolePolicy();
 
     public abstract List<String> getGgds();
 

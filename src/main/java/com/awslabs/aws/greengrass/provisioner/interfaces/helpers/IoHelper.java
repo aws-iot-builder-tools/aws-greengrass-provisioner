@@ -26,10 +26,23 @@ import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
 public interface IoHelper {
+    String TEMP_DIRECTORY = "/tmp/";
+
     default void writeFile(File file, byte[] contents) {
-        Try.withResources(() -> new FileOutputStream(file))
+        if ((isRunningInLambda()) && (!file.getAbsolutePath().startsWith(TEMP_DIRECTORY))) {
+            // If we are running in Lambda we can only put files in the temp directory
+            file = new File(TEMP_DIRECTORY + file.getAbsolutePath());
+        }
+
+        final File finalFile = file;
+
+        createDirectoryIfNecessary(file.getParentFile().getPath());
+
+        Try.withResources(() -> new FileOutputStream(finalFile))
                 .of(fileOutputStream -> writeFile(fileOutputStream, contents))
                 .get();
+
+        makeWritable(file);
     }
 
     default Void writeFile(FileOutputStream fileOutputStream, byte[] contents) throws IOException {
@@ -39,11 +52,7 @@ public interface IoHelper {
     }
 
     default void writeFile(String filename, byte[] contents) {
-        Try.withResources(() -> new FileOutputStream(filename))
-                .of(fileOutputStream -> writeFile(fileOutputStream, contents))
-                .get();
-
-        makeWritable(filename);
+        writeFile(new File(filename), contents);
     }
 
     default String getUuid() {
@@ -105,10 +114,14 @@ public interface IoHelper {
         file.setReadable(true, false);
     }
 
-    default void makeWritable(String filename) {
-        File file = new File(filename);
+    default void makeWritable(File file) {
         // When using Docker the write gets set as root only, setting the second parameter to false makes it writable by all
         file.setWritable(true, false);
+    }
+
+    default void makeWritable(String filename) {
+        File file = new File(filename);
+        makeWritable(file);
     }
 
     default void createDirectoryIfNecessary(String path) {
@@ -226,6 +239,8 @@ public interface IoHelper {
     }
 
     boolean isRunningInDocker();
+
+    boolean isRunningInLambda();
 
     List<String> getPrivateKeyFilesForSsh() throws IOException;
 

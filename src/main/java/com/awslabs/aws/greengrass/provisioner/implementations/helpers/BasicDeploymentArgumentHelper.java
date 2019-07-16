@@ -211,6 +211,10 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.s3Bucket != null) {
+            if (deploymentArguments.oemJsonOutput != null) {
+                throw new RuntimeException("S3 output is not supported when using OEM JSON output mode");
+            }
+
             if (deploymentArguments.s3Directory == null) {
                 throw new RuntimeException("S3 bucket specified without S3 directory. S3 directory is required. Set S3 directory to '/' to store the output in the root of the bucket.");
             }
