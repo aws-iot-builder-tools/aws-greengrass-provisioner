@@ -1,4 +1,5 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
@@ -22,7 +23,7 @@ class GreengrassITShared {
      * This is used to generate files that can be used in end-to-end tests
      */
     static final String OEM_OUTPUT_OPTION = "--oem";
-    static final String DEPLOYMENT_OPTION = String.join(" ", OEM_OUTPUT_OPTION, "-d deployments/");
+    static final String DEPLOYMENT_OPTION = String.join(" ", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, OEM_OUTPUT_OPTION, "-d deployments/");
     static final String ARM32_OPTION = "-a ARM32";
     static final String EC2_LAUNCH_OPTION = "--ec2-launch";
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
