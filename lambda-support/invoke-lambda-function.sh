@@ -23,4 +23,4 @@ PAYLOAD="{ \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\"
 echo $PAYLOAD
 echo $PAYLOAD | pbcopy
 
-aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" $STACK_NAME.outfile.txt
+aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" $GROUP_NAME.outfile.txt
