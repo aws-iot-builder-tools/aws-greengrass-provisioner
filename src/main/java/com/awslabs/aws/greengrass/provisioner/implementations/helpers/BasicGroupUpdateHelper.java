@@ -149,7 +149,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         if (!isThingArn) {
             log.info("No thing ARN specified for device [" + deviceName + "], will re-use keys if possible");
 
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupName, deviceName);
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupName, deviceName);
 
             String ggdPolicyName = String.join("_", deviceName, "Policy");
             String certificateArn = deviceKeysAndCertificate.getCertificateArn();

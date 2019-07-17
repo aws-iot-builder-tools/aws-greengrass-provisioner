@@ -74,7 +74,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String DOES_NOT_EXIST = "does not exist";
     private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
     private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
-    private static final String EMPTY = "EMPTY";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -393,25 +392,52 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create or reuse certificates //
         //////////////////////////////////
 
-        log.info("Getting keys and certificate for core thing [" + groupId + "]");
         Optional<GroupVersion> optionalGroupVersion = greengrassHelper.getLatestGroupVersion(groupId);
-        String coreCertificateArn;
         Optional<KeysAndCertificate> optionalCoreKeysAndCertificate = Optional.empty();
 
-        if (!optionalGroupVersion.isPresent() || deploymentArguments.forceCreateNewKeysOption) {
-            // Only create new keys if it is a new group or if the use has requested to force new keys to be created
-            KeysAndCertificate coreKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, CORE_SUB_NAME);
+        Optional<String> optionalCoreCertificateArn = Optional.empty();
+
+        if (deploymentArguments.certificateArn != null) {
+            // Use the certificate ARN supplied by the user, new or existing group
+            log.info("Using user supplied certificate ARN for core certificate [" + deploymentArguments.certificateArn + "]");
+            optionalCoreCertificateArn = Optional.of(deploymentArguments.certificateArn);
+        } else if (deploymentArguments.csr != null) {
+            // Sign the CSR supplied by the user, new or existing group
+            log.info("Using user supplied CSR for core certificate");
+            optionalCoreCertificateArn = Optional.of(iotHelper.signCsrAndReturnCertificateArn(deploymentArguments.csr));
+        } else if (!optionalGroupVersion.isPresent()) {
+            // New group, create new keys
+            log.info("Group is new, no certificate ARN or CSR supplied, creating new keys");
+            KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, CORE_SUB_NAME);
             optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
-            coreCertificateArn = coreKeysAndCertificate.getCertificateArn();
         } else {
-            Optional<String> optionalCoreCertificateArn = greengrassHelper.getCoreCertificateArn(groupId);
+            // Existing group, can we find the existing keys?
+            optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificate(groupId, CORE_SUB_NAME);
 
-            if (!optionalCoreCertificateArn.isPresent()) {
-                throw new RuntimeException("Core certificate ARN could not be found. If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option.");
+            if (optionalCoreKeysAndCertificate.isPresent()) {
+                // Found keys, we'll reuse them
+                log.info("Group is not new, loaded keys from credentials directory");
+            } else if (deploymentArguments.forceCreateNewKeysOption) {
+                // Didn't find keys but the user has requested that they be recreated
+                log.info("Group is not new, user forcing new keys to be created");
+                KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, CORE_SUB_NAME);
+                optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
+            } else {
+                log.error("Group is not new, keys could not be found, but user not forcing new keys to be created");
             }
-
-            coreCertificateArn = optionalCoreCertificateArn.get();
         }
+
+        if (optionalCoreKeysAndCertificate.isPresent()) {
+            // If we have keys and certificate then get the certificate ARN
+            optionalCoreCertificateArn = optionalCoreKeysAndCertificate.map(KeysAndCertificate::getCertificateArn);
+        }
+
+        if (!optionalCoreCertificateArn.isPresent()) {
+            // We need the certificate ARN at this point, fail if we don't have it
+            throw new RuntimeException("Core certificate information/ARN could not be found. If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option.");
+        }
+
+        String coreCertificateArn = optionalCoreCertificateArn.get();
 
         ////////////////////////////////////////////////
         // Policy creation for the core, if necessary //
@@ -668,7 +694,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 String ggdPolicyName = String.join("_", ggdThingName, "Policy");
 
                 log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
-                KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, ggdThingName);
+                KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, ggdThingName);
 
                 String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
 
@@ -1294,21 +1320,23 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             return;
         }
 
-        if (!optionalCoreKeysAndCertificate.isPresent()) {
+        if (!optionalCoreKeysAndCertificate.isPresent() && installScriptVirtualTarEntries.isPresent()) {
             throw new RuntimeException("Could not find the core keys and certificate, cannot build a complete output file. Specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option if you need to regenerate the output files.");
         }
 
-        KeysAndCertificate coreKeysAndCertificate = optionalCoreKeysAndCertificate.get();
-
         log.info("Adding keys and certificate files to archive");
-        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+
+        if (optionalCoreKeysAndCertificate.isPresent()) {
+            KeysAndCertificate coreKeysAndCertificate = optionalCoreKeysAndCertificate.get();
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+        }
 
         for (String thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, getGgdThingName(thingName));
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, getGgdThingName(thingName));
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
@@ -1525,7 +1553,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         /* Temporarily removed until Ubuntu issues are sorted out
         String baseDockerScriptName = String.join(".", "docker", deploymentArguments.groupName, "sh");
-        String dockerShScriptName = String.join("/", BUILD, baseDockerScriptName);
+        String dockerShScriptName = String.join("/", BUILD_DIRECTORY, baseDockerScriptName);
 
         log.info("To run this container on Ubuntu on EC2 do the following:");
         log.info(" - Attach a role to the EC2 instance that gives it access to ECR");

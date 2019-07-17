@@ -107,6 +107,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
         deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
         deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
+        deploymentArguments.csr = getValueOrDefault(deploymentArguments.csr, getStringDefault(defaults, "conf.csr"));
+        deploymentArguments.certificateArn = getValueOrDefault(deploymentArguments.certificateArn, getStringDefault(defaults, "conf.certificateArn"));
 
         if (deploymentArguments.pushContainer) {
             // If they want to push a container then we have to build it

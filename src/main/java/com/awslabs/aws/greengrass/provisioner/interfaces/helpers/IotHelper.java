@@ -4,12 +4,16 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 
+import java.util.Optional;
+
 public interface IotHelper {
     String getEndpoint();
 
     String createThing(String name);
 
-    KeysAndCertificate createOrLoadKeysAndCertificate(String groupId, String subName);
+    Optional<KeysAndCertificate> loadKeysAndCertificate(String groupId, String subName);
+
+    KeysAndCertificate createKeysAndCertificate(String groupId, String subName);
 
     void createPolicyIfNecessary(String name, String document);
 
@@ -31,4 +35,6 @@ public interface IotHelper {
     String getCredentialProviderUrl();
 
     CreateRoleAliasResponse createRoleAliasIfNecessary(Role serviceRole, String roleAlias);
+
+    String signCsrAndReturnCertificateArn(String csr);
 }
