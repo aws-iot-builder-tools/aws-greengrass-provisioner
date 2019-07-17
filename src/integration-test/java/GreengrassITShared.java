@@ -1,6 +1,7 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
@@ -75,11 +76,19 @@ class GreengrassITShared {
     }
 
     String getAddFunctionCommand(String groupName, String functionName, String functionAlias) {
-        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--add-function", functionName, "--function-alias", functionAlias);
+        return String.join(" ",
+                getGroupOption(Optional.of(groupName)),
+                UpdateArguments.LONG_UPDATE_GROUP_OPTION,
+                UpdateArguments.LONG_ADD_FUNCTION_OPTION, functionName,
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
     }
 
     String getRemoveFunctionCommand(String groupName, String functionName, String functionAlias) {
-        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--remove-function", functionName, "--function-alias", functionAlias);
+        return String.join(" ",
+                getGroupOption(Optional.of(groupName)),
+                UpdateArguments.LONG_UPDATE_GROUP_OPTION,
+                UpdateArguments.LONG_REMOVE_FUNCTION_OPTION, functionName,
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
     }
 
     String getPython2HelloWorldDeploymentCommand(Optional<String> groupName) {

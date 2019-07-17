@@ -3,15 +3,15 @@ package com.awslabs.aws.greengrass.provisioner.data.arguments;
 import com.beust.jcommander.Parameter;
 
 public class UpdateArguments extends Arguments {
-    private final String LONG_UPDATE_GROUP_OPTION = "--update-group";
+    public static final String LONG_UPDATE_GROUP_OPTION = "--update-group";
+    public static final String LONG_ADD_FUNCTION_OPTION = "--add-function";
+    public static final String LONG_REMOVE_FUNCTION_OPTION = "--remove-function";
+    public static final String LONG_FUNCTION_ALIAS_OPTION = "--function-alias";
     private final String LONG_ADD_SUBSCRIPTION_OPTION = "--add-subscription";
     private final String REMOVE_SUBSCRIPTION_OPTION = "--remove-subscription";
     private final String LONG_ADD_DEVICE_OPTION = "--add-device";
     private final String LONG_REMOVE_DEVICE_OPTION = "--remove-device";
-    private final String LONG_ADD_FUNCTION_OPTION = "--add-function";
-    private final String LONG_REMOVE_FUNCTION_OPTION = "--remove-function";
     private final String LONG_THING_ARN_OPTION = "--thing-arn";
-    private final String LONG_FUNCTION_ALIAS_OPTION = "--function-alias";
     private final String LONG_FUNCTION_BINARY_OPTION = "--function-binary";
     private final String LONG_FUNCTION_PINNED_OPTION = "--function-pinned";
     private final String SUBSCRIPTION_SOURCE_OPTION = "--subscription-source";
