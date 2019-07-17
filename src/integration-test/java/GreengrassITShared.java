@@ -1,4 +1,5 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
@@ -22,10 +23,10 @@ class GreengrassITShared {
     /**
      * This is used to generate files that can be used in end-to-end tests
      */
-    static final String OEM_OUTPUT_OPTION = "--oem";
+    static final String OEM_OUTPUT_OPTION = DeploymentArguments.LONG_OEM_OUTPUT_OPTION;
     static final String DEPLOYMENT_OPTION = String.join(" ", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, OEM_OUTPUT_OPTION, "-d deployments/");
-    static final String ARM32_OPTION = "-a ARM32";
-    static final String EC2_LAUNCH_OPTION = "--ec2-launch";
+    static final String ARM32_OPTION = String.join(" ", Arguments.SHORT_ARCHITECTURE_OPTION, "ARM32");
+    static final String EC2_LAUNCH_OPTION = DeploymentArguments.LONG_EC2_LAUNCH_OPTION;
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
     static final String PYTHON2_HELLO_WORLD_DEPLOYMENT = "python2-hello-world.conf";
     static final String PYTHON3_HELLO_WORLD_DEPLOYMENT = "python3-hello-world.conf";

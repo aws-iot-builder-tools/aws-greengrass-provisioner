@@ -3,6 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.lambda;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import io.vavr.control.Try;
@@ -32,23 +34,23 @@ public class AwsGreengrassProvisionerLambda implements RequestHandler<LambdaInpu
         File outputFile = Try.of(() -> ioHelper.getTempFile("oem", "json")).get();
         List<String> args = new ArrayList<>();
 
-        args.add("-g");
+        args.add(Arguments.SHORT_GROUP_NAME_OPTION);
         args.add(lambdaInput.groupName);
 
-        args.add("-d");
+        args.add(DeploymentArguments.SHORT_DEPLOYMENT_CONFIG_OPTION);
         args.add("EMPTY");
 
-        args.add("--core-role-name");
+        args.add(DeploymentArguments.LONG_CORE_ROLE_NAME_OPTION);
         args.add(lambdaInput.coreRoleName);
 
-        args.add("--core-policy-name");
+        args.add(DeploymentArguments.LONG_CORE_POLICY_NAME_OPTION);
         args.add(lambdaInput.corePolicyName);
 
-        args.add("--oem-json");
+        args.add(DeploymentArguments.LONG_OEM_JSON_OUTPUT_OPTION);
         args.add(outputFile.getAbsolutePath());
 
         if (lambdaInput.serviceRoleExists) {
-            args.add("--service-role-exists");
+            args.add(DeploymentArguments.LONG_SERVICE_ROLE_EXISTS_OPTION);
         }
 
         AwsGreengrassProvisioner.main(args.toArray(new String[args.size()]));
