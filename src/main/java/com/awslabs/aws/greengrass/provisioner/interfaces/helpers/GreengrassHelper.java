@@ -68,7 +68,13 @@ public interface GreengrassHelper {
 
     void disassociateRoleFromGroup(String groupId);
 
-    GetGroupVersionResponse getLatestGroupVersion(GroupInformation groupInformation);
+    Optional<GroupVersion> getLatestGroupVersion(String groupId);
+
+    Optional<String> getCoreCertificateArn(String groupId);
+
+    GroupVersion getLatestGroupVersion(GroupInformation groupInformation);
+
+    String getGroupId(GroupInformation groupInformation);
 
     List<Function> getFunctions(GroupInformation groupInformation);
 

@@ -509,9 +509,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
         } else {
-            GetGroupVersionResponse latestGroupVersion = getLatestGroupVersion(groupInformation);
-
-            currentGroupVersion = latestGroupVersion.definition();
+            currentGroupVersion = getLatestGroupVersion(groupInformation);
         }
 
         // When an ARN in the new version is NULL we take it from the current version.  This allows us to do updates more easily.
@@ -973,23 +971,72 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public GetGroupVersionResponse getLatestGroupVersion(GroupInformation groupInformation) {
+    public Optional<GroupVersion> getLatestGroupVersion(String groupId) {
+        Optional<GroupInformation> optionalGroupInformation = getGroupInformation(groupId);
+
+        if (!optionalGroupInformation.isPresent()) {
+            return Optional.empty();
+        }
+
+        GroupInformation groupInformation = optionalGroupInformation.get();
+
+        if (groupInformation.latestVersion() == null) {
+            // Can not get the latest version if the latest version field is NULL
+            return Optional.empty();
+        }
+
+        return Optional.of(getLatestGroupVersion(groupInformation));
+    }
+
+    @Override
+    public Optional<String> getCoreCertificateArn(String groupId) {
+        Optional<GroupVersion> optionalGroupVersion = getLatestGroupVersion(groupId);
+
+        if (!optionalGroupVersion.isPresent()) {
+            return Optional.empty();
+        }
+
+        GroupVersion groupVersion = optionalGroupVersion.get();
+
+        String coreDefinitionVersionArn = groupVersion.coreDefinitionVersionArn();
+        String coreDefinitionVersionId = idExtractor.extractVersionId(coreDefinitionVersionArn);
+        String coreDefinitionId = idExtractor.extractId(coreDefinitionVersionArn);
+
+        GetCoreDefinitionVersionRequest getCoreDefinitionVersionRequest = GetCoreDefinitionVersionRequest.builder()
+                .coreDefinitionVersionId(coreDefinitionVersionId)
+                .coreDefinitionId(coreDefinitionId)
+                .build();
+
+        GetCoreDefinitionVersionResponse coreDefinitionVersionResponse = greengrassClient.getCoreDefinitionVersion(getCoreDefinitionVersionRequest);
+
+        return Optional.ofNullable(coreDefinitionVersionResponse.definition())
+                .map(CoreDefinitionVersion::cores)
+                .filter(list -> list.size() != 0)
+                .map(list -> list.get(0))
+                .map(Core::certificateArn);
+    }
+
+    @Override
+    public GroupVersion getLatestGroupVersion(GroupInformation groupInformation) {
+        GetGroupVersionResponse groupVersionResponse = getGroupVersionResponse(groupInformation);
+
+        return groupVersionResponse.definition();
+    }
+
+    @Override
+    public String getGroupId(GroupInformation groupInformation) {
+        GetGroupVersionResponse groupVersionResponse = getGroupVersionResponse(groupInformation);
+
+        return groupVersionResponse.id();
+    }
+
+    private GetGroupVersionResponse getGroupVersionResponse(GroupInformation groupInformation) {
         GetGroupVersionRequest getGroupVersionRequest = GetGroupVersionRequest.builder()
                 .groupId(groupInformation.id())
                 .groupVersionId(groupInformation.latestVersion())
                 .build();
 
-        GetGroupVersionResponse groupVersionResponse = greengrassClient.getGroupVersion(getGroupVersionRequest);
-
-        return groupVersionResponse;
-    }
-
-    private GroupVersion getGroupVersion(GroupInformation groupInformation) {
-        GetGroupVersionResponse latestGroupVersion = getLatestGroupVersion(groupInformation);
-
-        GroupVersion groupVersion = latestGroupVersion.definition();
-
-        return groupVersion;
+        return greengrassClient.getGroupVersion(getGroupVersionRequest);
     }
 
     @Override
@@ -1020,7 +1067,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public FunctionDefinitionVersion getFunctionDefinitionVersion(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getGroupVersion(groupInformation);
+        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
 
         String functionDefinitionVersionArn = groupVersion.functionDefinitionVersionArn();
 
@@ -1036,7 +1083,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public List<Device> getDevices(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getGroupVersion(groupInformation);
+        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
 
         String deviceDefinitionVersionArn = groupVersion.deviceDefinitionVersionArn();
 
@@ -1057,7 +1104,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public List<Subscription> getSubscriptions(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getGroupVersion(groupInformation);
+        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
 
         String subscriptionDefinitionVersionArn = groupVersion.subscriptionDefinitionVersionArn();
 

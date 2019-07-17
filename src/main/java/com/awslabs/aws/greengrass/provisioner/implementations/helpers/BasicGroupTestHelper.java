@@ -13,7 +13,6 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.greengrass.model.GetGroupVersionResponse;
 import software.amazon.awssdk.services.greengrass.model.GroupInformation;
 
 import javax.inject.Inject;
@@ -530,7 +529,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private String generateCoreAndGroupInfoJson(GroupInformation groupInformation) {
-        GetGroupVersionResponse latestGroupVersion = greengrassHelper.getLatestGroupVersion(groupInformation);
+        String groupId = greengrassHelper.getGroupId(groupInformation);
         String coreThingName = ggVariables.getCoreThingName(groupInformation.name());
 
         Map<String, String> coreInfo = HashMap.of("ThingArn", iotHelper.getThingArn(coreThingName))
@@ -540,7 +539,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                 .toJavaMap();
 
         Map<String, Object> outerMap = HashMap.of("CoreInfo", (Object) coreInfo)
-                .put("GroupId", latestGroupVersion.id())
+                .put("GroupId", groupId)
                 .toJavaMap();
 
         return jsonHelper.toJson(outerMap);

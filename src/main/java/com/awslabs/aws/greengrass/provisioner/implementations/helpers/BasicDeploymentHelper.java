@@ -393,10 +393,25 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create or reuse certificates //
         //////////////////////////////////
 
-        log.info("Getting keys and certificate for core thing");
-        KeysAndCertificate coreKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, CORE_SUB_NAME);
+        log.info("Getting keys and certificate for core thing [" + groupId + "]");
+        Optional<GroupVersion> optionalGroupVersion = greengrassHelper.getLatestGroupVersion(groupId);
+        String coreCertificateArn;
+        Optional<KeysAndCertificate> optionalCoreKeysAndCertificate = Optional.empty();
 
-        String coreCertificateArn = coreKeysAndCertificate.getCertificateArn();
+        if (!optionalGroupVersion.isPresent() || deploymentArguments.forceCreateNewKeysOption) {
+            // Only create new keys if it is a new group or if the use has requested to force new keys to be created
+            KeysAndCertificate coreKeysAndCertificate = iotHelper.createOrLoadKeysAndCertificate(groupId, CORE_SUB_NAME);
+            optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
+            coreCertificateArn = coreKeysAndCertificate.getCertificateArn();
+        } else {
+            Optional<String> optionalCoreCertificateArn = greengrassHelper.getCoreCertificateArn(groupId);
+
+            if (!optionalCoreCertificateArn.isPresent()) {
+                throw new RuntimeException("Core certificate ARN could not be found. If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option.");
+            }
+
+            coreCertificateArn = optionalCoreCertificateArn.get();
+        }
 
         ////////////////////////////////////////////////
         // Policy creation for the core, if necessary //
@@ -766,7 +781,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 groupId,
                 coreThingName,
                 coreThingArn,
-                coreKeysAndCertificate,
+                optionalCoreKeysAndCertificate,
                 ggdConfs,
                 thingNames,
                 ggdPipDependencies,
@@ -1259,7 +1274,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return greengrassServiceRole;
     }
 
-    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, KeysAndCertificate coreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
+    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
         if (deploymentArguments.scriptOutput) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
@@ -1278,6 +1293,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.warn("Not building any output files.  No output files specified (script, OEM, or GGD)");
             return;
         }
+
+        if (!optionalCoreKeysAndCertificate.isPresent()) {
+            throw new RuntimeException("Could not find the core keys and certificate, cannot build a complete output file. Specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option if you need to regenerate the output files.");
+        }
+
+        KeysAndCertificate coreKeysAndCertificate = optionalCoreKeysAndCertificate.get();
 
         log.info("Adding keys and certificate files to archive");
         archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePrivateKeyName(), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);

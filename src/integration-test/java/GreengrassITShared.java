@@ -1,4 +1,7 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
@@ -21,10 +24,10 @@ class GreengrassITShared {
     /**
      * This is used to generate files that can be used in end-to-end tests
      */
-    static final String OEM_OUTPUT_OPTION = "--oem";
-    static final String DEPLOYMENT_OPTION = String.join(" ", OEM_OUTPUT_OPTION, "-d deployments/");
-    static final String ARM32_OPTION = "-a ARM32";
-    static final String EC2_LAUNCH_OPTION = "--ec2-launch";
+    static final String OEM_OUTPUT_OPTION = DeploymentArguments.LONG_OEM_OUTPUT_OPTION;
+    static final String DEPLOYMENT_OPTION = String.join(" ", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, OEM_OUTPUT_OPTION, "-d deployments/");
+    static final String ARM32_OPTION = String.join(" ", Arguments.SHORT_ARCHITECTURE_OPTION, "ARM32");
+    static final String EC2_LAUNCH_OPTION = DeploymentArguments.LONG_EC2_LAUNCH_OPTION;
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
     static final String PYTHON2_HELLO_WORLD_DEPLOYMENT = "python2-hello-world.conf";
     static final String PYTHON3_HELLO_WORLD_DEPLOYMENT = "python3-hello-world.conf";
@@ -73,11 +76,19 @@ class GreengrassITShared {
     }
 
     String getAddFunctionCommand(String groupName, String functionName, String functionAlias) {
-        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--add-function", functionName, "--function-alias", functionAlias);
+        return String.join(" ",
+                getGroupOption(Optional.of(groupName)),
+                UpdateArguments.LONG_UPDATE_GROUP_OPTION,
+                UpdateArguments.LONG_ADD_FUNCTION_OPTION, functionName,
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
     }
 
     String getRemoveFunctionCommand(String groupName, String functionName, String functionAlias) {
-        return String.join(" ", getGroupOption(Optional.of(groupName)), "--update-group", "--remove-function", functionName, "--function-alias", functionAlias);
+        return String.join(" ",
+                getGroupOption(Optional.of(groupName)),
+                UpdateArguments.LONG_UPDATE_GROUP_OPTION,
+                UpdateArguments.LONG_REMOVE_FUNCTION_OPTION, functionName,
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
     }
 
     String getPython2HelloWorldDeploymentCommand(Optional<String> groupName) {

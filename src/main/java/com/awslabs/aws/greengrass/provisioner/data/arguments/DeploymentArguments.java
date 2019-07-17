@@ -5,7 +5,14 @@ import com.awslabs.aws.greengrass.provisioner.data.EC2LinuxVersion;
 import com.beust.jcommander.Parameter;
 
 public class DeploymentArguments extends Arguments {
-    private final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
+    public static final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
+    public static final String LONG_OEM_OUTPUT_OPTION = "--oem";
+    public static final String LONG_OEM_JSON_OUTPUT_OPTION = "--oem-json";
+    public static final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
+    public static final String LONG_CORE_ROLE_NAME_OPTION = "--core-role-name";
+    public static final String LONG_SERVICE_ROLE_EXISTS_OPTION = "--service-role-exists";
+    public static final String LONG_CORE_POLICY_NAME_OPTION = "--core-policy-name";
+    public static final String LONG_FORCE_CREATE_NEW_KEYS_OPTION = "--force-create-new-keys";
     private final String LONG_BUILD_CONTAINER_OPTION = "--build-container";
     private final String SHORT_BUILD_CONTAINER_OPTION = "-c";
     private final String LONG_PUSH_CONTAINER_OPTION = "--push-container";
@@ -16,19 +23,13 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_ECR_IMAGE_NAME_OPTION = "--ecr-image-name";
     private final String SHORT_ECR_IMAGE_NAME_OPTION = "-i";
     private final String LONG_SCRIPT_OUTPUT_OPTION = "--script";
-    private final String LONG_OEM_OUTPUT_OPTION = "--oem";
-    private final String LONG_OEM_JSON_OUTPUT_OPTION = "--oem-json";
     private final String LONG_GGD_OUTPUT_OPTION = "--ggd";
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
-    private final String LONG_EC2_LAUNCH_OPTION = "--ec2-launch";
     private final String LONG_LAUNCH_OPTION = "--launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
     private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
     private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
     private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
-    private final String LONG_CORE_ROLE_NAME_OPTION = "--core-role-name";
-    private final String LONG_SERVICE_ROLE_EXISTS_OPTION = "--service-role-exists";
-    private final String LONG_CORE_POLICY_NAME_OPTION = "--core-policy-name";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -78,6 +79,8 @@ public class DeploymentArguments extends Arguments {
     public boolean serviceRoleExists;
     @Parameter(names = {LONG_CORE_POLICY_NAME_OPTION}, description = "The name of an existing IoT policy to use for the group")
     public String corePolicyName;
+    @Parameter(names = {LONG_FORCE_CREATE_NEW_KEYS_OPTION}, description = "Force creation of new keys for the core if they cannot be found")
+    public boolean forceCreateNewKeysOption;
     @Parameter(names = "--help", help = true)
     private boolean help;
 
