@@ -25,7 +25,8 @@ class GreengrassITShared {
      * This is used to generate files that can be used in end-to-end tests
      */
     static final String OEM_OUTPUT_OPTION = DeploymentArguments.LONG_OEM_OUTPUT_OPTION;
-    static final String DEPLOYMENT_OPTION = String.join(" ", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, OEM_OUTPUT_OPTION, "-d deployments/");
+    static final String DEPLOYMENT_OPTION = String.join(" ", OEM_OUTPUT_OPTION, "-d deployments/");
+    static final String FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION = String.join(" ", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, DEPLOYMENT_OPTION);
     static final String ARM32_OPTION = String.join(" ", Arguments.SHORT_ARCHITECTURE_OPTION, "ARM32");
     static final String EC2_LAUNCH_OPTION = DeploymentArguments.LONG_EC2_LAUNCH_OPTION;
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
@@ -59,7 +60,7 @@ class GreengrassITShared {
         FileUtils.copyFile(GreengrassITShared.NODEJS_SDK_FROM_BUILD, GreengrassITShared.NODEJS_SDK_REQUIRED_FOR_TESTING);
     }
 
-    public String getGroupName() {
+    String getGroupName() {
         return GROUP_NAME;
     }
 
@@ -68,11 +69,11 @@ class GreengrassITShared {
     }
 
     String getCddSkeletonDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getFailDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getAddFunctionCommand(String groupName, String functionName, String functionAlias) {
@@ -92,35 +93,39 @@ class GreengrassITShared {
     }
 
     String getPython2HelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getPython3HelloWorldDeploymentCommand(Optional<String> groupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
+    String getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional<String> groupName) {
         return String.join("", DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getLifxDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getNodeWebserverDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getNodeHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getX86_64SampleCDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, X86_64_SAMPLE_C_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, X86_64_SAMPLE_C_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getAllHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
     String getEc2Arm32NodeHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName), " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName), " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
     }
 
     String[] split(String input) {

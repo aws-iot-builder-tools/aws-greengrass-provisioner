@@ -8,6 +8,6 @@ fi
 
 set -e
 
-rm -rf build credentials
+rm -rf build out credentials
 ./gradlew clean build integrationTest
-rm -rf build credentials
+rm -rf out credentials

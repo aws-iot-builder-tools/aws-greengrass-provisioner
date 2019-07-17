@@ -1,5 +1,6 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import org.hamcrest.Matcher;
 import org.jetbrains.annotations.NotNull;
@@ -23,8 +24,11 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.CoreMatchers.*;
 
 public class GreengrassBuildWithDockerDeploymentsIT {
+    private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
+    private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
     private static GreengrassITShared greengrassITShared;
+    private static IoHelper ioHelper;
     @Rule
     public ExpectedException expectedException = ExpectedException.none();
     @Rule
@@ -48,6 +52,8 @@ public class GreengrassBuildWithDockerDeploymentsIT {
 
         process.waitFor();
         processBuilder.environment();
+
+        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
     }
 
     @Before
@@ -148,62 +154,81 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 1: Expected failure with invalid deployment name in Docker
     @Test
     public void shouldFailWithDocker() {
-        runContainer(greengrassITShared.getFailDeploymentCommand(Optional.empty()), not(equalTo(0)));
+        // Run the container and make sure the exit code is NOT 0
+        runContainer(greengrassITShared.getFailDeploymentCommand(Optional.empty()), EXIT_CODE_IS_NOT_ZERO);
     }
 
     // Test set 2: Expected success with CDD skeleton with Docker
     @Test
     public void shouldBuildJavaFunctionWithDocker() {
-        runContainer(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 3: Expected success with Python 2 Hello World with Docker
     @Test
     public void shouldBuildPython2FunctionWithDocker() {
-        runContainer(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildPythonFunctionWithDependenciesWithDocker() {
-        runContainer(greengrassITShared.getLifxDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getLifxDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 5: Expected success with Node Hello World with Docker
     @Test
     public void shouldBuildNodeFunctionWithDocker() {
-        runContainer(greengrassITShared.getNodeHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getNodeHelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 6: Expected success with all three languages in one build with Docker
     @Test
     public void shouldBuildCombinedFunctionWithDocker() {
-        runContainer(greengrassITShared.getAllHelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getAllHelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 7: Expected failure to launch an EC2 instance with ARM32 with Docker
     @Test
     public void shouldFailEc2LaunchWithArm32WithDocker() {
-        runContainer(greengrassITShared.getEc2Arm32NodeHelloWorldDeploymentCommand(Optional.empty()), not(equalTo(0)));
+        runContainer(greengrassITShared.getEc2Arm32NodeHelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_NOT_ZERO);
     }
 
     // Test set 8: Expected success with Node Express function (has dependencies to fetch) with Docker
     @Test
     public void shouldBuildNodeFunctionWithDependenciesWithDocker() {
-        runContainer(greengrassITShared.getNodeWebserverDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getNodeWebserverDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 9: Expected success with Python 3 Hello World with Docker
     @Test
     public void shouldBuildPython3FunctionWithDocker() {
-        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), equalTo(0));
+        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
-    private void runContainer(String nodeHelloWorldDeploymentCommand, Matcher<Integer> integerMatcher) {
-        GenericContainer genericContainer = startAndGetContainer(nodeHelloWorldDeploymentCommand);
+    // Test set 10: Expected failure redeploying group without being able to create new keys with Python 3 Hello World with Docker
+    @Test
+    public void shouldFailToRedeployWithoutCreatingNewKeysWithPython3FunctionWithDocker() {
+        // Make sure we have a fresh group, not one reused from another test
+        Optional<String> name = Optional.of(ioHelper.getUuid());
+       
+        // Expect that the first container does not return an error
+        GenericContainer genericContainer = runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_ZERO);
+
+        // Stop the first container
+        genericContainer.stop();
+
+        // Expect that the second container returns an error
+        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_NOT_ZERO);
+    }
+
+    private GenericContainer runContainer(String arguments, Matcher<Integer> integerMatcher) {
+        GenericContainer genericContainer = startAndGetContainer(arguments);
         waitForContainerToFinish(genericContainer);
 
         System.out.println(genericContainer.getLogs());
         Assert.assertThat(genericContainer.getCurrentContainerInfo().getState().getExitCode(), is(integerMatcher));
+
+        return genericContainer;
     }
 }
