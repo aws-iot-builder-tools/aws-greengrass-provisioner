@@ -189,3 +189,10 @@ Forces the creation of new keys if the keys for the core can not be found. This 
 or bootstrap file for a group. These files require the private keys and therefore if they are not found they must be
 recreated. Requiring this option prevents GGP from generating new keys for a Greengrass core that is already deployed so that it
 does not lose connectivity to AWS IoT Core.
+
+## Service role exists
+
+Long form: `--service-role-exists`
+
+Prevents GGP from creating a new Greengrass service role. This can be used when the user running GGP does not have sufficient
+privileges to create a service role and one has already been created.
