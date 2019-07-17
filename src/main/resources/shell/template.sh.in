@@ -186,7 +186,7 @@ if [ $YUM_MISSING -eq 0 ]; then
 
     INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
 else
-    INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
+    INSTALLER_UPDATE=apt-get
     INSTALLER=apt-get
     # Avoid preinst and postinst tasks from asking questions
     export DEBIAN_FRONTEND=noninteractive
@@ -197,7 +197,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     UNAME=`uname -a`
 
     # Raspbian specific setup
-    OS_RELEASE=`cat /etc/os-release | grep ^ID=`
+    OS_RELEASE=`grep ^ID= /etc/os-release`
 
     if [ "$OS_RELEASE" = "ID=raspbian" ]; then
       if [ -f /tmp/REBOOT_REQUIRED ] ; then
@@ -205,11 +205,18 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
         exit 1
       fi
 
+      BUSTER=`cat /etc/os-release | grep -q buster`
+
+      if [ $? -eq 0 ]; then
+        echo "Detected Raspbian Buster, adding --allow-releaseinfo-change option"
+        INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
+      fi
+
       CMDLINE=`cat /boot/cmdline.txt`
 
       echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
 
-      if [ $? -eq 0 ] ; then
+      if [ $? -eq 0 ]; then
         echo "cgroups already configured"
       else
         sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
