@@ -13,8 +13,4 @@ if [ -z "$TEST_NAME" ]; then
   exit 1
 fi
 
-set -e
-
-rm -rf build out credentials
-./gradlew clean build integrationTest --tests '*'$TEST_NAME'*'
-rm -rf out credentials
+./testing/integration-test.sh --tests '*'$TEST_NAME'*'
