@@ -196,3 +196,19 @@ Long form: `--service-role-exists`
 
 Prevents GGP from creating a new Greengrass service role. This can be used when the user running GGP does not have sufficient
 privileges to create a service role and one has already been created.
+
+## Create a new certificate for a keypair using a CSR
+
+Long form: `--csr`
+
+GGP will use the CSR in this argument and have it signed by AWS IoT. This allows a user to keep their private keys secret.
+Any output files that are generated will not contain the private key.
+
+This option can either contain the entire CSR as an inline string or can be the filename of a file that contains the CSR.
+
+## Use an existing certificate
+
+Long form: `--certificate-arn`
+
+GGP will use the certificate referenced by the exact certificate ARN in this argument. Any output files that are generated
+will not contain the private key.

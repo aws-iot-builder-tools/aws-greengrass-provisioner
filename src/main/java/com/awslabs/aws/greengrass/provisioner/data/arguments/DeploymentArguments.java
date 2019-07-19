@@ -30,6 +30,8 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
     private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
     private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
+    public static final String LONG_CSR_OPTION = "--csr";
+    public static final String LONG_CERTIFICATE_ARN_OPTION = "--certificate-arn";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -81,6 +83,10 @@ public class DeploymentArguments extends Arguments {
     public String corePolicyName;
     @Parameter(names = {LONG_FORCE_CREATE_NEW_KEYS_OPTION}, description = "Force creation of new keys for the core if they cannot be found")
     public boolean forceCreateNewKeysOption;
+    @Parameter(names = {LONG_CSR_OPTION}, description = "A CSR to sign and use for the core certificate")
+    public String csr;
+    @Parameter(names = {LONG_CERTIFICATE_ARN_OPTION}, description = "The full ARN of an existing certificate to use for the core")
+    public String certificateArn;
     @Parameter(names = "--help", help = true)
     private boolean help;
 

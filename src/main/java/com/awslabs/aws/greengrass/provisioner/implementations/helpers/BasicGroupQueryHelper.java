@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class BasicGroupQueryHelper implements GroupQueryHelper {
+    public static final String BUILD_DIRECTORY = "build/";
     private final Logger log = LoggerFactory.getLogger(BasicGroupQueryHelper.class);
     private final Set<String> greengrassTopLevelLogNames = new HashSet<>(Arrays.asList("/aws/greengrass/GreengrassSystem/GGCloudSpooler",
             "/aws/greengrass/GreengrassSystem/GGConnManager",
@@ -82,7 +83,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String pem = getGroupCertificateAuthorityResponse.pemEncodedCertificate();
             log.info("Group CA for group [" + queryArguments.groupName + "]\n" + pem);
 
-            String outputFilename = "build/" + queryArguments.groupName + "_Core_CA.pem";
+            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_Core_CA.pem";
 
             writeToFile(queryArguments, pem, outputFilename);
 
@@ -96,7 +97,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(subscriptions);
             log.info(output);
 
-            String outputFilename = "build/" + queryArguments.groupName + "_subscription_table.json";
+            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_subscription_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
 
@@ -110,7 +111,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(functions);
             log.info(output);
 
-            String outputFilename = "build/" + queryArguments.groupName + "_function_table.json";
+            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_function_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
 
@@ -124,7 +125,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(devices);
             log.info(output);
 
-            String outputFilename = "build/" + queryArguments.groupName + "_device_table.json";
+            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_device_table.json";
 
             writeToFile(queryArguments, output, outputFilename);
 

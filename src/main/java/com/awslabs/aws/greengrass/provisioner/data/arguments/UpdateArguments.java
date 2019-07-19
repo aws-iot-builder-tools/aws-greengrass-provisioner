@@ -11,7 +11,6 @@ public class UpdateArguments extends Arguments {
     private final String REMOVE_SUBSCRIPTION_OPTION = "--remove-subscription";
     private final String LONG_ADD_DEVICE_OPTION = "--add-device";
     private final String LONG_REMOVE_DEVICE_OPTION = "--remove-device";
-    private final String LONG_THING_ARN_OPTION = "--thing-arn";
     private final String LONG_FUNCTION_BINARY_OPTION = "--function-binary";
     private final String LONG_FUNCTION_PINNED_OPTION = "--function-pinned";
     private final String SUBSCRIPTION_SOURCE_OPTION = "--subscription-source";

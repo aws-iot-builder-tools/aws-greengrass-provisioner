@@ -10,11 +10,18 @@ import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.iot.model.*;
 
 import javax.inject.Inject;
+import java.io.File;
 import java.util.List;
+import java.util.Optional;
 
 public class BasicIotHelper implements IotHelper {
-    public static final String IOT_DATA_ATS = "iot:Data-ATS";
-    public static final String IOT_CREDENTIAL_PROVIDER = "iot:CredentialProvider";
+    private static final String IOT_DATA_ATS = "iot:Data-ATS";
+    private static final String IOT_CREDENTIAL_PROVIDER = "iot:CredentialProvider";
+    private static final String BUILD_DIRECTORY = "build/";
+    private static final String PEM = "pem";
+    private static final String KEY = "key";
+    private static final String CRT = "crt";
+    private static final String DOT_DELIMITER = ".";
     private static final String CREDENTIALS = "credentials/";
     private final Logger log = LoggerFactory.getLogger(BasicIotHelper.class);
     @Inject
@@ -86,7 +93,7 @@ public class BasicIotHelper implements IotHelper {
     }
 
     @Override
-    public KeysAndCertificate createOrLoadKeysAndCertificate(String groupId, String subName) {
+    public Optional<KeysAndCertificate> loadKeysAndCertificate(String groupId, String subName) {
         String credentialsDirectory = credentialDirectoryForGroupId(groupId);
 
         ioHelper.createDirectoryIfNecessary(credentialsDirectory);
@@ -100,16 +107,29 @@ public class BasicIotHelper implements IotHelper {
 
             if (certificateExists(keysAndCertificate.getCertificateId())) {
                 log.info("- Reusing existing keys.");
-                return keysAndCertificate;
-            } else {
-                log.warn("- Existing certificate is not in AWS IoT.  It may have been deleted.");
+                return Optional.of(keysAndCertificate);
             }
+
+            log.warn("- Existing certificate is not in AWS IoT.  It may have been deleted.");
+            return Optional.empty();
         }
+
+        log.warn("- No existing keys found for group.");
+        return Optional.empty();
+    }
+
+    @Override
+    public KeysAndCertificate createKeysAndCertificate(String groupId, String subName) {
+        String credentialsDirectory = credentialDirectoryForGroupId(groupId);
+
+        ioHelper.createDirectoryIfNecessary(credentialsDirectory);
+
+        String createKeysAndCertificateFilename = createKeysandCertificateFilenameForGroupId(groupId, subName);
 
         // Let them know that they'll need to re-run the bootstrap script because the core's keys changed
         boolean isCore = subName.equals(DeploymentHelper.CORE_SUB_NAME);
         String supplementalMessage = isCore ? "  If you have an existing deployment for this group you'll need to re-run the bootstrap script since the core certificate ARN will change." : "";
-        log.info("- Keys not found, creating new keys." + supplementalMessage);
+        log.info("- Creating new keys." + supplementalMessage);
         CreateKeysAndCertificateRequest createKeysAndCertificateRequest = CreateKeysAndCertificateRequest.builder()
                 .setAsActive(true)
                 .build();
@@ -119,8 +139,8 @@ public class BasicIotHelper implements IotHelper {
         ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeKeys(createKeysAndCertificateResponse, jsonHelper).getBytes());
 
         String deviceName = isCore ? groupId : ggConstants.trimGgdPrefix(subName);
-        String privateKeyFilename = "build/" + String.join(".", deviceName, "pem", "key");
-        String publicSignedCertificateFilename = "build/" + String.join(".", deviceName, "pem", "crt");
+        String privateKeyFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, KEY);
+        String publicSignedCertificateFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, CRT);
 
         ioHelper.writeFile(privateKeyFilename, createKeysAndCertificateResponse.keyPair().privateKey().getBytes());
         log.info("Device private key written to [" + privateKeyFilename + "]");
@@ -231,5 +251,21 @@ public class BasicIotHelper implements IotHelper {
         iotClient.deleteRoleAlias(deleteRoleAliasRequest);
 
         return iotClient.createRoleAlias(createRoleAliasRequest);
+    }
+
+    @Override
+    public String signCsrAndReturnCertificateArn(String csr) {
+        if (ioHelper.exists(csr)) {
+            // Looks like this is a file path, read the file instead of the CSR as a string
+            csr = ioHelper.readFileAsString(new File(csr));
+        }
+
+        CreateCertificateFromCsrRequest createCertificateFromCsrRequest = CreateCertificateFromCsrRequest.builder()
+                .certificateSigningRequest(csr)
+                .setAsActive(true)
+                .build();
+
+        CreateCertificateFromCsrResponse certificateFromCsr = iotClient.createCertificateFromCsr(createCertificateFromCsrRequest);
+        return certificateFromCsr.certificateArn();
     }
 }

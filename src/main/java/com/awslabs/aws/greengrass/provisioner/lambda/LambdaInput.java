@@ -5,6 +5,7 @@ public class LambdaInput {
     public String secretKey;
     public String sessionToken;
     public String csr;
+    public String certificateArn;
     public boolean serviceRoleExists;
     public String coreRoleName;
     public String corePolicyName;
