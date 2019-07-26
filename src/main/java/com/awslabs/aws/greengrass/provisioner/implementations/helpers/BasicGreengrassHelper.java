@@ -10,6 +10,7 @@ import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
@@ -304,7 +305,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Override
     public String createFunctionDefinitionVersion(Set<Function> functions, FunctionIsolationMode defaultFunctionIsolationMode) {
         functions = functions.stream()
-                .filter(function -> !function.functionArn().equals(ggConstants.getGgIpDetectorArn()))
+                .filter(this::notGgIpDetector)
                 .collect(Collectors.toSet());
 
         ImmutableSet<Function> allFunctions = ImmutableSet.<Function>builder()
@@ -362,7 +363,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .collect(Collectors.toSet());
 
         // Scrub the necessary functions
-        Set<Function> scrubbedFunctions = functionsToScrubBuilder.build().stream()
+        Set<Function> scrubbedFunctions = functionsToScrub.stream()
                 .map(this::scrubFunctionForNoContainer)
                 .collect(Collectors.toSet());
 
@@ -384,6 +385,11 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createFunctionDefinitionResponse.latestVersionArn();
     }
 
+    @NotNull
+    private boolean notGgIpDetector(Function function) {
+        return !function.functionArn().equals(ggConstants.getGgIpDetectorArn());
+    }
+
     private Function scrubFunctionForNoContainer(Function function) {
         Function.Builder functionBuilder = function.toBuilder();
         FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
@@ -391,9 +397,19 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         // Specifying a memory size for a no container function is not allowed
         functionConfigurationBuilder.memorySize(null);
 
+        // Specifying accessSysFs for no container is not allowed
+        FunctionConfigurationEnvironment.Builder functionConfigurationEnvironmentBuilder = Optional.ofNullable(function.functionConfiguration().environment())
+                .map(FunctionConfigurationEnvironment::toBuilder)
+                .orElse(FunctionConfigurationEnvironment.builder());
+
+        // Force accessSysFs to null so it isn't included
+        functionConfigurationEnvironmentBuilder.accessSysfs(null);
+
+        functionConfigurationBuilder.environment(functionConfigurationEnvironmentBuilder.build());
+
         functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
 
-        log.warn("Scrubbing memory size from function [" + function.functionArn() + "] since it is running without Greengrass container isolation");
+        log.warn("Scrubbing function configuration for [" + function.functionArn() + "] to run without the Greengrass container");
 
         return functionBuilder.build();
     }
