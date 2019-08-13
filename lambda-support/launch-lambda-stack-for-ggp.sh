@@ -2,7 +2,14 @@
 
 set -e
 
-STACK_NAME=$1
+BUCKET_NAME=$1
+STACK_NAME=$2
+
+if [ -z "$BUCKET_NAME" ];
+then
+  echo "A bucket name must be specified"
+  exit 1
+fi
 
 if [ -z "$STACK_NAME" ];
 then
@@ -21,6 +28,6 @@ pushd .
 cd ..
 ./gradlew build
 popd
-aws cloudformation $PROFILE package --template-file lambda-stack-for-ggp.yaml --s3-bucket timmatt-aws --output-template-file $TEMP_FILE
+aws cloudformation $PROFILE package --template-file lambda-stack-for-ggp.yaml --s3-bucket $BUCKET_NAME --output-template-file $TEMP_FILE
 aws cloudformation $PROFILE deploy --stack-name $STACK_NAME --template-file $TEMP_FILE --capabilities CAPABILITY_NAMED_IAM || aws cloudformation describe-stack-events --stack-name $STACK_NAME
 rm $TEMP_FILE
