@@ -153,16 +153,6 @@ public class BasicLambdaHelper implements LambdaHelper {
         String baseFunctionName = functionConf.getFunctionName();
         String groupFunctionName = getFunctionName(functionConf);
 
-        /*
-            loggingHelper.logInfoWithName(log, baseFunctionName, "Deleting existing Lambda function");
-            DeleteFunctionRequest deleteFunctionRequest = DeleteFunctionRequest.builder()
-                    .functionName(groupFunctionName)
-                    .build();
-
-            lambdaClient.deleteFunction(deleteFunctionRequest);
-        }
-         */
-
         FunctionCode functionCode = FunctionCode.builder()
                 .zipFile(SdkBytes.fromByteBuffer(ByteBuffer.wrap(ioHelper.readFile(zipFilePath))))
                 .build();
