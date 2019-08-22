@@ -60,6 +60,7 @@ import static io.vavr.Predicates.instanceOf;
 import static org.awaitility.Awaitility.await;
 
 public class BasicDeploymentHelper implements DeploymentHelper {
+    public static final IpRange ALL_IPS = IpRange.builder().cidrIp("0.0.0.0/0").build();
     private static final String USER_DIR = "user.dir";
     private static final String UBUNTU_AMI_ACCOUNT_ID = "099720109477";
     private static final String AWS_AMI_ACCOUNT_ID = "137112412989";
@@ -1140,10 +1141,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Image image = optionalImage.get();
 
         IpPermission sshPermission = IpPermission.builder()
-                .toPort(22)
                 .fromPort(22)
+                .toPort(22)
                 .ipProtocol("tcp")
-                .ipRanges(IpRange.builder().cidrIp("0.0.0.0/0").build())
+                .ipRanges(ALL_IPS)
+                .build();
+
+        IpPermission moshPermission = IpPermission.builder()
+                .fromPort(60000)
+                .toPort(61000)
+                .ipProtocol("udp")
+                .ipRanges(ALL_IPS)
                 .build();
 
         String securityGroupName = String.join("-", instanceTagName, ioHelper.getUuid());
@@ -1165,7 +1173,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
-                .ipPermissions(sshPermission)
+                .ipPermissions(sshPermission, moshPermission)
                 .build();
 
         Failsafe.with(securityGroupRetryPolicy).get(() ->
