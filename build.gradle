@@ -6,14 +6,14 @@ plugins {
     id 'de.undercouch.download' version '4.0.0'
 
     // Adds dependencyUpdates task
-    id 'com.github.ben-manes.versions' version '0.24.0'
+    id 'com.github.ben-manes.versions' version '0.25.0'
 }
 
 apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'idea'
 
-def gradleDependencyVersion = '5.6.1'
+def gradleDependencyVersion = '5.6.2'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -58,16 +58,16 @@ def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.5'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.8.0'
+def awsSdk2Version = '2.9.4'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.9'
 def junitVersion = '4.12'
 def systemRulesVersion = '1.19.0'
 def mockitoVersion = '3.0.0'
 def vavrVersion = '0.10.2'
-def httpClientVersion = '4.5.9'
+def httpClientVersion = '4.5.10'
 def jodahFailsafeVersion = '2.3.1'
-def testContainersVersion = '1.12.0'
+def testContainersVersion = '1.12.1'
 def hamcrestVersion = '2.1'
 def awsIotCoreWebsocketsVersion = '0.5.2'
 def awaitilityVersion = '4.0.1'
