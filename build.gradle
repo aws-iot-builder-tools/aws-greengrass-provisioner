@@ -70,7 +70,7 @@ def jodahFailsafeVersion = '2.3.1'
 def testContainersVersion = '1.12.1'
 def hamcrestVersion = '2.1'
 def awsIotCoreWebsocketsVersion = '0.5.2'
-def awaitilityVersion = '3.1.6'
+def awaitilityVersion = '4.0.1'
 def immutablesValueVersion = '2.7.5'
 def awsLambdaJavaCoreVersion = '1.2.0'
 

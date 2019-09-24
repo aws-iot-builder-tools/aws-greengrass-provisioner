@@ -22,6 +22,7 @@ import com.typesafe.config.*;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.awaitility.Durations;
 import org.awaitility.core.ConditionTimeoutException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -1094,7 +1095,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private Void waitForFlagToToggle(AtomicBoolean flag) {
         await()
-                .atMost(org.awaitility.Duration.ONE_MINUTE)
+                .atMost(Durations.ONE_MINUTE)
                 .until(flag::get);
 
         return null;
