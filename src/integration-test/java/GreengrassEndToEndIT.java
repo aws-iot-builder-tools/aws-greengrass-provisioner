@@ -3,7 +3,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
-import org.awaitility.Duration;
+import org.awaitility.Durations;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.collection.IsMapContaining;
 import org.jetbrains.annotations.NotNull;
@@ -22,6 +22,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.time.temporal.TemporalUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -60,7 +63,7 @@ public class GreengrassEndToEndIT {
     private MqttClient mqttClient;
     private String coreName;
     private AtomicBoolean flag;
-    private Duration defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+    private Duration defaultTimeout;
     private Path functionDefaultsPath;
     private JsonHelper jsonHelper;
 
@@ -94,7 +97,7 @@ public class GreengrassEndToEndIT {
 
         flag = new AtomicBoolean(false);
 
-        defaultTimeout = new Duration(90, TimeUnit.SECONDS);
+        defaultTimeout = Duration.of(90, ChronoUnit.SECONDS);
     }
 
     private void replaceStringInFunctionDefaults(String regex, String replacement) throws IOException {
