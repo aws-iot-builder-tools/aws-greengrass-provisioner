@@ -32,6 +32,8 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class BasicIoHelper implements IoHelper {
+    public static final String BEGIN_RSA_PRIVATE_KEY = "BEGIN RSA PRIVATE KEY";
+    private static final String OPENSSH_HELP = "If your keys are in OpenSSH format try converting them with the 'ssh-keygen -p -m PEM -f YOUR_KEY_FILE' command.";
     private final Logger log = LoggerFactory.getLogger(BasicIoHelper.class);
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
@@ -56,15 +58,22 @@ public class BasicIoHelper implements IoHelper {
             return new ArrayList<>();
         }
 
-        Path sshDirectory = new File(String.join("/", optionalHomeDirectory.get(), ".ssh")).toPath();
+        String homeDirectory = optionalHomeDirectory.get();
+
+        Path sshDirectory = new File(String.join("/", homeDirectory, ".ssh")).toPath();
 
         // Recursively get all of the files in the directory, only look at regular files, and make sure they look like private keys
         return Files.walk(sshDirectory)
                 .filter(Files::isRegularFile)
                 .map(Path::toFile)
-                .filter(file -> readFileAsString(file).contains("BEGIN RSA PRIVATE KEY"))
+                .filter(this::isPrivateKeyFile)
                 .map(File::toString)
                 .collect(Collectors.toList());
+    }
+
+    private boolean isPrivateKeyFile(File file) {
+        String data = readFileAsString(file);
+        return data.contains(BEGIN_RSA_PRIVATE_KEY);
     }
 
     @Override
@@ -123,7 +132,12 @@ public class BasicIoHelper implements IoHelper {
     public JSch getJschWithPrivateKeysLoaded() {
         JSch jsch = new JSch();
 
-        List<String> privateKeyFiles = Try.of(() -> getPrivateKeyFilesForSsh()).get();
+        List<String> privateKeyFiles = Try.of(this::getPrivateKeyFilesForSsh).get();
+
+        if (privateKeyFiles.isEmpty()) {
+            throw new RuntimeException("No SSH private keys found, cannot continue. " + OPENSSH_HELP);
+
+        }
 
         for (String privateKeyFile : privateKeyFiles) {
             Try.of(() -> addIdentity(jsch, privateKeyFile))
@@ -131,17 +145,21 @@ public class BasicIoHelper implements IoHelper {
                     .get();
         }
 
+        if (jsch.getIdentityRepository().getIdentities().isEmpty()) {
+            throw new RuntimeException("No usable identities found, cannot continue. " + OPENSSH_HELP);
+        }
+
         return jsch;
     }
 
-    private Void logPrivateKeyIssueAndIgnore(String privateKeyFile) {
+    private String logPrivateKeyIssueAndIgnore(String privateKeyFile) {
         log.error("Issue with private key file [" + privateKeyFile + "], skipping");
         return null;
     }
 
-    private Void addIdentity(JSch jsch, String privateKeyFile) throws JSchException {
+    private String addIdentity(JSch jsch, String privateKeyFile) throws JSchException {
         jsch.addIdentity(privateKeyFile);
-        return null;
+        return privateKeyFile;
     }
 
     @Override
