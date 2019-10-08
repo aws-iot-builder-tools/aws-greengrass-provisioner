@@ -1,10 +1,13 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Lambda stack for GGP
+Description: Stack for a partner to call GGP and build a Greengrass core in a customer's account
 
+Parameters:
+  PartnerAccountParameter: {Type: String, Description: The account ID of the partner account}
 Resources:
   GreengrassServiceRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: GreengrassServiceRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy
       AssumeRolePolicyDocument:
@@ -17,6 +20,7 @@ Resources:
   GreengrassCoreRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: GreengrassCoreRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/CloudWatchLogsFullAccess
         - arn:aws:iam::aws:policy/AWSGreengrassFullAccess
@@ -30,6 +34,7 @@ Resources:
   MinimalGreengrassCoreIoTPolicy:
     Type: AWS::IoT::Policy
     Properties:
+      PolicyName: MinimalGreengrassCoreIoTPolicy
       PolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -67,16 +72,17 @@ Resources:
           - Effect: Allow
             Action: greengrass:UpdateCoreDeploymentStatus
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*" ] ]
           - Effect: Allow
             Action:
               - greengrass:GetConnectivityInfo
               - greengrass:UpdateConnectivityInfo
             # Possibly limit to a core name prefix
             Resource: !Join [ "", [ "arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
-  ServiceRoleDetectionAndAssociationLambdaRole:
+  GreengrassProvisioningRole:
     Type: AWS::IAM::Role
     Properties:
+      RoleName: GreengrassProvisioningRole
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -84,43 +90,10 @@ Resources:
             Action: sts:AssumeRole
             Principal:
               Service: lambda.amazonaws.com
-      Policies:
-        - PolicyName: root
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              - Effect: Allow
-                Action:
-                  - greengrass:GetServiceRoleForAccount
-                Resource: "*"
-              - Effect: Allow
-                Action:
-                  - iam:PassRole
-                Resource: !GetAtt GreengrassServiceRole.Arn
-              - Effect: Allow
-                Action:
-                  - greengrass:AssociateServiceRoleToAccount
-                  - greengrass:DisassociateServiceRoleFromAccount
-                Resource: !Join ["", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/servicerole" ] ]
-              - Effect: Allow
-                Action:
-                  - logs:CreateLogGroup
-                  - logs:CreateLogStream
-                  - logs:PutLogEvents
-                  - logs:DescribeLogStreams
-                Resource: arn:aws:logs:*:*:*
-  ProvisionerLambdaRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/AdministratorAccess
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          - Effect: Allow
-            Action: sts:AssumeRole
+          - Action: sts:AssumeRole
+            Effect: Allow
             Principal:
-              Service: lambda.amazonaws.com
+              AWS: !Ref PartnerAccountParameter
       Policies:
         - PolicyName: root
           PolicyDocument:
@@ -139,24 +112,10 @@ Resources:
                   - logs:DescribeLogStreams
                 Resource: arn:aws:logs:*:*:*
               - Effect: Allow
-                Action: iam:GetRole
-                Resource: !GetAtt GreengrassServiceRole.Arn
-  ProvisionerLambdaFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code: ../build/libs/AwsGreengrassProvisioner.jar
-      Handler: com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda::handleRequest
-      Role: !GetAtt ProvisionerLambdaRole.Arn
-      Runtime: java8
-      Timeout: 900
-      MemorySize: 3008
-      Environment:
-        Variables:
-          ServiceRoleName: !Ref ServiceRoleAssociation
-  ProvisionerLambdaFunctionVersion:
-    Type: AWS::Lambda::Version
-    Properties:
-      FunctionName: !GetAtt ProvisionerLambdaFunction.Arn
+                Action:
+                  - iam:GetRole
+                  - iam:PassRole
+                Resource: !GetAtt GreengrassCoreRole.Arn
   ServiceRoleDetection:
     Type: Custom::ServiceRoleDetectionLambda
     Properties:
@@ -254,3 +213,38 @@ Resources:
       Handler: index.lambda_handler
       Timeout: 30
       Runtime: python3.6
+  ServiceRoleDetectionAndAssociationLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: lambda.amazonaws.com
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - greengrass:GetServiceRoleForAccount
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !GetAtt GreengrassServiceRole.Arn
+              - Effect: Allow
+                Action:
+                  - greengrass:AssociateServiceRoleToAccount
+                  - greengrass:DisassociateServiceRoleFromAccount
+                Resource: !Join ["", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/servicerole" ] ]
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource: arn:aws:logs:*:*:*
