@@ -67,13 +67,13 @@ Resources:
           - Effect: Allow
             Action: greengrass:UpdateCoreDeploymentStatus
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn%3Aaws%3Aiot%3A", !Ref "AWS::Region", "%3A", !Ref "AWS::AccountId", "%3Athing%2F*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
           - Effect: Allow
             Action:
               - greengrass:GetConnectivityInfo
               - greengrass:UpdateConnectivityInfo
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:iot:region:account-id:thing/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
   ServiceRoleDetectionAndAssociationLambdaRole:
     Type: AWS::IAM::Role
     Properties:
