@@ -2,7 +2,6 @@
 
 set -e
 
-STACK_NAME=$1
 GROUP_NAME=$1
 
 if [ -z "$GROUP_NAME" ];
@@ -14,7 +13,14 @@ fi
 echo "Extracting values from group $GROUP_NAME"
 OUTFILE=$GROUP_NAME.outfile.txt
 
-jq -r '.["certs/core.crt"]' $OUTFILE > $GROUP_NAME.core.crt
-jq -r '.["certs/core.key"]' $OUTFILE > $GROUP_NAME.core.key
-jq -r '.["certs/root.ca.pem"]' $OUTFILE > $GROUP_NAME.root.ca.pem
-jq -r '.["config/config.json"]' $OUTFILE > $GROUP_NAME.config.json
+rm -rf certs config
+mkdir certs
+mkdir config
+
+jq -r '.["certs/core.crt"]' $OUTFILE > certs/core.crt
+jq -r '.["certs/core.key"]' $OUTFILE > certs/core.key
+jq -r '.["certs/root.ca.pem"]' $OUTFILE > certs/root.ca.pem
+jq -r '.["config/config.json"]' $OUTFILE > config/config.json
+
+tar cjvf $GROUP_NAME.tar.bz2 certs config
+rm -rf certs config
