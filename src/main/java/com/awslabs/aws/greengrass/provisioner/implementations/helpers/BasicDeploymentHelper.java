@@ -436,7 +436,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (!optionalCoreCertificateArn.isPresent()) {
             // We need the certificate ARN at this point, fail if we don't have it
-            throw new RuntimeException("Core certificate information/ARN could not be found. If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option.");
+            StringBuilder message = new StringBuilder();
+            message.append("Core certificate information/ARN could not be found. ");
+            message.append("If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option. ");
+            message.append("If you'd like to reuse an existing certificate you must specify the [" + DeploymentArguments.LONG_CERTIFICATE_ARN_OPTION + "] option.");
+           
+            throw new RuntimeException(message.toString());
         }
 
         String coreCertificateArn = optionalCoreCertificateArn.get();
