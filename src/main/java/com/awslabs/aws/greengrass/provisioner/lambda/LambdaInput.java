@@ -1,14 +1,14 @@
 package com.awslabs.aws.greengrass.provisioner.lambda;
 
 public class LambdaInput {
-    public String accessKeyId;
-    public String secretKey;
-    public String sessionToken;
-    public String csr;
-    public String certificateArn;
-    public boolean serviceRoleExists;
-    public String coreRoleName;
-    public String corePolicyName;
-    public String groupName;
-    public String keyPath;
+    public String AccessKeyId;
+    public String SecretAccessKey;
+    public String SessionToken;
+    public String Csr;
+    public String CertificateArn;
+    public boolean ServiceRoleExists;
+    public String CoreRoleName;
+    public String CorePolicyName;
+    public String GroupName;
+    public String KeyPath;
 }

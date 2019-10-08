@@ -55,11 +55,11 @@ public class ProvisionerLambdaIT {
     public void shouldReturnAllExpectedKeysAndSupportPrivateKeyLocationSubstitution() {
         iotHelper.createPolicyIfNecessary(GREENGRASS_DEFAULT_POLICY_NAME, GREENGRASS_DEFAULT_POLICY);
         LambdaInput lambdaInput = new LambdaInput();
-        lambdaInput.groupName = ioHelper.getUuid();
-        lambdaInput.coreRoleName = "GreengrassCoreRole";
-        lambdaInput.serviceRoleExists = true;
-        lambdaInput.corePolicyName = GREENGRASS_DEFAULT_POLICY_NAME;
-        lambdaInput.keyPath = NEW_KEY_PATH;
+        lambdaInput.GroupName = ioHelper.getUuid();
+        lambdaInput.CoreRoleName = "GreengrassCoreRole";
+        lambdaInput.ServiceRoleExists = true;
+        lambdaInput.CorePolicyName = GREENGRASS_DEFAULT_POLICY_NAME;
+        lambdaInput.KeyPath = NEW_KEY_PATH;
 
         Map<String, String> oem = awsGreengrassProvisionerLambda.handleRequest(lambdaInput, null);
         Assert.assertThat(oem, IsMapContaining.hasKey("certs/core.crt"));
