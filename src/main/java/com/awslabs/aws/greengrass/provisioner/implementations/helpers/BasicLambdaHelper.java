@@ -174,49 +174,9 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (functionExists(groupFunctionName)) {
-            loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function code");
-
-            UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
-                    .functionName(groupFunctionName)
-                    .zipFile(functionCode.zipFile())
-                    .build();
-
-            // Make sure multiple threads don't do this at the same time
-            synchronized (this) {
-                Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                        lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
-            }
-
-            loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function configuration");
-
-            UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
-                    .functionName(groupFunctionName)
-                    .role(role.arn())
-                    .handler(functionConf.getHandlerName())
-                    .runtime(runtime)
-                    .build();
-
-            // Make sure multiple threads don't do this at the same time
-            synchronized (this) {
-                Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                        lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
-            }
+            updateExistingLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy);
         } else {
-            loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
-
-            CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
-                    .functionName(groupFunctionName)
-                    .role(role.arn())
-                    .handler(functionConf.getHandlerName())
-                    .code(functionCode)
-                    .runtime(runtime)
-                    .build();
-
-            // Make sure multiple threads don't do this at the same time
-            synchronized (this) {
-                Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                        lambdaClient.createFunction(createFunctionRequest));
-            }
+            createNewLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy);
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");
@@ -233,6 +193,54 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         return lambdaFunctionArnInfo;
+    }
+
+    private void updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+        loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function code");
+
+        UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
+                .functionName(groupFunctionName)
+                .zipFile(functionCode.zipFile())
+                .build();
+
+        // Make sure multiple threads don't do this at the same time
+        synchronized (this) {
+            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+                    lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
+        }
+
+        loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function configuration");
+
+        UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
+                .functionName(groupFunctionName)
+                .role(role.arn())
+                .handler(functionConf.getHandlerName())
+                .runtime(runtime)
+                .build();
+
+        // Make sure multiple threads don't do this at the same time
+        synchronized (this) {
+            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+                    lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
+        }
+    }
+
+    private void createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+        loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
+
+        CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
+                .functionName(groupFunctionName)
+                .role(role.arn())
+                .handler(functionConf.getHandlerName())
+                .code(functionCode)
+                .runtime(runtime)
+                .build();
+
+        // Make sure multiple threads don't do this at the same time
+        synchronized (this) {
+            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+                    lambdaClient.createFunction(createFunctionRequest));
+        }
     }
 
     @Override
