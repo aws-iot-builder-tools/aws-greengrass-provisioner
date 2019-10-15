@@ -11,6 +11,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -180,19 +181,24 @@ public class BasicLambdaHelper implements LambdaHelper {
         }
 
         loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");
+
+        return publishLambdaFunctionVersion(groupFunctionName);
+    }
+
+    @NotNull
+    @Override
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName) {
         PublishVersionResponse publishVersionResponse = publishFunctionVersion(groupFunctionName);
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
         String baseArn = qualifiedArn.replaceAll(":" + qualifier + "$", "");
 
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder()
+        return ImmutableLambdaFunctionArnInfo.builder()
                 .qualifier(qualifier)
                 .qualifiedArn(qualifiedArn)
                 .baseArn(baseArn)
                 .build();
-
-        return lambdaFunctionArnInfo;
     }
 
     private void updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
