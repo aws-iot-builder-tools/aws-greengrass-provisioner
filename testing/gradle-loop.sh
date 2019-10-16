@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+TYPE=$1
+
+if [ -z "$TYPE" ]; then
+  TYPE=compileJava
+fi
+
+echo Gradle loop of type [$TYPE]
+
 CWD=`basename "$PWD"`
 
 if [ "$CWD" == "testing" ]; then
@@ -14,7 +22,7 @@ do
     signature2=`find . -not -type d -ls | sort | shasum`
 
     if [[ $signature1 != $signature2 ]]; then
-        ./gradlew compileJava
+        ./gradlew $TYPE
 
         signature1=$signature2
     fi
