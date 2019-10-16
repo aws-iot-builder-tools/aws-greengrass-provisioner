@@ -391,6 +391,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private Function scrubFunctionForNoContainer(Function function) {
+        log.warn("Scrubbing function configuration for [" + function.functionArn() + "] to run without the Greengrass container");
+
         Function.Builder functionBuilder = function.toBuilder();
         FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
 
@@ -408,8 +410,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         functionConfigurationBuilder.environment(functionConfigurationEnvironmentBuilder.build());
 
         functionBuilder.functionConfiguration(functionConfigurationBuilder.build());
-
-        log.warn("Scrubbing function configuration for [" + function.functionArn() + "] to run without the Greengrass container");
 
         return functionBuilder.build();
     }
