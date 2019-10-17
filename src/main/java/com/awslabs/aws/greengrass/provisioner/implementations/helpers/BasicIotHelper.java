@@ -268,4 +268,13 @@ public class BasicIotHelper implements IotHelper {
         CreateCertificateFromCsrResponse certificateFromCsr = iotClient.createCertificateFromCsr(createCertificateFromCsrRequest);
         return certificateFromCsr.certificateArn();
     }
+
+    public String getCertificatePem(String coreCertificateArn) {
+        String certificateId = coreCertificateArn.split("/")[1];
+        DescribeCertificateRequest describeCertificateRequest = DescribeCertificateRequest.builder()
+                .certificateId(certificateId)
+                .build();
+        DescribeCertificateResponse describeCertificateResponse = iotClient.describeCertificate(describeCertificateRequest);
+        return describeCertificateResponse.certificateDescription().certificatePem();
+    }
 }
