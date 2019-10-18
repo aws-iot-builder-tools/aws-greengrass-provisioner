@@ -440,7 +440,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             message.append("Core certificate information/ARN could not be found. ");
             message.append("If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option. ");
             message.append("If you'd like to reuse an existing certificate you must specify the [" + DeploymentArguments.LONG_CERTIFICATE_ARN_OPTION + "] option.");
-           
+
             throw new RuntimeException(message.toString());
         }
 
@@ -815,6 +815,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 coreThingName,
                 coreThingArn,
                 optionalCoreKeysAndCertificate,
+                coreCertificateArn,
                 ggdConfs,
                 thingNames,
                 ggdPipDependencies,
@@ -1314,7 +1315,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return greengrassServiceRole;
     }
 
-    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
+    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, String coreCertificateArn, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
         if (deploymentArguments.scriptOutput) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
@@ -1346,6 +1347,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName()), coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName()), coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+        } else {
+            log.info("- Adding only client certificate to archive");
+            String coreCertificatePEM = iotHelper.getCertificatePem(coreCertificateArn);
+            installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getCorePublicCertificateName(), coreCertificatePEM.getBytes(), normalFilePermissions));
+            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName()), coreCertificatePEM.getBytes(), normalFilePermissions));
         }
 
         for (String thingName : thingNames) {

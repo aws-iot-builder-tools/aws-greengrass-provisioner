@@ -37,4 +37,6 @@ public interface IotHelper {
     CreateRoleAliasResponse createRoleAliasIfNecessary(Role serviceRole, String roleAlias);
 
     String signCsrAndReturnCertificateArn(String csr);
+
+    String getCertificatePem(String coreCertificateArn);
 }
