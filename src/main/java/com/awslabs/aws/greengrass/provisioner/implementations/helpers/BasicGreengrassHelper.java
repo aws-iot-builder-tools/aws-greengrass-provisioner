@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
 import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
@@ -675,7 +674,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createResourceDefinitionVersion(List<ModifiableFunctionConf> functionConfs) {
+    public String createResourceDefinitionVersion(List<FunctionConf> functionConfs) {
         // Log that the local resources from functions outside of the Greengrass container will be scrubbed
         functionConfs.stream()
                 .filter(functionConf -> !functionConf.isGreengrassContainer())
@@ -683,8 +682,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .forEach(this::logLocalResourcesScrubbed);
 
         // Get functions running in the Greengrass container
-        List<ModifiableFunctionConf> functionsInGreengrassContainer = functionConfs.stream()
-                .filter(ModifiableFunctionConf::isGreengrassContainer)
+        List<FunctionConf> functionsInGreengrassContainer = functionConfs.stream()
+                .filter(FunctionConf::isGreengrassContainer)
                 .collect(Collectors.toList());
 
         List<Resource> resources = new ArrayList<>();
@@ -712,7 +711,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResourceDefinitionResponse.latestVersionArn();
     }
 
-    private boolean functionConfHasLocalResources(ModifiableFunctionConf functionConf) {
+    private boolean functionConfHasLocalResources(FunctionConf functionConf) {
         if (functionConf.getLocalDeviceResources().size() > 0) {
             return true;
         }
@@ -818,7 +817,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localDeviceResource.getName(), localDeviceResource.getName());
     }
 
-    private void logLocalResourcesScrubbed(ModifiableFunctionConf functionConf) {
+    private void logLocalResourcesScrubbed(FunctionConf functionConf) {
         log.warn("Scrubbing local resources from [" + functionConf.getFunctionName() + "] because it is not running in the Greengrass container");
     }
 

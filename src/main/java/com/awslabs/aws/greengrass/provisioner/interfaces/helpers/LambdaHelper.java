@@ -1,34 +1,37 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import org.jetbrains.annotations.NotNull;
+import io.vavr.control.Either;
 import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.lambda.model.CreateFunctionResponse;
 import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
 import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
+import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
 
 import java.util.Optional;
 
 public interface LambdaHelper {
-    LambdaFunctionArnInfo buildAndCreateExecutableFunctionIfNecessary(FunctionConf functionConf, Role role);
+    ZipFilePathAndFunctionConf buildExecutableFunction(FunctionConf functionConf);
 
-    LambdaFunctionArnInfo buildAndCreateJavaFunctionIfNecessary(FunctionConf functionConf, Role role);
+    ZipFilePathAndFunctionConf buildJavaFunction(FunctionConf functionConf);
 
-    LambdaFunctionArnInfo buildAndCreatePython2FunctionIfNecessary(FunctionConf functionConf, Role role);
+    ZipFilePathAndFunctionConf buildPython2Function(FunctionConf functionConf);
 
-    LambdaFunctionArnInfo buildAndCreatePython3FunctionIfNecessary(FunctionConf functionConf, Role role);
+    ZipFilePathAndFunctionConf buildPython3Function(FunctionConf functionConf);
 
-    LambdaFunctionArnInfo buildAndCreateNodeFunctionIfNecessary(FunctionConf functionConf, Role role);
+    ZipFilePathAndFunctionConf buildNodeFunction(FunctionConf functionConf);
 
-    LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Role role, String zipFilePath);
+    Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConf functionConf, Role role, String zipFilePath);
 
-    @NotNull LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName);
+    LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName);
 
     PublishVersionResponse publishFunctionVersion(String groupFunctionName);
 
     boolean aliasExists(String functionName, String aliasName);
 
-    String createAlias(Optional<String> groupName, String baseFunctionName, String functionVersion, String aliasName);
+    String createAlias(String functionName, String functionVersion, String aliasName);
 
     String createAlias(FunctionConf functionConf, String functionVersion);
 

@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,14 +30,14 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     }
 
     @Override
-    public List<Subscription> connectFunctionsAndDevices(Map<Function, ModifiableFunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs) {
+    public List<Subscription> connectFunctionsAndDevices(Map<Function, FunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs) {
         List<Subscription> subscriptions = new ArrayList<>();
 
         Map<String, List<String>> arnsByOutputTopic = new HashMap<>();
         Map<String, List<String>> arnsByInputTopic = new HashMap<>();
 
         // For each function
-        for (Map.Entry<Function, ModifiableFunctionConf> entry : functionAliasToConfMap.entrySet()) {
+        for (Map.Entry<Function, FunctionConf> entry : functionAliasToConfMap.entrySet()) {
             // Loop through its output topics and put them in the map associated with their function ARN
             for (String outputTopic : entry.getValue().getOutputTopics()) {
                 arnsByOutputTopic.computeIfAbsent(outputTopic, k -> new ArrayList<>()).add(entry.getKey().functionArn());
@@ -96,10 +95,10 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     }
 
     @Override
-    public List<Subscription> connectFunctionsToShadows(Map<Function, ModifiableFunctionConf> functionAliasToConfMap) {
+    public List<Subscription> connectFunctionsToShadows(Map<Function, FunctionConf> functionAliasToConfMap) {
         List<Subscription> subscriptions = new ArrayList<>();
 
-        for (Map.Entry<Function, ModifiableFunctionConf> entry : functionAliasToConfMap.entrySet()) {
+        for (Map.Entry<Function, FunctionConf> entry : functionAliasToConfMap.entrySet()) {
             String functionArn = entry.getKey().functionArn();
             FunctionConf functionConf = entry.getValue();
 

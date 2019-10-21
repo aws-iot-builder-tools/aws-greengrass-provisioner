@@ -14,6 +14,10 @@ public abstract class LambdaFunctionArnInfo {
 
     public abstract String getQualifiedArn();
 
+    public String getGroupFunctionName() {
+        return getBaseArn().replaceAll("^.*:", "");
+    }
+
     // This is optional because when the function is first built the alias ARN is not available
     public abstract Optional<String> getAliasArn();
 }

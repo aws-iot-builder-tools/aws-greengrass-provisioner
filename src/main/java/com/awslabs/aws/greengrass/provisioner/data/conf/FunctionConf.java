@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-@Value.Modifiable
+@Value.Immutable
 public abstract class FunctionConf {
     public abstract Language getLanguage();
 
@@ -65,4 +65,8 @@ public abstract class FunctionConf {
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract Optional<File> getCfTemplate();
+
+    public String getGroupFunctionName() {
+        return String.join("-", getGroupName(), getFunctionName());
+    }
 }

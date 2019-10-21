@@ -211,7 +211,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     public void shouldFailToRedeployWithoutCreatingNewKeysWithPython3FunctionWithDocker() {
         // Make sure we have a fresh group, not one reused from another test
         Optional<String> name = Optional.of(ioHelper.getUuid());
-       
+
         // Expect that the first container does not return an error
         GenericContainer genericContainer = runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_ZERO);
 

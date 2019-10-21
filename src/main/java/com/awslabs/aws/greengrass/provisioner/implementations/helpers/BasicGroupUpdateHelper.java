@@ -230,7 +230,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         PublishVersionResponse publishVersionResponse = lambdaHelper.publishFunctionVersion(functionName);
 
-        String aliasArn = lambdaHelper.createAlias(Optional.empty(), functionName, publishVersionResponse.version(), functionAlias);
+        String aliasArn = lambdaHelper.createAlias(functionName, publishVersionResponse.version(), functionAlias);
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, groupName);
 

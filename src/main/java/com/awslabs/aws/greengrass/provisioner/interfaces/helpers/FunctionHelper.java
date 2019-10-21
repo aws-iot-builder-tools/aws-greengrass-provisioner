@@ -1,8 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -22,21 +21,19 @@ public interface FunctionHelper {
     String HTTPS = "https://";
     String FUNCTION_CONF = "function.conf";
 
-    List<ModifiableFunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode);
+    List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode);
 
-    List<BuildableFunction> getBuildableFunctions(List<ModifiableFunctionConf> functionConfs, Role lambdaRole);
+    void verifyFunctionsAreBuildable(List<FunctionConf> functionConfs);
 
-    Predicate<ModifiableFunctionConf> getPython2Predicate();
+    Predicate<FunctionConf> getPython2Predicate();
 
-    Predicate<ModifiableFunctionConf> getPython3Predicate();
+    Predicate<FunctionConf> getPython3Predicate();
 
-    Predicate<ModifiableFunctionConf> getNodePredicate();
+    Predicate<FunctionConf> getNodePredicate();
 
-    Predicate<ModifiableFunctionConf> getExecutablePredicate();
+    Predicate<FunctionConf> getExecutablePredicate();
 
-    Predicate<ModifiableFunctionConf> getJavaPredicate();
+    Predicate<FunctionConf> getJavaPredicate();
 
-    Map<Function, ModifiableFunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions);
-
-    void installJavaDependencies();
+    Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> buildableFunctions, Role lambdaRole);
 }
