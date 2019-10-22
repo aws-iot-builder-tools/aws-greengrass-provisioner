@@ -18,7 +18,7 @@ else
   echo "Manually specified branch $TAG"
 fi
 
-./build.sh
+./build-ggp-docker-container.sh
 
 docker tag aws-greengrass-provisioner timmattison/aws-greengrass-provisioner:$TAG
 docker push timmattison/aws-greengrass-provisioner:$TAG

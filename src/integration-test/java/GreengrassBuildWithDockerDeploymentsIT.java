@@ -37,7 +37,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     @BeforeClass
     public static void beforeClassSetup() throws IOException, InterruptedException {
         greengrassITShared = new GreengrassITShared();
-        ProcessBuilder processBuilder = new ProcessBuilder("/bin/bash", "-c", "./build.sh");
+        ProcessBuilder processBuilder = new ProcessBuilder("/bin/bash", "-c", "./build-ggp-docker-container.sh");
 
         Process process = processBuilder.start();
 

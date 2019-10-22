@@ -17,7 +17,7 @@ do
         TAG=`git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-'`
 
 	if [[ "$TAG" == "master" ]]; then
-            ./build.sh
+            ./build-ggp-docker-container.sh
             echo "Refusing to automatically push to master..."
 	    sleep 10
         else
