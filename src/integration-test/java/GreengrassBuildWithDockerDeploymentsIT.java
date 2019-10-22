@@ -50,8 +50,8 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         Thread stderrThread = new Thread(() -> stderr.lines().forEach(log::warn));
         stderrThread.start();
 
+        // This builds the Docker container for integration tests. It can take a few minutes if this is a fresh build.
         process.waitFor();
-        processBuilder.environment();
 
         ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
     }
@@ -98,30 +98,32 @@ public class GreengrassBuildWithDockerDeploymentsIT {
 
     private GenericContainer startAndGetContainer(String arguments) {
         String hostAwsCredentialsPath = String.join("/", getHome(), ".aws");
+        MountableFile hostAwsCredentialsMountableFile = MountableFile.forHostPath(new File(hostAwsCredentialsPath).toPath());
         String containerAwsCredentialsPath = "/root/.aws";
 
         String hostFoundationPath = getHostPath("foundation");
+        MountableFile hostFoundationMountableFile = MountableFile.forHostPath(new File(hostFoundationPath).toPath());
         String containerFoundationPath = "/foundation";
 
         String hostDeploymentsPath = getHostPath("deployments");
+        MountableFile hostDeploymentsMountableFile = MountableFile.forHostPath(new File(hostDeploymentsPath).toPath());
         String containerDeploymentsPath = "/deployments";
 
         String hostFunctionsPath = getHostPath("functions");
+        MountableFile hostFunctionsMountableFile = MountableFile.forHostPath(new File(hostFunctionsPath).toPath());
         String containerFunctionsPath = "/functions";
 
         String hostGgdsPath = getHostPath("ggds");
+        MountableFile hostGgdsMountableFile = MountableFile.forHostPath(new File(hostGgdsPath).toPath());
         String containerGgdsPath = "/ggds";
 
-        String baseCommand = "java -jar AwsGreengrassProvisioner.jar";
-        String command = baseCommand.join(" ", arguments);
-
         GenericContainer genericContainer = new GenericContainer<>(getContainerName())
-                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostAwsCredentialsPath).toPath()), containerAwsCredentialsPath)
-                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostFoundationPath).toPath()), containerFoundationPath)
-                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostDeploymentsPath).toPath()), containerDeploymentsPath)
-                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostFunctionsPath).toPath()), containerFunctionsPath)
-                .withCopyFileToContainer(MountableFile.forHostPath(new File(hostGgdsPath).toPath()), containerGgdsPath)
-                .withCommand(command);
+                .withCopyFileToContainer(hostAwsCredentialsMountableFile, containerAwsCredentialsPath)
+                .withCopyFileToContainer(hostFoundationMountableFile, containerFoundationPath)
+                .withCopyFileToContainer(hostDeploymentsMountableFile, containerDeploymentsPath)
+                .withCopyFileToContainer(hostFunctionsMountableFile, containerFunctionsPath)
+                .withCopyFileToContainer(hostGgdsMountableFile, containerGgdsPath)
+                .withCommand(arguments);
 
         genericContainer.start();
 

@@ -65,7 +65,7 @@ public class BasicArchiveHelper implements ArchiveHelper {
             BufferedInputStream origin = new BufferedInputStream(virtualTarEntry.getInputStream());
 
             int count;
-            byte data[] = new byte[2048];
+            byte[] data = new byte[2048];
 
             while ((count = origin.read(data)) != -1) {
                 out.write(data, 0, count);
