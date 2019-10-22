@@ -15,7 +15,7 @@ public interface ExecutorHelper {
 
         List<T> results = Try.of(() -> invokeAll(callables, executorService))
                 .onFailure(throwable -> logAndRethrow(log, throwable))
-                .andFinallyTry(() -> executorService.shutdown())
+                .andFinallyTry(executorService::shutdown)
                 .get();
 
         return results;
@@ -30,7 +30,10 @@ public interface ExecutorHelper {
         // Invoke all of the tasks and collect the results
         return executorService.invokeAll(callables)
                 .stream()
-                .map(future -> Try.of(() -> future.get()).get())
+                // Get the value from the future
+                .map(future -> Try.of(future::get))
+                // Get the value from the Try
+                .map(Try::get)
                 .collect(Collectors.toList());
     }
 
