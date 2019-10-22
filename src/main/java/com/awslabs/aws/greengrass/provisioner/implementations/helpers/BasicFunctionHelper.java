@@ -245,10 +245,6 @@ public class BasicFunctionHelper implements FunctionHelper {
             language = Language.NODEJS8_10;
         }
 
-        if (!config.getStringList("conf.dependencies").isEmpty()) {
-            throw new RuntimeException("Specifying dependencies in function.conf is no longer supported. Use requirements.txt for Python and package.json for NodeJS instead.");
-        }
-
         functionConf.setLanguage(language);
         functionConf.setEncodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
         functionConf.setFunctionName(config.getString("conf.functionName"));
