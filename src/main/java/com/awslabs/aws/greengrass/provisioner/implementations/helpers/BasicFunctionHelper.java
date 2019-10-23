@@ -305,7 +305,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         if (missingConfigFunctions.size() > 0) {
             log.error("Missing config files (this is NOT OK in normal deployments): ");
-            missingConfigFunctions.stream()
+            missingConfigFunctions
                     .forEach(functionName -> log.error("  " + functionName));
             throw new RuntimeException("Missing configuration files, can not build deployment");
         }
