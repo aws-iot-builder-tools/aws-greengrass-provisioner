@@ -22,7 +22,7 @@ public interface ExecutorHelper {
     }
 
     default void logAndRethrow(Logger log, Throwable throwable) {
-        log.error("Parallel task execution failed [" + throwable.getMessage() + "]");
+        log.error("Task execution failed [" + throwable.getMessage() + "]");
         throw new RuntimeException(throwable);
     }
 
