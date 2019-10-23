@@ -51,6 +51,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     GGConstants ggConstants;
     @Inject
     GGVariables ggVariables;
+    @Inject
+    IoHelper ioHelper;
 
     @Inject
     public BasicFunctionHelper() {
@@ -203,7 +205,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         if (enabledFunctions.size() > 0) {
             log.info("Enabled functions: ");
-            enabledFunctions.stream()
+            enabledFunctions
                     .forEach(functionName -> log.info("  " + functionName));
         } else {
             log.warn("NO FUNCTIONS ENABLED");
@@ -212,11 +214,14 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File configFile, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
         ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
+        // Store the config file info for later
+        functionConfBuilder.rawConfig(ioHelper.readFileAsString(configFile));
+
         // Load function config file and use function.defaults.conf as the fallback for missing values
-        Config config = ConfigFactory.parseFile(enabledFunctionConf);
+        Config config = ConfigFactory.parseFile(configFile);
         Config functionDefaults = ggVariables.getFunctionDefaults();
 
         // Make sure we use the calculated default function isolation mode as the default (forced to no container when using Docker)

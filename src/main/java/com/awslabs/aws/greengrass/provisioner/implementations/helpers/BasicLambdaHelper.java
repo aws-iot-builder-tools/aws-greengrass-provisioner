@@ -14,6 +14,7 @@ import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.gradle.tooling.BuildException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -25,9 +26,12 @@ import javax.inject.Inject;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 public class BasicLambdaHelper implements LambdaHelper {
+    public static final String GGP_FUNCTION_CONF = "GGP_FUNCTION_CONF";
     private static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
     private static final String ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT = "ZIP archive for executable/native function not present ";
     private final Logger log = LoggerFactory.getLogger(BasicLambdaHelper.class);
@@ -260,6 +264,12 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
+        Map<String, String> existingEnvironment = getFunctionEnvironment(groupFunctionName);
+
+        HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, existingEnvironment);
+
+        Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
+
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function configuration");
 
         UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
@@ -267,6 +277,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .runtime(runtime)
+                .environment(lambdaEnvironment)
                 .build();
 
         // Make sure multiple threads don't do this at the same time
@@ -276,8 +287,35 @@ public class BasicLambdaHelper implements LambdaHelper {
         }
     }
 
+    @NotNull
+    private HashMap<String, String> updateGgpFunctionConfInEnvironment(FunctionConf functionConf, Map<String, String> existingEnvironment) {
+        // The map that comes from the AWS SDK is unmodifiable. We need to make sure we return a regular hash map so we can modify it.
+        HashMap<String, String> newEnvironment = new HashMap<>(existingEnvironment);
+
+        // Overwrite any existing function configuration information
+        newEnvironment.put(GGP_FUNCTION_CONF, functionConf.getRawConfig());
+        return newEnvironment;
+    }
+
+    private Map<String, String> getFunctionEnvironment(String groupFunctionName) {
+        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
+                .functionName(groupFunctionName)
+                .build();
+
+        GetFunctionConfigurationResponse getFunctionConfigurationResponse = lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
+
+        return Optional.ofNullable(getFunctionConfigurationResponse.environment())
+                .map(EnvironmentResponse::variables)
+                .orElseGet(HashMap::new);
+    }
+
     private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
+
+        // No environment, start with an empty one
+        HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, new HashMap<>());
+
+        Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
 
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
                 .functionName(groupFunctionName)
@@ -285,6 +323,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .handler(functionConf.getHandlerName())
                 .code(functionCode)
                 .runtime(runtime)
+                .environment(lambdaEnvironment)
                 .build();
 
         // Make sure multiple threads don't do this at the same time

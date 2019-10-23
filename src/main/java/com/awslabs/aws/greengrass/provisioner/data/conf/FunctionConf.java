@@ -16,6 +16,8 @@ import java.util.Optional;
 
 @Value.Immutable
 public abstract class FunctionConf {
+    public abstract String getRawConfig();
+
     public abstract Language getLanguage();
 
     public abstract EncodingType getEncodingType();
