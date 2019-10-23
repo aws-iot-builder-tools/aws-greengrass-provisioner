@@ -32,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -48,8 +47,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     GradleBuilder gradleBuilder;
     @Inject
     ProcessHelper processHelper;
-    @Inject
-    ExecutorHelper executorHelper;
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -575,10 +572,8 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     @Override
     public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> functionConfList, Role lambdaRole) {
-        // Get a list of all the build steps we will call
-        List<Callable<ZipFilePathAndFunctionConf>> buildSteps = getCallableBuildSteps(functionConfList);
-
-        List<ZipFilePathAndFunctionConf> zipFilePathAndFunctionConfs = executorHelper.run(log, buildSteps);
+        // Build the functions
+        List<ZipFilePathAndFunctionConf> zipFilePathAndFunctionConfs = buildFunctions(functionConfList);
 
         // Were there any errors?
         List<ZipFilePathAndFunctionConf> errors = zipFilePathAndFunctionConfs.stream()
@@ -722,47 +717,48 @@ public class BasicFunctionHelper implements FunctionHelper {
         log.error("  Error [" + error.getError().get() + "]");
     }
 
-    private List<Callable<ZipFilePathAndFunctionConf>> getCallableBuildSteps(List<FunctionConf> functionConfList) {
-        List<Callable<ZipFilePathAndFunctionConf>> buildSteps = new ArrayList<>();
-
-        buildSteps.addAll(functionConfList.stream()
+    private List<ZipFilePathAndFunctionConf> buildFunctions(List<FunctionConf> functionConfList) {
+        List<ZipFilePathAndFunctionConf> executableFunctions = functionConfList.stream()
                 .filter(getExecutablePredicate())
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildExecutableFunction(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildExecutableFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(functionConfList.stream()
+        List<ZipFilePathAndFunctionConf> mavenFunctions = functionConfList.stream()
                 .filter(getJavaPredicate())
                 .filter(mavenBuilder::isMavenFunction)
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildJavaFunction(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildJavaFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(functionConfList.stream()
+        List<ZipFilePathAndFunctionConf> gradleFunctions = functionConfList.stream()
                 .filter(getJavaPredicate())
                 .filter(gradleBuilder::isGradleFunction)
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildJavaFunction(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildJavaFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(functionConfList.stream()
+        List<ZipFilePathAndFunctionConf> python2Functions = functionConfList.stream()
                 .filter(getPython2Predicate())
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildPython2Function(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildPython2Function)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(functionConfList.stream()
+        List<ZipFilePathAndFunctionConf> python3Functions = functionConfList.stream()
                 .filter(getPython3Predicate())
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildPython3Function(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildPython3Function)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(functionConfList.stream()
+        List<ZipFilePathAndFunctionConf> nodeFunctions = functionConfList.stream()
                 .filter(getNodePredicate())
-                .map(functionConf ->
-                        (Callable<ZipFilePathAndFunctionConf>) () -> lambdaHelper.buildNodeFunction(functionConf))
-                .collect(Collectors.toList()));
+                .map(lambdaHelper::buildNodeFunction)
+                .collect(Collectors.toList());
 
-        return buildSteps;
+        List<ZipFilePathAndFunctionConf> allFunctions = new ArrayList<>();
+
+        allFunctions.addAll(executableFunctions);
+        allFunctions.addAll(mavenFunctions);
+        allFunctions.addAll(gradleFunctions);
+        allFunctions.addAll(python2Functions);
+        allFunctions.addAll(python3Functions);
+        allFunctions.addAll(nodeFunctions);
+
+        return allFunctions;
     }
 }
