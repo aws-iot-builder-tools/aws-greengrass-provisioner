@@ -590,7 +590,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         // Create or update the functions as necessary
         List<Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse>> lambdaResponses = zipFilePathAndFunctionConfs.stream()
-                .map(zipFilePathAndFunctionConf -> lambdaHelper.createOrUpdateFunction(zipFilePathAndFunctionConf.getFunctionConf(), lambdaRole, zipFilePathAndFunctionConf.getZipFilePath()))
+                .map(zipFilePathAndFunctionConf -> lambdaHelper.createOrUpdateFunction(zipFilePathAndFunctionConf.getFunctionConf(), lambdaRole, zipFilePathAndFunctionConf.getZipFilePath().get()))
                 .collect(Collectors.toList());
 
         // Get the function ARNs
@@ -713,7 +713,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private void logErrorInLambdaFunction(ZipFilePathAndFunctionConf error) {
-        log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
+        log.error("- Function [" + error.getFunctionConf().getFunctionName() + "]");
         log.error("  Error [" + error.getError().get() + "]");
     }
 

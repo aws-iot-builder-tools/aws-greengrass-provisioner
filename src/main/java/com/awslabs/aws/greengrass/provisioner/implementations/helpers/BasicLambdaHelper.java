@@ -13,6 +13,7 @@ import io.vavr.control.Either;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.gradle.tooling.BuildException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -90,27 +91,41 @@ public class BasicLambdaHelper implements LambdaHelper {
     public ImmutableZipFilePathAndFunctionConf buildJavaFunction(FunctionConf functionConf) {
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
 
-        String zipFilePath;
-
         if (mavenBuilder.isMavenFunction(functionConf)) {
-            /*
+            return buildMavenFunction(functionConf);
+        } else if (gradleBuilder.isGradleFunction(functionConf)) {
+            return buildGradleFunction(functionConf);
+
+        } else {
+            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
+        }
+    }
+
+    private ImmutableZipFilePathAndFunctionConf buildGradleFunction(FunctionConf functionConf) {
+        try {
+            gradleBuilder.buildJavaFunctionIfNecessary(functionConf);
+
+            String zipFilePath = gradleBuilder.getArchivePath(functionConf);
+
+            return ImmutableZipFilePathAndFunctionConf.builder()
+                    .zipFilePath(zipFilePath)
+                    .functionConf(functionConf)
+                    .build();
+        } catch (BuildException e) {
+            return ImmutableZipFilePathAndFunctionConf.builder()
+                    .error(e.getLocalizedMessage())
+                    .functionConf(functionConf)
+                    .build();
+        }
+    }
+
+    private ImmutableZipFilePathAndFunctionConf buildMavenFunction(FunctionConf functionConf) {
+                    /*
             mavenBuilder.buildJavaFunctionIfNecessary(functionConf);
 
             zipFilePath = mavenBuilder.getArchivePath(functionConf);
             */
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
-        } else if (gradleBuilder.isGradleFunction(functionConf)) {
-            gradleBuilder.buildJavaFunctionIfNecessary(functionConf);
-
-            zipFilePath = gradleBuilder.getArchivePath(functionConf);
-        } else {
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
-        }
-
-        return ImmutableZipFilePathAndFunctionConf.builder()
-                .zipFilePath(zipFilePath)
-                .functionConf(functionConf)
-                .build();
+        throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
     }
 
     @Override

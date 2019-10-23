@@ -9,7 +9,7 @@ import java.util.Optional;
 public abstract class ZipFilePathAndFunctionConf {
     public abstract Optional<String> getError();
 
-    public abstract String getZipFilePath();
+    public abstract Optional<String> getZipFilePath();
 
     public abstract FunctionConf getFunctionConf();
 }
