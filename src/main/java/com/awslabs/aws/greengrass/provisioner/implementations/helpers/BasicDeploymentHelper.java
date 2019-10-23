@@ -644,11 +644,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Only try to create functions if we have a Lambda role
         if (optionalLambdaRole.isPresent()) {
+            Role lambdaRole = optionalLambdaRole.get();
+
             // Get a list of the buildable functions
             functionHelper.verifyFunctionsAreBuildable(functionConfs);
 
             // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
-            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(functionConfs, optionalLambdaRole.get());
+            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(functionConfs, lambdaRole);
         }
 
         ///////////////////////////////////////////
