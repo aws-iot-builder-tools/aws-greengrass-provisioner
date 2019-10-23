@@ -1,23 +1,29 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.*;
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.Language;
+import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.functions.*;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.typesafe.config.*;
+import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
+import software.amazon.awssdk.services.lambda.model.CreateFunctionResponse;
+import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -26,7 +32,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.*;
-import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -42,8 +47,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     GradleBuilder gradleBuilder;
     @Inject
     ProcessHelper processHelper;
-    @Inject
-    ExecutorHelper executorHelper;
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -171,19 +174,19 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public List<ModifiableFunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
 
         // Find any functions with missing config files
-        detectMissingConfigFiles(deploymentConf, enabledFunctionConfigFiles);
+        detectMissingConfigFiles(enabledFunctionConfigFiles);
 
         return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles, defaultFunctionIsolationMode);
     }
 
-    private List<ModifiableFunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<String> enabledFunctions = new ArrayList<>();
 
-        List<ModifiableFunctionConf> enabledFunctionConfObjects = new ArrayList<>();
+        List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
         if (!ggConstants.getFunctionDefaultsConf().exists()) {
             log.warn(ggConstants.getFunctionDefaultsConf().toString() + " does not exist.  All function configurations MUST contain all required values.");
@@ -192,7 +195,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         for (File enabledFunctionConf : enabledFunctionConfigFiles) {
             Path functionPath = getFunctionPath(enabledFunctionConf);
 
-            ModifiableFunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
 
             enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
@@ -209,8 +212,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private ModifiableFunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
-        ModifiableFunctionConf functionConf = ModifiableFunctionConf.create();
+    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
+        ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
         // Load function config file and use function.defaults.conf as the fallback for missing values
         Config config = ConfigFactory.parseFile(enabledFunctionConf);
@@ -230,7 +233,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Resolve the entire fallback config
         config = config.resolve();
 
-        functionConf.setBuildDirectory(functionPath);
+        functionConfBuilder.buildDirectory(functionPath);
 
         Language language = Language.valueOf(config.getString("conf.language"));
 
@@ -245,56 +248,56 @@ public class BasicFunctionHelper implements FunctionHelper {
             language = Language.NODEJS8_10;
         }
 
-        functionConf.setLanguage(language);
-        functionConf.setEncodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
-        functionConf.setFunctionName(config.getString("conf.functionName"));
-        functionConf.setGroupName(deploymentConf.getGroupName());
-        functionConf.setHandlerName(config.getString("conf.handlerName"));
-        functionConf.setAliasName(config.getString("conf.aliasName"));
-        functionConf.setMemorySizeInKb(config.getInt("conf.memorySizeInKb"));
-        functionConf.setIsPinned(config.getBoolean("conf.pinned"));
-        functionConf.setTimeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
-        functionConf.setFromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
-        functionConf.setToCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
-        functionConf.setOutputTopics(config.getStringList("conf.outputTopics"));
-        functionConf.setInputTopics(config.getStringList("conf.inputTopics"));
-        functionConf.setIsAccessSysFs(config.getBoolean("conf.accessSysFs"));
-        functionConf.setIsGreengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
-        functionConf.setUid(config.getInt("conf.uid"));
-        functionConf.setGid(config.getInt("conf.gid"));
+        functionConfBuilder.language(language);
+        functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
+        functionConfBuilder.functionName(config.getString("conf.functionName"));
+        functionConfBuilder.groupName(deploymentConf.getGroupName());
+        functionConfBuilder.handlerName(config.getString("conf.handlerName"));
+        functionConfBuilder.aliasName(config.getString("conf.aliasName"));
+        functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
+        functionConfBuilder.isPinned(config.getBoolean("conf.pinned"));
+        functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
+        functionConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
+        functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
+        functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
+        functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
+        functionConfBuilder.isAccessSysFs(config.getBoolean("conf.accessSysFs"));
+        functionConfBuilder.isGreengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
+        functionConfBuilder.uid(config.getInt("conf.uid"));
+        functionConfBuilder.gid(config.getInt("conf.gid"));
 
-        setLocalDeviceResourcesConfig(functionConf, config);
-        setLocalVolumeResourcesConfig(functionConf, config);
-        setLocalSageMakerResourcesConfig(functionConf, config);
-        setLocalS3ResourcesConfig(functionConf, config);
+        setLocalDeviceResourcesConfig(functionConfBuilder, config);
+        setLocalVolumeResourcesConfig(functionConfBuilder, config);
+        setLocalSageMakerResourcesConfig(functionConfBuilder, config);
+        setLocalS3ResourcesConfig(functionConfBuilder, config);
 
-        List<String> connectedShadows = getConnectedShadows(functionConf, config);
-        functionConf.setConnectedShadows(connectedShadows);
+        List<String> connectedShadows = getConnectedShadows(functionConfBuilder, config);
+        functionConfBuilder.connectedShadows(connectedShadows);
 
         // Use the environment variables from the deployment and then add the environment variables from the function
-        functionConf.putAllEnvironmentVariables(deploymentConf.getEnvironmentVariables());
-        setEnvironmentVariables(functionConf, config);
-        addConnectedShadowsToEnvironment(functionConf, connectedShadows);
+        functionConfBuilder.putAllEnvironmentVariables(deploymentConf.getEnvironmentVariables());
+        setEnvironmentVariablesFromConf(functionConfBuilder, config);
+        addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
 
         File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
 
         if (cfTemplate.exists()) {
-            functionConf.setCfTemplate(cfTemplate);
+            functionConfBuilder.cfTemplate(cfTemplate);
         }
 
-        return functionConf;
+        return functionConfBuilder.build();
     }
 
-    private void addConnectedShadowsToEnvironment(ModifiableFunctionConf functionConf, List<String> connectedShadows) {
+    private void addConnectedShadowsToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> connectedShadows) {
         int index = 0;
 
         for (String connectedShadow : connectedShadows) {
-            functionConf.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadow);
+            functionConfBuilder.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadow);
             index++;
         }
     }
 
-    private void detectMissingConfigFiles(DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles) {
+    private void detectMissingConfigFiles(List<File> enabledFunctionConfigFiles) {
         List<String> missingConfigFunctions = enabledFunctionConfigFiles.stream()
                 .filter(not(File::exists))
                 .map(File::getPath)
@@ -315,22 +318,22 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfigFiles;
     }
 
-    private List<String> getConnectedShadows(ModifiableFunctionConf functionConf, Config config) {
+    private List<String> getConnectedShadows(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         List<String> connectedShadows = config.getStringList("conf.connectedShadows");
 
         if (connectedShadows.size() == 0) {
-            log.debug("No connected shadows specified for [" + functionConf.getFunctionName() + "] function");
+            log.debug("No connected shadows specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
             return new ArrayList<>();
         }
 
         return connectedShadows;
     }
 
-    private void setLocalDeviceResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
+    private void setLocalDeviceResourcesConfig(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localDeviceResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local device resources specified for [" + functionConf.getFunctionName() + "] function");
+            log.debug("No local device resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
             return;
         }
 
@@ -347,15 +350,15 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .path(path)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
-            functionConf.addLocalDeviceResources(localDeviceResource);
+            functionConfBuilder.addLocalDeviceResources(localDeviceResource);
         }
     }
 
-    private void setLocalVolumeResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
+    private void setLocalVolumeResourcesConfig(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localVolumeResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local volume resources specified for [" + functionConf.getFunctionName() + "] function");
+            log.debug("No local volume resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
             return;
         }
 
@@ -377,15 +380,15 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .destinationPath(destinationPath)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
-            functionConf.addLocalVolumeResources(localVolumeResource);
+            functionConfBuilder.addLocalVolumeResources(localVolumeResource);
         }
     }
 
-    private void setLocalS3ResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
+    private void setLocalS3ResourcesConfig(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localS3Resources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local S3 resources specified for [" + functionConf.getFunctionName() + "] function");
+            log.debug("No local S3 resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
             return;
         }
 
@@ -403,15 +406,15 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .path(path)
                     .build();
 
-            functionConf.addLocalS3Resources(localS3Resource);
+            functionConfBuilder.addLocalS3Resources(localS3Resource);
         }
     }
 
-    private void setLocalSageMakerResourcesConfig(ModifiableFunctionConf functionConf, Config config) {
+    private void setLocalSageMakerResourcesConfig(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localSageMakerResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local SageMaker resources specified for [" + functionConf.getFunctionName() + "] function");
+            log.debug("No local SageMaker resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
             return;
         }
 
@@ -449,7 +452,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .path(path)
                     .build();
 
-            functionConf.addLocalSageMakerResources(localSageMakerResource);
+            functionConfBuilder.addLocalSageMakerResources(localSageMakerResource);
         }
     }
 
@@ -470,7 +473,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .orElseThrow(() -> new RuntimeException("Name cannot be empty"));
     }
 
-    private void setEnvironmentVariables(ModifiableFunctionConf functionConf, Config config) {
+    private void setEnvironmentVariablesFromConf(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
         ConfigObject configObject = config.getObject("conf.environmentVariables");
 
         if (configObject.size() == 0) {
@@ -480,66 +483,54 @@ public class BasicFunctionHelper implements FunctionHelper {
         Config tempConfig = configObject.toConfig();
 
         for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
-            functionConf.putEnvironmentVariables(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
+            functionConfBuilder.putEnvironmentVariables(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
         }
     }
 
     @Override
-    public List<BuildableFunction> getBuildableFunctions(List<ModifiableFunctionConf> functionConfs, Role lambdaRole) {
-        List<BuildableJavaMavenFunction> javaMavenFunctions = functionConfs.stream()
+    public void verifyFunctionsAreBuildable(List<FunctionConf> functionConfs) {
+        List<FunctionConf> javaMavenFunctions = functionConfs.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
-                .map(functionConf -> new BuildableJavaMavenFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildableJavaGradleFunction> javaGradleFunctions = functionConfs.stream()
+        List<FunctionConf> javaGradleFunctions = functionConfs.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> gradleBuilder.isGradleFunction(functionConf))
-                .map(functionConf -> new BuildableJavaGradleFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildablePython2Function> python2Functions = functionConfs.stream()
+        List<FunctionConf> python2Functions = functionConfs.stream()
                 .filter(getPython2Predicate())
-                .map(functionConf -> new BuildablePython2Function(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildablePython3Function> python3Functions = functionConfs.stream()
+        List<FunctionConf> python3Functions = functionConfs.stream()
                 .filter(getPython3Predicate())
-                .map(functionConf -> new BuildablePython3Function(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildableNodeFunction> nodeFunctions = functionConfs.stream()
+        List<FunctionConf> nodeFunctions = functionConfs.stream()
                 .filter(getNodePredicate())
-                .map(functionConf -> new BuildableNodeFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildableExecutableFunction> executableFunctions = functionConfs.stream()
+        List<FunctionConf> executableFunctions = functionConfs.stream()
                 .filter(getExecutablePredicate())
-                .map(functionConf -> new BuildableExecutableFunction(functionConf, lambdaRole))
                 .collect(Collectors.toList());
 
-        List<BuildableFunction> allFunctions = new ArrayList<>();
-        allFunctions.addAll(javaMavenFunctions);
-        allFunctions.addAll(javaGradleFunctions);
-        allFunctions.addAll(python2Functions);
-        allFunctions.addAll(python3Functions);
-        allFunctions.addAll(nodeFunctions);
-        allFunctions.addAll(executableFunctions);
+        List<FunctionConf> allBuildableFunctions = new ArrayList<>();
+        allBuildableFunctions.addAll(javaMavenFunctions);
+        allBuildableFunctions.addAll(javaGradleFunctions);
+        allBuildableFunctions.addAll(python2Functions);
+        allBuildableFunctions.addAll(python3Functions);
+        allBuildableFunctions.addAll(nodeFunctions);
+        allBuildableFunctions.addAll(executableFunctions);
 
-        if (allFunctions.size() != functionConfs.size()) {
+        if (allBuildableFunctions.size() != functionConfs.size()) {
             // If there is a mismatch here it means that some of the functions are not able to be built
-            List<FunctionConf> builtFunctionConfs = allFunctions.stream()
-                    .map(BuildableFunction::getFunctionConf)
-                    .collect(Collectors.toList());
-
             List<FunctionConf> functionsNotBuilt = functionConfs.stream()
-                    .filter(functionConf -> !builtFunctionConfs.contains(functionConf))
+                    .filter(functionConf -> !allBuildableFunctions.contains(functionConf))
                     .collect(Collectors.toList());
 
             throwRuntimeExceptionForNonBuildableFunctions(functionsNotBuilt);
         }
-
-        return allFunctions;
     }
 
     private void throwRuntimeExceptionForNonBuildableFunctions(List<FunctionConf> functionsNotBuilt) {
@@ -552,43 +543,41 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getPython2Predicate() {
+    public Predicate<FunctionConf> getPython2Predicate() {
         return functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getPython3Predicate() {
+    public Predicate<FunctionConf> getPython3Predicate() {
         return functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getNodePredicate() {
-        Predicate<ModifiableFunctionConf> node610Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS6_10);
-        Predicate<ModifiableFunctionConf> node810Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS8_10);
+    public Predicate<FunctionConf> getNodePredicate() {
+        Predicate<FunctionConf> node610Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS6_10);
+        Predicate<FunctionConf> node810Predicate = functionConf -> functionConf.getLanguage().equals(Language.NODEJS8_10);
 
         return node610Predicate.or(node810Predicate);
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getExecutablePredicate() {
+    public Predicate<FunctionConf> getExecutablePredicate() {
         return functionConf -> functionConf.getLanguage().equals(Language.EXECUTABLE);
     }
 
     @Override
-    public Predicate<ModifiableFunctionConf> getJavaPredicate() {
+    public Predicate<FunctionConf> getJavaPredicate() {
         return functionConf -> functionConf.getLanguage().equals(Language.JAVA8);
     }
 
     @Override
-    public Map<Function, ModifiableFunctionConf> buildFunctionsAndGenerateMap(List<BuildableFunction> buildableFunctions) {
-        // Get a list of all the build steps we will call
-        List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = getCallableBuildSteps(buildableFunctions);
-
-        List<LambdaFunctionArnInfoAndFunctionConf> lambdaFunctionArnInfoAndFunctionConfs = executorHelper.run(log, buildSteps);
+    public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> functionConfList, Role lambdaRole) {
+        // Build the functions
+        List<ZipFilePathAndFunctionConf> zipFilePathAndFunctionConfs = buildFunctions(functionConfList);
 
         // Were there any errors?
-        List<LambdaFunctionArnInfoAndFunctionConf> errors = lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .filter(lambdaFunctionArnInfoAndFunctionConf -> lambdaFunctionArnInfoAndFunctionConf.getError().isPresent())
+        List<ZipFilePathAndFunctionConf> errors = zipFilePathAndFunctionConfs.stream()
+                .filter(immutableZipFilePathAndFunctionConf -> immutableZipFilePathAndFunctionConf.getError().isPresent())
                 .collect(Collectors.toList());
 
         if (errors.size() != 0) {
@@ -599,206 +588,177 @@ public class BasicFunctionHelper implements FunctionHelper {
             System.exit(1);
         }
 
+        // Create or update the functions as necessary
+        List<Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse>> lambdaResponses = zipFilePathAndFunctionConfs.stream()
+                .map(zipFilePathAndFunctionConf -> lambdaHelper.createOrUpdateFunction(zipFilePathAndFunctionConf.getFunctionConf(), lambdaRole, zipFilePathAndFunctionConf.getZipFilePath().get()))
+                .collect(Collectors.toList());
+
+        // Get the function ARNs
+        List<String> functionArns = lambdaResponses.stream()
+                .map(either -> either.fold(CreateFunctionResponse::functionArn, UpdateFunctionConfigurationResponse::functionArn))
+                .collect(Collectors.toList());
+
+        // Create a map of the function ARN to function conf
+        Map<String, FunctionConf> functionArnToFunctionConfMap = getFunctionArnToFunctionConfMap(functionConfList, functionArns);
+
         // Convert the alias ARNs into variables to be put in the environment of each function
-        Map<String, String> environmentVariablesForLocalLambdas = lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .map(lambdaFunctionArnInfoAndFunctionConf -> getNameToAliasEntry(lambdaFunctionArnInfoAndFunctionConf))
+        Map<String, String> environmentVariablesForLocalLambdas = functionArnToFunctionConfMap.entrySet().stream()
+                .map(functionArnAndFunctionConf -> getNameToAliasEntry(functionArnAndFunctionConf.getValue(), functionArnAndFunctionConf.getKey()))
                 .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
 
-        // Put the environment variables into each environment
-        lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .forEach(lambdaFunctionArnInfoAndFunctionConf -> setEnvironmentVariables(environmentVariablesForLocalLambdas, lambdaFunctionArnInfoAndFunctionConf));
+        // Put the environment variables into each environment and create new function confs for them all
+        functionConfList = functionConfList.stream()
+                .map(functionConf -> setEnvironmentVariables(environmentVariablesForLocalLambdas, functionConf))
+                .collect(Collectors.toList());
 
-        Map<Function, ModifiableFunctionConf> functionToConfMap = new HashMap<>();
+        // Publish all of the functions to Lambda
+        List<LambdaFunctionArnInfo> lambdaFunctionArnInfoList = functionConfList.stream()
+                .map(FunctionConf::getGroupFunctionName)
+                .map(lambdaHelper::publishLambdaFunctionVersion)
+                .collect(Collectors.toList());
+
+        // Create aliases for all of the functions in Lambda
+        Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap = getLambdaFunctionArnToFunctionConfMap(lambdaFunctionArnInfoList, functionConfList);
+
+        List<String> aliases = lambdaFunctionArnToFunctionConfMap.entrySet().stream()
+                .map(entry -> lambdaHelper.createAlias(entry.getValue(), entry.getKey().getQualifier()))
+                .collect(Collectors.toList());
+
+        lambdaFunctionArnToFunctionConfMap = addAliasesToMap(lambdaFunctionArnToFunctionConfMap, aliases);
 
         // Build the function models
-        lambdaFunctionArnInfoAndFunctionConfs.stream()
-                .forEach(lambdaFunctionArnInfoAndFunctionConf -> putFunctionConfIntoFunctionConfMap(functionToConfMap, lambdaFunctionArnInfoAndFunctionConf));
+        Map<Function, FunctionConf> functionToConfMap = lambdaFunctionArnToFunctionConfMap.entrySet().stream()
+                .map(entry -> buildGreengrassFunctionModel(entry.getKey(), entry.getValue()))
+                .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
 
         return functionToConfMap;
     }
 
-    private void putFunctionConfIntoFunctionConfMap(Map<Function, ModifiableFunctionConf> functionToConfMap, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
-        ModifiableFunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
-        functionToConfMap.put(greengrassHelper.buildFunctionModel(lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getAliasArn().get(), functionConf), functionConf);
+    private Map<LambdaFunctionArnInfo, FunctionConf> addAliasesToMap(Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap, List<String> aliases) {
+        return lambdaFunctionArnToFunctionConfMap.entrySet().stream()
+                .map(entry -> addAliasToMap(entry, aliases))
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    private void setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
-        ModifiableFunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+    private Map.Entry<LambdaFunctionArnInfo, FunctionConf> addAliasToMap(Map.Entry<LambdaFunctionArnInfo, FunctionConf> entry, List<String> aliases) {
+        String alias = findStringThatStartsWith(aliases, entry.getKey().getBaseArn());
+
+        LambdaFunctionArnInfo updatedLambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(entry.getKey())
+                .aliasArn(alias)
+                .build();
+
+        return new AbstractMap.SimpleEntry<>(updatedLambdaFunctionArnInfo, entry.getValue());
+    }
+
+    @NotNull
+    private Map<String, FunctionConf> getFunctionArnToFunctionConfMap(List<FunctionConf> functionConfList, List<String> functionArns) {
+        return functionConfList.stream()
+                .collect(Collectors.toMap(functionConf -> findStringThatEndsWith(functionArns, functionConf.getGroupFunctionName()), functionConf -> functionConf));
+    }
+
+    @NotNull
+    private Map<LambdaFunctionArnInfo, FunctionConf> getLambdaFunctionArnToFunctionConfMap(List<LambdaFunctionArnInfo> lambdaFunctionArnInfoList, List<FunctionConf> functionConfList) {
+        return functionConfList.stream()
+                .collect(Collectors.toMap(functionConf -> findLambdaFunctionArnInfoThatEndsWith(lambdaFunctionArnInfoList, functionConf.getGroupFunctionName()), functionConf -> functionConf));
+    }
+
+    private String findStringThatEndsWith(List<String> strings, String endsWithString) {
+        // This will throw an exception if the value isn't found
+        return strings.stream()
+                .filter(string -> string.endsWith(endsWithString))
+                .findFirst()
+                .get();
+    }
+
+    private String findStringThatStartsWith(List<String> strings, String startsWithString) {
+        // This will throw an exception if the value isn't found
+        return strings.stream()
+                .filter(string -> string.startsWith(startsWithString))
+                .findFirst()
+                .get();
+    }
+
+    private LambdaFunctionArnInfo findLambdaFunctionArnInfoThatEndsWith(List<LambdaFunctionArnInfo> lambdaFunctionArnInfoList, String endsWithString) {
+        // This will throw an exception if the value isn't found
+        return lambdaFunctionArnInfoList.stream()
+                .filter(lambdaFunctionArnInfo -> lambdaFunctionArnInfo.getBaseArn().endsWith(endsWithString))
+                .findFirst()
+                .get();
+    }
+
+    private AbstractMap.SimpleEntry<Function, FunctionConf> buildGreengrassFunctionModel(LambdaFunctionArnInfo lambdaFunctionArnInfo, FunctionConf functionConf) {
+        Function function = greengrassHelper.buildFunctionModel(lambdaFunctionArnInfo.getAliasArn().get(), functionConf);
+
+        return new AbstractMap.SimpleEntry<>(function, functionConf);
+    }
+
+    private FunctionConf setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, FunctionConf functionConf) {
         Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
         environmentVariables.putAll(environmentVariablesForLocalLambdas);
-        functionConf.putAllEnvironmentVariables(environmentVariables);
+        ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder().from(functionConf);
+
+        // Remove any duplicate keys. Values specified in the function.conf take precedence over generated values
+        functionConf.getEnvironmentVariables().keySet()
+                .forEach(environmentVariables::remove);
+
+        functionConfBuilder.putAllEnvironmentVariables(environmentVariables);
+        return functionConfBuilder.build();
     }
 
-    private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(LambdaFunctionArnInfoAndFunctionConf lambdaFunctionArnInfoAndFunctionConf) {
-        FunctionConf functionConf = lambdaFunctionArnInfoAndFunctionConf.getFunctionConf();
+    private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(FunctionConf functionConf, String functionArn) {
         String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
-        String aliasArn = lambdaFunctionArnInfoAndFunctionConf.getLambdaFunctionArnInfo().getQualifiedArn();
+        String aliasArn = String.join(":", functionArn, functionConf.getAliasName());
 
         return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
     }
 
-    private void logErrorInLambdaFunction(LambdaFunctionArnInfoAndFunctionConf error) {
-        log.error("Function [" + error.getFunctionConf().getFunctionName() + "]");
+    private void logErrorInLambdaFunction(ZipFilePathAndFunctionConf error) {
+        log.error("- Function [" + error.getFunctionConf().getFunctionName() + "]");
         log.error("  Error [" + error.getError().get() + "]");
     }
 
-    private List<Callable<LambdaFunctionArnInfoAndFunctionConf>> getCallableBuildSteps(List<BuildableFunction> buildableFunctions) {
-        List<Callable<LambdaFunctionArnInfoAndFunctionConf>> buildSteps = new ArrayList<>();
+    private List<ZipFilePathAndFunctionConf> buildFunctions(List<FunctionConf> functionConfList) {
+        List<ZipFilePathAndFunctionConf> executableFunctions = functionConfList.stream()
+                .filter(getExecutablePredicate())
+                .map(lambdaHelper::buildExecutableFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildableExecutableFunction)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableExecutableFunction) buildableFunction))
-                .collect(Collectors.toList()));
+        List<ZipFilePathAndFunctionConf> mavenFunctions = functionConfList.stream()
+                .filter(getJavaPredicate())
+                .filter(mavenBuilder::isMavenFunction)
+                .map(lambdaHelper::buildJavaFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableJavaMavenFunction) buildableFunction))
-                .collect(Collectors.toList()));
+        List<ZipFilePathAndFunctionConf> gradleFunctions = functionConfList.stream()
+                .filter(getJavaPredicate())
+                .filter(gradleBuilder::isGradleFunction)
+                .map(lambdaHelper::buildJavaFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildableJavaGradleFunction)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableJavaGradleFunction) buildableFunction))
-                .collect(Collectors.toList()));
+        List<ZipFilePathAndFunctionConf> python2Functions = functionConfList.stream()
+                .filter(getPython2Predicate())
+                .map(lambdaHelper::buildPython2Function)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildablePython2Function)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildablePython2Function) buildableFunction))
-                .collect(Collectors.toList()));
+        List<ZipFilePathAndFunctionConf> python3Functions = functionConfList.stream()
+                .filter(getPython3Predicate())
+                .map(lambdaHelper::buildPython3Function)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildablePython3Function)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildablePython3Function) buildableFunction))
-                .collect(Collectors.toList()));
+        List<ZipFilePathAndFunctionConf> nodeFunctions = functionConfList.stream()
+                .filter(getNodePredicate())
+                .map(lambdaHelper::buildNodeFunction)
+                .collect(Collectors.toList());
 
-        buildSteps.addAll(buildableFunctions.stream()
-                .filter(buildableFunction -> buildableFunction instanceof BuildableNodeFunction)
-                .map(buildableFunction ->
-                        (Callable<LambdaFunctionArnInfoAndFunctionConf>) () -> createFunction((BuildableNodeFunction) buildableFunction))
-                .collect(Collectors.toList()));
-        return buildSteps;
-    }
+        List<ZipFilePathAndFunctionConf> allFunctions = new ArrayList<>();
 
-    @Override
-    public void installJavaDependencies() {
-        mavenBuilder.installDependencies();
-    }
+        allFunctions.addAll(executableFunctions);
+        allFunctions.addAll(mavenFunctions);
+        allFunctions.addAll(gradleFunctions);
+        allFunctions.addAll(python2Functions);
+        allFunctions.addAll(python3Functions);
+        allFunctions.addAll(nodeFunctions);
 
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableJavaMavenFunction buildableJavaMavenFunction) {
-        ModifiableFunctionConf functionConf = buildableJavaMavenFunction.getFunctionConf();
-        Role lambdaRole = buildableJavaMavenFunction.getLambdaRole();
-
-        log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
-        String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
-    }
-
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableExecutableFunction buildableExecutableFunction) {
-        ModifiableFunctionConf functionConf = buildableExecutableFunction.getFunctionConf();
-        Role lambdaRole = buildableExecutableFunction.getLambdaRole();
-
-        log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateExecutableFunctionIfNecessary(functionConf, lambdaRole);
-        String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
-    }
-
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableJavaGradleFunction buildableJavaGradleFunction) {
-        ModifiableFunctionConf functionConf = buildableJavaGradleFunction.getFunctionConf();
-        Role lambdaRole = buildableJavaGradleFunction.getLambdaRole();
-
-        log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateJavaFunctionIfNecessary(functionConf, lambdaRole);
-        String javaAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(javaAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
-    }
-
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePython2Function buildablePython2Function) {
-        ModifiableFunctionConf functionConf = buildablePython2Function.getFunctionConf();
-        Role lambdaRole = buildablePython2Function.getLambdaRole();
-
-        log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePython2FunctionIfNecessary(functionConf, lambdaRole);
-
-        if (lambdaFunctionArnInfo.getError().isPresent()) {
-            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                    .functionConf(functionConf)
-                    .error(lambdaFunctionArnInfo.getError())
-                    .build();
-        }
-
-        String pythonAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(pythonAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
-    }
-
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildablePython3Function buildablePython3Function) {
-        ModifiableFunctionConf functionConf = buildablePython3Function.getFunctionConf();
-        Role lambdaRole = buildablePython3Function.getLambdaRole();
-
-        log.info("Creating Python function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreatePython3FunctionIfNecessary(functionConf, lambdaRole);
-
-        if (lambdaFunctionArnInfo.getError().isPresent()) {
-            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                    .functionConf(functionConf)
-                    .error(lambdaFunctionArnInfo.getError())
-                    .build();
-        }
-
-        String pythonAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(pythonAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
-    }
-
-    private LambdaFunctionArnInfoAndFunctionConf createFunction(BuildableNodeFunction buildableNodeFunction) {
-        ModifiableFunctionConf functionConf = buildableNodeFunction.getFunctionConf();
-        Role lambdaRole = buildableNodeFunction.getLambdaRole();
-
-        log.info("Creating Node function [" + functionConf.getFunctionName() + "]");
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = lambdaHelper.buildAndCreateNodeFunctionIfNecessary(functionConf, lambdaRole);
-
-        if (lambdaFunctionArnInfo.getError().isPresent()) {
-            return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                    .functionConf(functionConf)
-                    .error(lambdaFunctionArnInfo.getError())
-                    .build();
-        }
-
-        String nodeAliasArn = lambdaHelper.createAlias(functionConf, lambdaFunctionArnInfo.getQualifier());
-        lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(lambdaFunctionArnInfo).aliasArn(nodeAliasArn).build();
-
-        return ImmutableLambdaFunctionArnInfoAndFunctionConf.builder()
-                .lambdaFunctionArnInfo(lambdaFunctionArnInfo)
-                .functionConf(functionConf)
-                .build();
+        return allFunctions;
     }
 }

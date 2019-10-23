@@ -32,21 +32,13 @@ public class BasicGradleBuilder implements GradleBuilder {
 
     @Override
     public boolean isGradleFunction(FunctionConf functionConf) {
-        if (new File(getGradleBuildPath(functionConf) + "/" + BUILD_GRADLE).exists()) {
-            // Found build.gradle in the expected location, assume this is a gradle function
-            return true;
-        }
-
-        return false;
+        // If we find build.gradle in the expected location, assume this is a gradle function
+        return new File(getGradleBuildPath(functionConf) + "/" + BUILD_GRADLE).exists();
     }
 
     @Override
     public boolean isGradleFunction(Path path) {
-        if (path.resolve(BUILD_GRADLE).toFile().exists()) {
-            return true;
-        }
-
-        return false;
+        return path.resolve(BUILD_GRADLE).toFile().exists();
     }
 
     @Override

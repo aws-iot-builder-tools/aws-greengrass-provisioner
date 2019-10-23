@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
+import com.awslabs.aws.greengrass.provisioner.data.ImmutableZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.Language;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
@@ -8,9 +9,11 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
+import io.vavr.control.Either;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.gradle.tooling.BuildException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -62,7 +65,9 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreateExecutableFunctionIfNecessary(FunctionConf functionConf, Role role) {
+    public ImmutableZipFilePathAndFunctionConf buildExecutableFunction(FunctionConf functionConf) {
+        log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
+
         String zipFilePath = String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
 
         File zipFile = new File(zipFilePath);
@@ -76,37 +81,61 @@ public class BasicLambdaHelper implements LambdaHelper {
             throw new RuntimeException(ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT + "[" + zipFile.getName() + "]");
         }
 
-        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+        return ImmutableZipFilePathAndFunctionConf.builder()
+                .zipFilePath(zipFilePath)
+                .functionConf(functionConf)
+                .build();
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreateJavaFunctionIfNecessary(FunctionConf functionConf, Role role) {
-        String zipFilePath;
+    public ImmutableZipFilePathAndFunctionConf buildJavaFunction(FunctionConf functionConf) {
+        log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
 
         if (mavenBuilder.isMavenFunction(functionConf)) {
-            /*
+            return buildMavenFunction(functionConf);
+        } else if (gradleBuilder.isGradleFunction(functionConf)) {
+            return buildGradleFunction(functionConf);
+
+        } else {
+            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
+        }
+    }
+
+    private ImmutableZipFilePathAndFunctionConf buildGradleFunction(FunctionConf functionConf) {
+        try {
+            gradleBuilder.buildJavaFunctionIfNecessary(functionConf);
+
+            String zipFilePath = gradleBuilder.getArchivePath(functionConf);
+
+            return ImmutableZipFilePathAndFunctionConf.builder()
+                    .zipFilePath(zipFilePath)
+                    .functionConf(functionConf)
+                    .build();
+        } catch (BuildException e) {
+            return ImmutableZipFilePathAndFunctionConf.builder()
+                    .error(e.getLocalizedMessage())
+                    .functionConf(functionConf)
+                    .build();
+        }
+    }
+
+    private ImmutableZipFilePathAndFunctionConf buildMavenFunction(FunctionConf functionConf) {
+                    /*
             mavenBuilder.buildJavaFunctionIfNecessary(functionConf);
 
             zipFilePath = mavenBuilder.getArchivePath(functionConf);
             */
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
-        } else if (gradleBuilder.isGradleFunction(functionConf)) {
-            gradleBuilder.buildJavaFunctionIfNecessary(functionConf);
-
-            zipFilePath = gradleBuilder.getArchivePath(functionConf);
-        } else {
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
-        }
-
-        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+        throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreatePython2FunctionIfNecessary(FunctionConf functionConf, Role role) {
+    public ImmutableZipFilePathAndFunctionConf buildPython2Function(FunctionConf functionConf) {
+        log.info("Creating Python 2 function [" + functionConf.getFunctionName() + "]");
+
         Optional<String> error = python2Builder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
-            return ImmutableLambdaFunctionArnInfo.builder()
+            return ImmutableZipFilePathAndFunctionConf.builder()
                     .error(error).build();
         }
 
@@ -114,15 +143,20 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         String zipFilePath = python2Builder.getArchivePath(functionConf);
 
-        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+        return ImmutableZipFilePathAndFunctionConf.builder()
+                .zipFilePath(zipFilePath)
+                .functionConf(functionConf)
+                .build();
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreatePython3FunctionIfNecessary(FunctionConf functionConf, Role role) {
+    public ImmutableZipFilePathAndFunctionConf buildPython3Function(FunctionConf functionConf) {
+        log.info("Creating Python 3 function [" + functionConf.getFunctionName() + "]");
+
         Optional<String> error = python3Builder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
-            return ImmutableLambdaFunctionArnInfo.builder()
+            return ImmutableZipFilePathAndFunctionConf.builder()
                     .error(error).build();
         }
 
@@ -130,28 +164,37 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         String zipFilePath = python3Builder.getArchivePath(functionConf);
 
-        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+        return ImmutableZipFilePathAndFunctionConf.builder()
+                .zipFilePath(zipFilePath)
+                .functionConf(functionConf)
+                .build();
     }
 
     @Override
-    public LambdaFunctionArnInfo buildAndCreateNodeFunctionIfNecessary(FunctionConf functionConf, Role role) {
+    public ImmutableZipFilePathAndFunctionConf buildNodeFunction(FunctionConf functionConf) {
+        log.info("Creating Node function [" + functionConf.getFunctionName() + "]");
+
         Optional<String> error = nodeBuilder.verifyHandlerExists(functionConf);
 
         if (error.isPresent()) {
-            return ImmutableLambdaFunctionArnInfo.builder()
+            return ImmutableZipFilePathAndFunctionConf.builder()
                     .error(error).build();
         }
 
         nodeBuilder.buildFunctionIfNecessary(functionConf);
 
         String zipFilePath = nodeBuilder.getArchivePath(functionConf);
-        return createFunctionIfNecessary(functionConf, role, zipFilePath);
+
+        return ImmutableZipFilePathAndFunctionConf.builder()
+                .zipFilePath(zipFilePath)
+                .functionConf(functionConf)
+                .build();
     }
 
     @Override
-    public LambdaFunctionArnInfo createFunctionIfNecessary(FunctionConf functionConf, Role role, String zipFilePath) {
+    public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConf functionConf, Role role, String zipFilePath) {
         String baseFunctionName = functionConf.getFunctionName();
-        String groupFunctionName = getFunctionName(functionConf);
+        String groupFunctionName = functionConf.getGroupFunctionName();
 
         FunctionCode functionCode = FunctionCode.builder()
                 .zipFile(SdkBytes.fromByteBuffer(ByteBuffer.wrap(ioHelper.readFile(zipFilePath))))
@@ -174,28 +217,30 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (functionExists(groupFunctionName)) {
-            updateExistingLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy);
-        } else {
-            createNewLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy);
+            // Update the function
+            return Either.right(updateExistingLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy));
         }
 
-        loggingHelper.logInfoWithName(log, baseFunctionName, "Publishing Lambda function version");
+        // Create a new function
+        return Either.left(createNewLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy));
+    }
+
+    @Override
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName) {
         PublishVersionResponse publishVersionResponse = publishFunctionVersion(groupFunctionName);
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
         String baseArn = qualifiedArn.replaceAll(":" + qualifier + "$", "");
 
-        LambdaFunctionArnInfo lambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder()
+        return ImmutableLambdaFunctionArnInfo.builder()
                 .qualifier(qualifier)
                 .qualifiedArn(qualifiedArn)
                 .baseArn(baseArn)
                 .build();
-
-        return lambdaFunctionArnInfo;
     }
 
-    private void updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function code");
 
         UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
@@ -220,12 +265,12 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
                     lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
         }
     }
 
-    private void createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
 
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
@@ -238,7 +283,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
                     lambdaClient.createFunction(createFunctionRequest));
         }
     }
@@ -250,10 +295,6 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         return lambdaClient.publishVersion(publishVersionRequest);
-    }
-
-    private boolean aliasExists(FunctionConf functionConf) {
-        return aliasExists(getFunctionName(functionConf), functionConf.getAliasName());
     }
 
     @Override
@@ -268,37 +309,23 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .get();
     }
 
-    private String getFunctionName(FunctionConf functionConf) {
-        return getFunctionName(functionConf.getGroupName(), functionConf.getFunctionName());
-    }
-
-    private String getFunctionName(String groupName, String baseFunctionName) {
-        return String.join("-", groupName, baseFunctionName);
-    }
-
     @Override
-    public String createAlias(Optional<String> groupName, String baseFunctionName, String functionVersion, String aliasName) {
-        String groupFunctionName = baseFunctionName;
-
-        if (groupName.isPresent()) {
-            groupFunctionName = getFunctionName(groupName.get(), baseFunctionName);
-        }
-
-        if (aliasExists(groupFunctionName, aliasName)) {
-            loggingHelper.logInfoWithName(log, baseFunctionName, "Deleting existing alias");
+    public String createAlias(String functionName, String functionVersion, String aliasName) {
+        if (aliasExists(functionName, aliasName)) {
+            loggingHelper.logInfoWithName(log, functionName, "Deleting existing alias");
 
             DeleteAliasRequest deleteAliasRequest = DeleteAliasRequest.builder()
-                    .functionName(groupFunctionName)
+                    .functionName(functionName)
                     .name(aliasName)
                     .build();
 
             lambdaClient.deleteAlias(deleteAliasRequest);
         }
 
-        loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new alias");
+        loggingHelper.logInfoWithName(log, functionName, "Creating new alias");
 
         CreateAliasRequest createAliasRequest = CreateAliasRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .name(aliasName)
                 .functionVersion(functionVersion)
                 .build();
@@ -310,7 +337,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public String createAlias(FunctionConf functionConf, String functionVersion) {
-        return createAlias(Optional.of(functionConf.getGroupName()), functionConf.getFunctionName(), functionVersion, functionConf.getAliasName());
+        return createAlias(functionConf.getGroupFunctionName(), functionVersion, functionConf.getAliasName());
     }
 
     @Override

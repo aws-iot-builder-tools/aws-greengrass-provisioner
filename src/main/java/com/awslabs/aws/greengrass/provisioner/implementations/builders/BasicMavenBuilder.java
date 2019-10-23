@@ -73,11 +73,7 @@ public class BasicMavenBuilder implements MavenBuilder {
 
     @Override
     public boolean isMavenFunction(FunctionConf functionConf) {
-        if (new File(getPomXmlPath(functionConf)).exists()) {
-            return true;
-        }
-
-        return false;
+        return new File(getPomXmlPath(functionConf)).exists();
     }
 
     @Override

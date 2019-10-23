@@ -1,22 +1,27 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.Language;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ModifiableFunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import org.junit.Before;
 import org.junit.Test;
+import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.Subscription;
 
+import java.io.File;
 import java.util.*;
 
 import static org.mockito.Mockito.mock;
 
 public class SubscriptionHelperTest {
     private BasicSubscriptionHelper basicSubscriptionHelper;
+    private ImmutableFunctionConf fakeFunctionConf;
 
     @Before
     public void setup() {
@@ -30,16 +35,34 @@ public class SubscriptionHelperTest {
         basicSubscriptionHelper.iotHelper = iotHelper;
         basicSubscriptionHelper.ggConstants = ggConstants;
         basicSubscriptionHelper.ggVariables = ggVariables;
+
+        fakeFunctionConf = ImmutableFunctionConf.builder()
+                .language(Language.EXECUTABLE)
+                .encodingType(EncodingType.BINARY)
+                .buildDirectory(new File(".").toPath())
+                .groupName("test-group")
+                .functionName("test-function")
+                .handlerName("test-handler")
+                .aliasName("test-alias")
+                .memorySizeInKb(1024)
+                .isPinned(false)
+                .timeoutInSeconds(10)
+                .isAccessSysFs(false)
+                .isGreengrassContainer(false)
+                .uid(1000)
+                .gid(1000)
+                .build();
     }
 
     @Test
     public void simpleDirectFunctionToFunctionTopicMappingTest() {
         List<String> topics = Arrays.asList("a", "b", "c", "d", "e");
-        Map<Function, ModifiableFunctionConf> map = new HashMap<>();
+        Map<Function, FunctionConf> map = new HashMap<>();
 
-        ModifiableFunctionConf abInput = ModifiableFunctionConf.create()
-                .setInputTopics(topics)
-                .setOutputTopics(new ArrayList<>());
+        ImmutableFunctionConf abInput = ImmutableFunctionConf.builder().from(fakeFunctionConf)
+                .inputTopics(topics)
+                .outputTopics(new ArrayList<>())
+                .build();
         String abInputArn = "abInputArn";
         Function abInputFunction = Function.builder()
                 .functionArn(abInputArn)
@@ -47,9 +70,10 @@ public class SubscriptionHelperTest {
 
         map.put(abInputFunction, abInput);
 
-        ModifiableFunctionConf abOutput = ModifiableFunctionConf.create()
-                .setOutputTopics(topics)
-                .setInputTopics(new ArrayList<>());
+        ImmutableFunctionConf abOutput = ImmutableFunctionConf.builder().from(fakeFunctionConf)
+                .outputTopics(topics)
+                .inputTopics(new ArrayList<>())
+                .build();
         String abOutputArn = "abOutputArn";
         Function abOutputFunction = Function.builder()
                 .functionArn(abOutputArn)

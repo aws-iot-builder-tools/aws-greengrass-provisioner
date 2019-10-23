@@ -2,9 +2,10 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
-import com.awslabs.aws.greengrass.provisioner.data.conf.*;
-import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableFunction;
-import com.awslabs.aws.greengrass.provisioner.data.functions.BuildableJavaMavenFunction;
+import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableDeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
@@ -542,7 +543,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
 
-        List<ModifiableFunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
+        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
 
         // Find Python functions that may not have had their language updated, this should never happen
         Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
@@ -639,23 +640,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Build the functions //
         /////////////////////////
 
-        Map<Function, ModifiableFunctionConf> functionToConfMap = new HashMap<>();
+        Map<Function, FunctionConf> functionToConfMap = new HashMap<>();
 
         // Only try to create functions if we have a Lambda role
         if (optionalLambdaRole.isPresent()) {
             Role lambdaRole = optionalLambdaRole.get();
 
             // Get a list of the buildable functions
-            List<BuildableFunction> buildableFunctions = functionHelper.getBuildableFunctions(functionConfs, lambdaRole);
-
-            // Install Java dependencies if necessary
-            buildableFunctions.stream()
-                    .filter(buildableFunction -> buildableFunction instanceof BuildableJavaMavenFunction)
-                    .findFirst()
-                    .ifPresent(buildableFunction -> functionHelper.installJavaDependencies());
+            functionHelper.verifyFunctionsAreBuildable(functionConfs);
 
             // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
-            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(buildableFunctions);
+            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(functionConfs, lambdaRole);
         }
 
         ///////////////////////////////////////////
