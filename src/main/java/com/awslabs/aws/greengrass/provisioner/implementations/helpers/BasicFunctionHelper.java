@@ -313,7 +313,9 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     private List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
-        List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream().map(functionName -> getFunctionConfPath(functionName)).collect(Collectors.toList());
+        List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream()
+                .map(this::getFunctionConfPath)
+                .collect(Collectors.toList());
 
         return enabledFunctionConfigFiles;
     }
