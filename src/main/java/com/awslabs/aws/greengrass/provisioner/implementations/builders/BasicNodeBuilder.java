@@ -61,7 +61,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         File tempFile = Try.of(() -> ioHelper.getTempFile("node-lambda-build", "zip")).get();
 
         // Create the deployment package
-        ZipUtil.pack(new File(functionConf.getBuildDirectory().toString()), tempFile);
+        ZipUtil.pack(new File(functionConf.getBuildDirectory().get().toString()), tempFile);
 
         moveDeploymentPackage(functionConf, tempFile);
     }
@@ -78,7 +78,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         programAndArguments.add("install");
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
+        processBuilder.directory(new File(functionConf.getBuildDirectory().get().toString()));
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();

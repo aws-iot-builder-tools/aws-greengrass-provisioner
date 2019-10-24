@@ -63,12 +63,12 @@ public class BasicMavenBuilder implements MavenBuilder {
 
     @Override
     public String getArchivePath(FunctionConf functionConf) {
-        return functionConf.getBuildDirectory().toString() + "/target/" + functionConf.getFunctionName() + ".jar";
+        return functionConf.getBuildDirectory().get().toString() + "/target/" + functionConf.getFunctionName() + ".jar";
     }
 
     @Override
     public String getPomXmlPath(FunctionConf functionConf) {
-        return functionConf.getBuildDirectory().toString() + "/pom.xml";
+        return functionConf.getBuildDirectory().get().toString() + "/pom.xml";
     }
 
     @Override

@@ -42,7 +42,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
 
     @NotNull
     private String getBuildScriptName(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().toString(), BUILD_SH);
+        return String.join("/", functionConf.getBuildDirectory().get().toString(), BUILD_SH);
     }
 
     private void buildExecutable(FunctionConf functionConf) {

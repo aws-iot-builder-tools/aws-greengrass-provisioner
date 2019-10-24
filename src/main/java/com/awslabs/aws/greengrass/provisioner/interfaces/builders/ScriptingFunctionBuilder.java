@@ -30,7 +30,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
 
         SDK sdk = getSdk().get();
 
-        String buildDirectory = functionConf.getBuildDirectory().toString();
+        String buildDirectory = functionConf.getBuildDirectory().get().toString();
 
         String sdkFullPath = sdk.getFullSdkPath();
 
@@ -79,7 +79,7 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     }
 
     default String getArchivePath(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
+        return String.join("/", functionConf.getBuildDirectory().get().toString(), functionConf.getFunctionName() + ".zip");
     }
 
     boolean hasDependencies(Path buildDirectory);

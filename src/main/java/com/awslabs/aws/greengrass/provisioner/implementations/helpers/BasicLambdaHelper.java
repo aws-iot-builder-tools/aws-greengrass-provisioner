@@ -72,7 +72,7 @@ public class BasicLambdaHelper implements LambdaHelper {
     public ImmutableZipFilePathAndFunctionConf buildExecutableFunction(FunctionConf functionConf) {
         log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
 
-        String zipFilePath = String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
+        String zipFilePath = String.join("/", functionConf.getBuildDirectory().get().toString(), functionConf.getFunctionName() + ".zip");
 
         File zipFile = new File(zipFilePath);
 

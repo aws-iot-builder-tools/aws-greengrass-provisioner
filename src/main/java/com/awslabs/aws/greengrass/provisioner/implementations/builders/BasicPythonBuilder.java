@@ -179,7 +179,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
     @Override
     public Optional<String> verifyHandlerExists(FunctionConf functionConf) {
-        String buildDirectory = functionConf.getBuildDirectory().toString();
+        String buildDirectory = functionConf.getBuildDirectory().get().toString();
         String handlerName = functionConf.getHandlerName();
 
         if (!handlerName.contains(".")) {
