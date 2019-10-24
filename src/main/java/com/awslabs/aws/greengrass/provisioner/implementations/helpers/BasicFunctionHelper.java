@@ -518,7 +518,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public void verifyFunctionsAreBuildable(List<FunctionConf> functionConfs) {
+    public void verifyFunctionsAreSupported(List<FunctionConf> functionConfs) {
         List<FunctionConf> javaMavenFunctions = functionConfs.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
