@@ -16,6 +16,8 @@ import java.util.Optional;
 
 @Value.Immutable
 public abstract class FunctionConf {
+    public abstract Optional<String> getExistingArn();
+
     public abstract String getRawConfig();
 
     public abstract Language getLanguage();
@@ -67,7 +69,7 @@ public abstract class FunctionConf {
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract Optional<File> getCfTemplate();
-
+   
     public String getGroupFunctionName() {
         return String.join("-", getGroupName(), getFunctionName());
     }
