@@ -27,11 +27,12 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class BasicLambdaHelper implements LambdaHelper {
-    public static final String GGP_FUNCTION_CONF = "GGP_FUNCTION_CONF";
     private static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
     private static final String ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT = "ZIP archive for executable/native function not present ";
     private final Logger log = LoggerFactory.getLogger(BasicLambdaHelper.class);
@@ -299,15 +300,20 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public Map<String, String> getFunctionEnvironment(String functionName) {
-        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
-                .functionName(functionName)
-                .build();
-
-        GetFunctionConfigurationResponse getFunctionConfigurationResponse = lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
+        GetFunctionConfigurationResponse getFunctionConfigurationResponse = getFunctionConfigurationByName(functionName);
 
         return Optional.ofNullable(getFunctionConfigurationResponse.environment())
                 .map(EnvironmentResponse::variables)
                 .orElseGet(HashMap::new);
+    }
+
+    @Override
+    public GetFunctionConfigurationResponse getFunctionConfigurationByName(String functionName) {
+        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
+                .functionName(functionName)
+                .build();
+
+        return lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
     }
 
     private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
@@ -409,5 +415,56 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         lambdaClient.deleteAlias(deleteAliasRequest);
+    }
+
+    @Override
+    public String findFullFunctionArnByPartialName(String partialName) {
+        ListFunctionsResponse listFunctionsResponse;
+
+        String partialNameWithoutAlias = partialName.replaceAll(":.*$", "");
+        String alias = partialName.replaceAll("^.*:", "");
+
+        Optional<String> optionalFunctionArn = Optional.empty();
+        Optional<String> optionalNextMarker = Optional.empty();
+
+        do {
+            ListFunctionsRequest.Builder listFunctionsRequestBuilder = ListFunctionsRequest.builder();
+            optionalNextMarker.ifPresent(listFunctionsRequestBuilder::marker);
+
+            listFunctionsResponse = lambdaClient.listFunctions(listFunctionsRequestBuilder.build());
+
+            optionalNextMarker = Optional.ofNullable(listFunctionsResponse.nextMarker());
+
+            List<String> functionArns = listFunctionsResponse.functions().stream()
+                    .filter(function -> function.functionArn().endsWith(partialNameWithoutAlias))
+                    .map(FunctionConfiguration::functionArn)
+                    .collect(Collectors.toList());
+
+            if (functionArns.size() > 1) {
+                return throwMoreThanOneLambdaMatchedException(partialName);
+            } else if (functionArns.size() == 1) {
+                if (optionalFunctionArn.isPresent()) {
+                    return throwMoreThanOneLambdaMatchedException(partialName);
+                }
+
+                optionalFunctionArn = Optional.ofNullable(functionArns.get(0));
+            }
+        } while (optionalNextMarker.isPresent());
+
+        if (optionalFunctionArn.isPresent()) {
+            String fullFunctionArn = optionalFunctionArn.get() + ":" + alias;
+
+            if (!functionExists(fullFunctionArn)) {
+                throw new RuntimeException("The specified Lambda ARN [" + fullFunctionArn + "] does not exist");
+            }
+
+            return fullFunctionArn;
+        }
+
+        throw new RuntimeException("No Lambda function matched the partial name [" + partialName + "]");
+    }
+
+    private String throwMoreThanOneLambdaMatchedException(String partialName) {
+        throw new RuntimeException("More than one Lambda function matched the partial name [" + partialName + "]");
     }
 }

@@ -49,7 +49,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
 
-        if (hasDependencies(functionConf.getBuildDirectory())) {
+        if (hasDependencies(functionConf.getBuildDirectory().get())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
 
             // Install all of the dependencies for this function

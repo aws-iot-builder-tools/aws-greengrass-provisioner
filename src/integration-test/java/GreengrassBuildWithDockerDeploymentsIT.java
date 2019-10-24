@@ -224,6 +224,18 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_NOT_ZERO);
     }
 
+    // Test set 11: Reuse Python 3 Hello World in another group with Docker
+    @Test
+    public void shouldReusePython3FunctionWithDocker() throws IOException {
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of("../aws-greengrass-lambda-functions"), greengrassITShared.getGroupName());
+
+        // Build it
+        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
+
+        // Try to reuse it
+        runContainer(greengrassITShared.getReusedFunctionDeploymentCommand(tempDeploymentConfFile), EXIT_CODE_IS_ZERO);
+    }
+
     private GenericContainer runContainer(String arguments, Matcher<Integer> integerMatcher) {
         GenericContainer genericContainer = startAndGetContainer(arguments);
         waitForContainerToFinish(genericContainer);

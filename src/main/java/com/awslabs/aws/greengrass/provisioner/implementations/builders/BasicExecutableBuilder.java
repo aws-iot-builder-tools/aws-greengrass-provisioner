@@ -57,7 +57,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
         programAndArguments.add(buildScriptName);
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(functionConf.getBuildDirectory().toFile());
+        processBuilder.directory(functionConf.getBuildDirectory().get().toFile());
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();

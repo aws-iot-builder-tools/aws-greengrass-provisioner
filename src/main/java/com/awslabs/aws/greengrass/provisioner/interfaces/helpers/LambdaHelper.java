@@ -5,10 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import io.vavr.control.Either;
 import software.amazon.awssdk.services.iam.model.Role;
-import software.amazon.awssdk.services.lambda.model.CreateFunctionResponse;
-import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
-import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
-import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
+import software.amazon.awssdk.services.lambda.model.*;
 
 import java.util.Map;
 import java.util.Optional;
@@ -32,6 +29,8 @@ public interface LambdaHelper {
 
     Map<String, String> getFunctionEnvironment(String functionName);
 
+    GetFunctionConfigurationResponse getFunctionConfigurationByName(String functionName);
+
     PublishVersionResponse publishFunctionVersion(String functionName);
 
     boolean aliasExists(String functionName, String aliasName);
@@ -43,4 +42,6 @@ public interface LambdaHelper {
     Optional<GetFunctionResponse> getFunction(String functionName);
 
     void deleteAlias(String functionArn);
+
+    String findFullFunctionArnByPartialName(String substring);
 }

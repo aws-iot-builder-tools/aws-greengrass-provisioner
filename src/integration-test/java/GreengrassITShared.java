@@ -5,6 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
 import org.apache.commons.io.FileUtils;
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
@@ -39,6 +40,7 @@ class GreengrassITShared {
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
     private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
+    private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
 
     static void cleanDirectories() throws IOException {
         FileUtils.deleteDirectory(TEMP_DEPLOYMENTS);
@@ -130,5 +132,36 @@ class GreengrassITShared {
 
     String[] split(String input) {
         return input.split(" ");
+    }
+
+    @NotNull
+    private String getReusedFunctionDeploymentConfContents(String groupName) {
+        String functionToReuse = String.join("-", groupName, "HelloWorldPython3:PROD");
+        return "conf { functions = [\"~" + functionToReuse + "\"] }";
+    }
+
+    @NotNull
+    File setupReusedFunctionDeploymentConf(Optional<String> optionalDirectoryPrefix, String groupName) throws IOException {
+        String tempDeploymentConfContents = getReusedFunctionDeploymentConfContents(groupName);
+        return writeTempDeploymentConfFile(optionalDirectoryPrefix, tempDeploymentConfContents);
+    }
+
+    @NotNull
+    private File writeTempDeploymentConfFile(Optional<String> optionalDirectoryPrefix, String tempDeploymentConfContents) throws IOException {
+        String directory = "deployments";
+
+        if (optionalDirectoryPrefix.isPresent()) {
+            directory = optionalDirectoryPrefix.get() + "/" + directory;
+        }
+
+        File tempDeploymentConfFile = File.createTempFile("temp-deployment-", ".conf", new File(directory));
+        tempDeploymentConfFile.deleteOnExit();
+        ioHelper.writeFile(tempDeploymentConfFile, tempDeploymentConfContents.getBytes());
+        return tempDeploymentConfFile;
+    }
+
+    @NotNull
+    String getReusedFunctionDeploymentCommand(File tempDeploymentConfFile) {
+        return String.join("", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, " ", "--oem", " ", "-d", " ", "deployments/", tempDeploymentConfFile.getName(), " ", "-g", " ", ioHelper.getUuid());
     }
 }

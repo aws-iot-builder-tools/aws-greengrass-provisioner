@@ -61,7 +61,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
 
-        if (hasDependencies(functionConf.getBuildDirectory())) {
+        if (hasDependencies(functionConf.getBuildDirectory().get())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");
 
             installDependencies(functionConf);
@@ -98,7 +98,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
                 .map(path -> path.resolve(INIT_PY).toFile())
                 .forEach(this::touchAndIgnoreExceptions);
 
-        ZipUtil.pack(functionConf.getBuildDirectory().toFile(), tempFile);
+        ZipUtil.pack(functionConf.getBuildDirectory().get().toFile(), tempFile);
 
         moveDeploymentPackage(functionConf, tempFile);
     }
@@ -121,7 +121,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         programAndArguments.add(".");
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(functionConf.getBuildDirectory().toFile());
+        processBuilder.directory(functionConf.getBuildDirectory().get().toFile());
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();
@@ -174,7 +174,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
     }
 
     private List<Path> getDirectorySnapshot(FunctionConf functionConf) {
-        return Try.of(() -> Files.list(functionConf.getBuildDirectory()).collect(Collectors.toList())).get();
+        return Try.of(() -> Files.list(functionConf.getBuildDirectory().get()).collect(Collectors.toList())).get();
     }
 
     @Override

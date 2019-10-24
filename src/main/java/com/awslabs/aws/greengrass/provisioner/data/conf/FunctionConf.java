@@ -24,7 +24,7 @@ public abstract class FunctionConf {
 
     public abstract EncodingType getEncodingType();
 
-    public abstract Path getBuildDirectory();
+    public abstract Optional<Path> getBuildDirectory();
 
     public abstract String getGroupName();
 
