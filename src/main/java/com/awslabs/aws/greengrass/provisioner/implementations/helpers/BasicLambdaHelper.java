@@ -136,7 +136,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         python2Builder.buildFunctionIfNecessary(functionConf);
@@ -157,7 +159,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         python3Builder.buildFunctionIfNecessary(functionConf);
@@ -178,7 +182,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         nodeBuilder.buildFunctionIfNecessary(functionConf);
