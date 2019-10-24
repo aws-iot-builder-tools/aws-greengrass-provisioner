@@ -15,7 +15,6 @@ import com.typesafe.config.*;
 import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
-import org.immutables.value.internal.$guava$.base.$Optional;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,17 +63,17 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionConf.toPath().getParent();
     }
 
-    private File getFunctionConfPath(String functionName) {
-        return Try.of(() -> innerGetFunctionConfPath(functionName)).get();
+    private Either<String, File> getFunctionConfPathOrArn(String functionName) {
+        return Try.of(() -> innerGetFunctionConfPathOrArn(functionName)).get();
     }
 
-    private File innerGetFunctionConfPath(String functionName) throws IOException {
+    private Either<String, File> innerGetFunctionConfPathOrArn(String functionName) throws IOException {
         if (functionName.startsWith(HTTPS)) {
-            return getGitFunctionConfFile(functionName);
+            return Either.right(getGitFunctionConfFile(functionName));
         } else if (functionName.startsWith(ARN_AWS_LAMBDA)) {
-            return getLambdaFunctionConfFile(functionName);
+            return Either.left(functionName);
         } else {
-            return getLocalFunctionConfFile(functionName);
+            return Either.right(getLocalFunctionConfFile(functionName));
         }
     }
 
@@ -200,12 +199,29 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     @Override
     public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
-        List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
+        // Get each enabled function conf file OR the ARN of an existing function
+        List<Either<String, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
 
+        List<String> existingFunctionsInLambda = enabledFunctions.stream()
+                .filter(Either::isLeft)
+                .map(Either::getLeft)
+                .collect(Collectors.toList());
+
+        List<File> functionsToBeBuilt = enabledFunctions.stream()
+                .filter(Either::isRight)
+                .map(Either::get)
+                .collect(Collectors.toList());
+
+        List<FunctionConf> newFunctionConfs = getNewFunctionConfs(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode, functionsToBeBuilt);
+
+        return newFunctionConfs;
+    }
+
+    private List<FunctionConf> getNewFunctionConfs(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode, List<File> functionsToBeBuilt) {
         // Find any functions with missing config files
-        detectMissingConfigFiles(enabledFunctionConfigFiles);
+        detectMissingConfigFiles(functionsToBeBuilt);
 
-        return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles, defaultFunctionIsolationMode);
+        return buildFunctionConfObjects(defaultEnvironment, deploymentConf, functionsToBeBuilt, defaultFunctionIsolationMode);
     }
 
     private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
@@ -336,13 +352,13 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
+    private List<Either<String, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
-        List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream()
-                .map(this::getFunctionConfPath)
+        List<Either<String, File>> enabledFunctions = deploymentConf.getFunctions().stream()
+                .map(this::getFunctionConfPathOrArn)
                 .collect(Collectors.toList());
 
-        return enabledFunctionConfigFiles;
+        return enabledFunctions;
     }
 
     private List<String> getConnectedShadows(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
