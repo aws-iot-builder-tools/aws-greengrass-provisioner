@@ -236,8 +236,8 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName) {
-        PublishVersionResponse publishVersionResponse = publishFunctionVersion(groupFunctionName);
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String functionName) {
+        PublishVersionResponse publishVersionResponse = publishFunctionVersion(functionName);
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
@@ -250,11 +250,11 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
-    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function code");
 
         UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .zipFile(functionCode.zipFile())
                 .build();
 
@@ -264,7 +264,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
-        Map<String, String> existingEnvironment = getFunctionEnvironment(groupFunctionName);
+        Map<String, String> existingEnvironment = getFunctionEnvironment(functionName);
 
         HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, existingEnvironment);
 
@@ -273,7 +273,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function configuration");
 
         UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .runtime(runtime)
@@ -297,9 +297,10 @@ public class BasicLambdaHelper implements LambdaHelper {
         return newEnvironment;
     }
 
-    private Map<String, String> getFunctionEnvironment(String groupFunctionName) {
+    @Override
+    public Map<String, String> getFunctionEnvironment(String functionName) {
         GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .build();
 
         GetFunctionConfigurationResponse getFunctionConfigurationResponse = lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
@@ -309,7 +310,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .orElseGet(HashMap::new);
     }
 
-    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
 
         // No environment, start with an empty one
@@ -318,7 +319,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
 
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .code(functionCode)
@@ -334,9 +335,9 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public PublishVersionResponse publishFunctionVersion(String groupFunctionName) {
+    public PublishVersionResponse publishFunctionVersion(String functionName) {
         PublishVersionRequest publishVersionRequest = PublishVersionRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .build();
 
         return lambdaClient.publishVersion(publishVersionRequest);

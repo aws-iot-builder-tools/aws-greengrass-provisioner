@@ -15,6 +15,7 @@ import com.typesafe.config.*;
 import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
+import org.immutables.value.internal.$guava$.base.$Optional;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,6 +37,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class BasicFunctionHelper implements FunctionHelper {
+    public static final String ARN_AWS_LAMBDA = "arn:aws:lambda:";
     private final Logger log = LoggerFactory.getLogger(BasicFunctionHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
@@ -68,13 +70,35 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     private File innerGetFunctionConfPath(String functionName) throws IOException {
         if (functionName.startsWith(HTTPS)) {
-            return getFunctionFromGit(functionName);
+            return getGitFunctionConfFile(functionName);
+        } else if (functionName.startsWith(ARN_AWS_LAMBDA)) {
+            return getLambdaFunctionConfFile(functionName);
         } else {
-            return getLocalFunction(functionName);
+            return getLocalFunctionConfFile(functionName);
         }
     }
 
-    private File getLocalFunction(String functionName) throws IOException {
+    private File getLambdaFunctionConfFile(String functionName) {
+        Map<String, String> existingEnvironment = lambdaHelper.getFunctionEnvironment(functionName);
+
+        Optional<String> optionalFunctionConfString = Optional.ofNullable(existingEnvironment.get(LambdaHelper.GGP_FUNCTION_CONF));
+
+        if (!optionalFunctionConfString.isPresent()){
+            throw new RuntimeException("This function does not contain the required [" + LambdaHelper.GGP_FUNCTION_CONF + "] key. Add this key to the function and try again.");
+        }
+
+        String functionConfString = optionalFunctionConfString.get();
+
+        Path tempPath = Try.of(() -> Files.createTempFile("tempfunctionconf-", ".conf")).get();
+        File tempFile = tempPath.toFile();
+        tempFile.deleteOnExit();
+
+        ioHelper.writeFile(tempFile, functionConfString.getBytes());
+
+        return tempFile;
+    }
+
+    private File getLocalFunctionConfFile(String functionName) throws IOException {
         String sourceDirectory = String.join("/", FUNCTIONS, functionName);
         Path sourcePath = new File(sourceDirectory).toPath();
 
@@ -88,13 +112,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         File tempFile = tempPath.toFile();
         tempFile.deleteOnExit();
 
-
         FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
 
         return tempPath.resolve(FUNCTION_CONF).toFile();
     }
 
-    private File getFunctionFromGit(String functionName) throws IOException {
+    private File getGitFunctionConfFile(String functionName) throws IOException {
         // This is a git repo, fetch it
         String tempFunctionName = functionName.substring(HTTPS.length());
 
