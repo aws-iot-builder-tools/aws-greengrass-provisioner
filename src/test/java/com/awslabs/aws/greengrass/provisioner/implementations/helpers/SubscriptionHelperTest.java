@@ -51,6 +51,7 @@ public class SubscriptionHelperTest {
                 .isGreengrassContainer(false)
                 .uid(1000)
                 .gid(1000)
+                .rawConfig("")
                 .build();
     }
 
