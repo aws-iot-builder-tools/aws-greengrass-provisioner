@@ -10,9 +10,12 @@ import software.amazon.awssdk.services.lambda.model.GetFunctionResponse;
 import software.amazon.awssdk.services.lambda.model.PublishVersionResponse;
 import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
 
+import java.util.Map;
 import java.util.Optional;
 
 public interface LambdaHelper {
+    String GGP_FUNCTION_CONF = "GGP_FUNCTION_CONF";
+
     ZipFilePathAndFunctionConf buildExecutableFunction(FunctionConf functionConf);
 
     ZipFilePathAndFunctionConf buildJavaFunction(FunctionConf functionConf);
@@ -25,9 +28,11 @@ public interface LambdaHelper {
 
     Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConf functionConf, Role role, String zipFilePath);
 
-    LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName);
+    LambdaFunctionArnInfo publishLambdaFunctionVersion(String functionName);
 
-    PublishVersionResponse publishFunctionVersion(String groupFunctionName);
+    Map<String, String> getFunctionEnvironment(String functionName);
+
+    PublishVersionResponse publishFunctionVersion(String functionName);
 
     boolean aliasExists(String functionName, String aliasName);
 
