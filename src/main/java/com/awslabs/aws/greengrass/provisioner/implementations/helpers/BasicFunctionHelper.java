@@ -209,8 +209,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
-        List<String> enabledFunctions = new ArrayList<>();
-
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
         if (!ggConstants.getFunctionDefaultsConf().exists()) {
@@ -222,14 +220,13 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
 
-            enabledFunctions.add(functionConf.getFunctionName());
             enabledFunctionConfObjects.add(functionConf);
         }
 
-        if (enabledFunctions.size() > 0) {
+        if (enabledFunctionConfObjects.size() > 0) {
             log.info("Enabled functions: ");
-            enabledFunctions
-                    .forEach(functionName -> log.info("  " + functionName));
+            enabledFunctionConfObjects
+                    .forEach(functionConf -> log.info("  " + functionConf.getFunctionName()));
         } else {
             log.warn("NO FUNCTIONS ENABLED");
         }
