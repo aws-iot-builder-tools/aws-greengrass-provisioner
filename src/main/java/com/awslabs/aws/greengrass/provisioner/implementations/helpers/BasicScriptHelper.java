@@ -138,10 +138,6 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     private void addNormalVariables(ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
-        variables.put("ROOT_CA", ggConstants.getRootCaName());
-        variables.put("CONFIG_FILE", ggConstants.getConfigFileName());
-        variables.put("CORE_PUBLIC_CERTIFICATE", ggConstants.getCorePublicCertificateName());
-        variables.put("CORE_PRIVATE_KEY", ggConstants.getCorePrivateKeyName());
         variables.put("ENDPOINT", iotHelper.getEndpoint());
         variables.put("START_SCRIPT", getStartScriptName());
         variables.put("STOP_SCRIPT", getStopScriptName());
