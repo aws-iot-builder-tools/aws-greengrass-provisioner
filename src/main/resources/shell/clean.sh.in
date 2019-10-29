@@ -34,6 +34,7 @@ rm -rf /greengrass \
   ./ggd.*.device.key \
   ./ggd.*.device.crt \
   ./run-*.sh \
-  ./${ROOT_CA} \
+  ./config \
+  ./certs \
   ./n \
 
