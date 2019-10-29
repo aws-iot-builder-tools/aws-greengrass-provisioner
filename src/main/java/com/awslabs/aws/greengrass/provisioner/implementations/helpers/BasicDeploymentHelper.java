@@ -857,6 +857,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             try (DockerClient dockerClient = officialGreengrassImageDockerClientProvider.get()) {
                 log.info("Building container");
 
+                // Pull the official Greengrass Docker container first
+                String officialGreengrassDockerImage = ggConstants.getOfficialGreengrassDockerImage();
+                officialGreengrassImageDockerHelper.pullImage(officialGreengrassDockerImage);
+
                 String imageId = dockerClient.build(new File(currentDirectory).toPath(),
                         basicProgressHandler,
                         DockerClient.BuildParam.dockerfile(tempDockerfile.toPath()));
