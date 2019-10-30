@@ -1,12 +1,56 @@
 #!/usr/bin/env bash
 
 # Check if we're root and re-execute if we're not.
-rootcheck () {
-    if [ $(id -u) != "0" ]
-    then
-        sudo "$0" "$@"  # Modified as suggested below.
-        exit $?
+rootcheck() {
+  if [ $(id -u) != "0" ]; then
+    sudo "$0" "$@"
+    exit $?
+  fi
+}
+
+GREENGRASS_REGION_FILE="/greengrass/config/region.txt"
+CREDENTIALS_SCRIPT="/greengrass/config/credentials.sh"
+
+install_aws_credential_process() {
+  # Get the user from the first parameter
+  USER=$1
+
+  REGION=$(cat $GREENGRASS_REGION_FILE)
+
+  TEMP=$(aws configure get --profile default region)
+
+  if [ -n "$TEMP" ]; then
+    # A default profile exists, did we create it?
+    TEMP=$(aws configure get --profile default configured_by_ggp)
+
+    if [ -n "$TEMP" ]; then
+      # We created it, use the default profile
+      PROFILE="default"
+    else
+      # We didn't create it, use the greengrass profile
+      PROFILE="greengrass"
     fi
+  else
+    # No default profile exists, use it
+    PROFILE="default"
+  fi
+
+  if [ $USER != "root" ]; then
+    RUN_USER_PREFIX="runuser -l ${SUDO_USER} -c \""
+    RUN_USER_SUFFIX="\""
+  else
+    RUN_USER_PREFIX=""
+    RUN_USER_SUFFIX=""
+  fi
+
+  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE region $REGION $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE output json $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE credential_process $CREDENTIALS_SCRIPT $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE configured_by_ggp true $RUN_USER_SUFFIX"
+  eval $CMD
 }
 
 rootcheck "${@}"
@@ -15,3 +59,7 @@ rm -rf /greengrass
 mkdir -p /greengrass && sudo tar -zxf ${GG_BITS} -C /
 cp certs/* /greengrass/certs/
 cp config/* /greengrass/config/
+cp credentials.sh /greengrass/config/
+
+install_aws_credential_process "root"
+install_aws_credential_process "${SUDO_USER}"
