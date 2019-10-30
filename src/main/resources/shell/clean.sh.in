@@ -22,8 +22,18 @@ clean_aws_credential_process() {
   INPUT_USER=$1
   DIR=$(eval echo "~$INPUT_USER")
 
-  sed -i '/^credential_process.*credentials.sh/d' $DIR/.aws/config
-  sed -i '/^configured_by_ggp.*/d' $DIR/.aws/config
+  # Are there AWS credentials present?
+  if [ -f $DIR/.aws/credentials ]; then
+    # Yes, they may have their own special configuration options as well. Just remove the options we added.
+    sed -i '/^credential_process.*credentials.sh/d' $DIR/.aws/config
+    sed -i '/^configured_by_ggp.*/d' $DIR/.aws/config
+  else
+    # No, it is likely we created the configuration. Just delete it.
+    rm $DIR/.aws/config
+
+    # Delete the directory if it is empty (ignore errors)
+    rmdir $DIR/.aws &> /dev/null
+  fi
 }
 
 clean_aws_credential_process "root"
