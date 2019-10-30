@@ -28,7 +28,7 @@ clean_aws_credential_process() {
     sed -i '/^credential_process.*credentials.sh/d' $DIR/.aws/config
     sed -i '/^configured_by_ggp.*/d' $DIR/.aws/config
   else
-    # No, it is likely we created the configuration. Just delete it.
+    # No, it is likely we created the configuration because there are no credentials stored. Just delete it.
     rm $DIR/.aws/config
 
     # Delete the directory if it is empty (ignore errors)

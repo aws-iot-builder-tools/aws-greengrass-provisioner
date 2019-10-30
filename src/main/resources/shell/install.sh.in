@@ -21,26 +21,8 @@ install_aws_credential_process() {
   touch $DIR/.aws/config
   chown -R $1:$1 $DIR/.aws
 
-  REGION=$(cat $GREENGRASS_REGION_FILE)
-
-  # We need to specify an option like "region" or this will fail
-  TEMP=$(aws configure get --profile default region)
-
-  if [ -n "$TEMP" ]; then
-    # A default profile exists, did we create it?
-    TEMP=$(aws configure get --profile default configured_by_ggp)
-
-    if [ -n "$TEMP" ]; then
-      # We created it, use the default profile
-      PROFILE="default"
-    else
-      # We didn't create it, use the greengrass profile
-      PROFILE="greengrass"
-    fi
-  else
-    # No default profile exists, use it
-    PROFILE="default"
-  fi
+  # Always use the greengrass profile
+  PROFILE="--profile greengrass"
 
   if [ $INPUT_USER != "root" ]; then
     RUN_USER_PREFIX="runuser -l ${SUDO_USER} -c \""
@@ -50,13 +32,13 @@ install_aws_credential_process() {
     RUN_USER_SUFFIX=""
   fi
 
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE region $REGION $RUN_USER_SUFFIX"
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE region $REGION $RUN_USER_SUFFIX"
   eval $CMD
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE output json $RUN_USER_SUFFIX"
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE output json $RUN_USER_SUFFIX"
   eval $CMD
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE credential_process $CREDENTIALS_SCRIPT $RUN_USER_SUFFIX"
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE credential_process $CREDENTIALS_SCRIPT $RUN_USER_SUFFIX"
   eval $CMD
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE configured_by_ggp true $RUN_USER_SUFFIX"
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE configured_by_ggp true $RUN_USER_SUFFIX"
   eval $CMD
 }
 
