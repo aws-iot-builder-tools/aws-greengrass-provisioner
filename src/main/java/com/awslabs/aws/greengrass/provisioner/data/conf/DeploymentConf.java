@@ -16,6 +16,8 @@ public abstract class DeploymentConf {
 
     public abstract String getCoreRoleName();
 
+    public abstract String getCoreRoleAlias();
+
     public abstract Optional<String> getCoreRoleAssumeRolePolicy();
 
     public abstract List<String> getCoreRolePolicies();
