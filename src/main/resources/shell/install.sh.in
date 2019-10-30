@@ -13,7 +13,13 @@ CREDENTIALS_SCRIPT="/greengrass/config/credentials.sh"
 
 install_aws_credential_process() {
   # Get the user from the first parameter
-  USER=$1
+  INPUT_USER=$1
+
+  # Make sure the .aws directory and config file exist and are owned by the current user
+  DIR=$(eval echo "~$INPUT_USER")
+  mkdir -p $DIR/.aws
+  touch $DIR/.aws/config
+  chown -R $1:$1 $DIR/.aws
 
   REGION=$(cat $GREENGRASS_REGION_FILE)
 
@@ -36,7 +42,7 @@ install_aws_credential_process() {
     PROFILE="default"
   fi
 
-  if [ $USER != "root" ]; then
+  if [ $INPUT_USER != "root" ]; then
     RUN_USER_PREFIX="runuser -l ${SUDO_USER} -c \""
     RUN_USER_SUFFIX="\""
   else

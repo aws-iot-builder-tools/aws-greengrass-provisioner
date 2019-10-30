@@ -17,44 +17,13 @@ if [ -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
   systemctl daemon-reload
 fi
 
-GREENGRASS_REGION_FILE="/greengrass/config/region.txt"
-
 clean_aws_credential_process() {
-  # Get the user from the first parameter
-  USER=$1
+  # Get the user from the first parameter and get their home directory
+  INPUT_USER=$1
+  DIR=$(eval echo "~$INPUT_USER")
 
-  REGION=$(cat $GREENGRASS_REGION_FILE)
-
-  TEMP=$(aws configure get --profile default region)
-
-  if [ -n "$TEMP" ]; then
-    # A default profile exists, did we create it?
-    TEMP=$(aws configure get --profile default configured_by_ggp)
-
-    if [ -n "$TEMP" ]; then
-      # We created it, use the default profile
-      PROFILE="default"
-    else
-      # We didn't create it, use the greengrass profile
-      PROFILE="greengrass"
-    fi
-  else
-    # No default profile exists, use it
-    PROFILE="default"
-  fi
-
-  if [ $USER != "root" ]; then
-    RUN_USER_PREFIX="runuser -l ${SUDO_USER} -c \""
-    RUN_USER_SUFFIX="\""
-  else
-    RUN_USER_PREFIX=""
-    RUN_USER_SUFFIX=""
-  fi
-
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE credential_process '' $RUN_USER_SUFFIX"
-  eval $CMD
-  CMD="$RUN_USER_PREFIX aws configure set --profile $PROFILE configured_by_ggp true $RUN_USER_SUFFIX"
-  eval $CMD
+  sed -i '/^credential_process.*credentials.sh/d' $DIR/.aws/config
+  sed -i '/^configured_by_ggp.*/d' $DIR/.aws/config
 }
 
 clean_aws_credential_process "root"
@@ -79,5 +48,4 @@ rm -rf /greengrass \
   ./run-*.sh \
   ./config \
   ./certs \
-  ./n \
-  
+  ./n
