@@ -17,6 +17,7 @@ install_aws_credential_process() {
 
   REGION=$(cat $GREENGRASS_REGION_FILE)
 
+  # We need to specify an option like "region" or this will fail
   TEMP=$(aws configure get --profile default region)
 
   if [ -n "$TEMP" ]; then
