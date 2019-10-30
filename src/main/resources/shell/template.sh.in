@@ -1,60 +1,60 @@
 #!/usr/bin/env bash
 
 # Check if we're root and re-execute if we're not.
-rootcheck () {
-    if [ $(id -u) != "0" ]
-    then
-        sudo "$0" "$@"  # Modified as suggested below.
-        exit $?
-    fi
+rootcheck() {
+  if [ $(id -u) != "0" ]; then
+    sudo "$0" "$@"
+    exit $?
+  fi
 }
 
 rootcheck "${@}"
 
-if ls /var/lib/cloud/instances/*/* 1> /dev/null 2>&1; then
-    echo "Looks like we are running on EC2, waiting for cloud-init to finish"
+if ls /var/lib/cloud/instances/*/* 1>/dev/null 2>&1; then
+  echo "Looks like we are running on EC2, waiting for cloud-init to finish"
 
-    while [ ! -f /var/lib/cloud/instances/*/boot-finished ]
-    do
-      echo "Waiting for boot-finished file to appear..."
-      sleep 2
-    done
+  while [ ! -f /var/lib/cloud/instances/*/boot-finished ]; do
+    echo "Waiting for boot-finished file to appear..."
+    sleep 2
+  done
 else
-    echo "Looks like we are not running on EC2, bootstrapping immediately"
+  echo "Looks like we are not running on EC2, bootstrapping immediately"
 fi
 
-function untar_payload()
-{
-	match=$(grep --text --line-number '^PAYLOAD:$' $0 | cut -d ':' -f 1)
-	payload_start=$((match + 1))
-	tail -n +$payload_start $0 | tar xvf -
+function untar_payload() {
+  match=$(grep --text --line-number '^PAYLOAD:$' $0 | cut -d ':' -f 1)
+  payload_start=$((match + 1))
+  tail -n +$payload_start $0 | tar xvf -
 }
 
-SCRIPT_NAME=`basename "$0"`
+SCRIPT_NAME=$(basename "$0")
 
 if [[ $SCRIPT_NAME =~ "DEPLOYED" ]]; then
-    echo "This script has already been used to deploy your core.  Start the core with the start.sh script instead of running the deployer again."
-    echo "   "
-    echo "If you re-run this script you will need to do a new deployment on your group from the AWS Greengrass console or your functions will not be downloaded automatically."
-    echo "   "
-    echo "To re-run this script rename it and remove the .DEPLOYED suffix"
-    exit 998
+  echo "This script has already been used to deploy your core.  Start the core with the start.sh script instead of running the deployer again."
+  echo "   "
+  echo "If you re-run this script you will need to do a new deployment on your group from the AWS Greengrass console or your functions will not be downloaded automatically."
+  echo "   "
+  echo "To re-run this script rename it and remove the .DEPLOYED suffix"
+  exit 998
 fi
 
-GETOPT=`which getopt`
+GETOPT=$(which getopt)
 GETOPT_MISSING=$?
 
 if [ $GETOPT_MISSING -eq 1 ]; then
-    echo "getopt is missing, cannot process advanced command-line arguments"
+  echo "getopt is missing, cannot process advanced command-line arguments"
 
-    if [ "$1" == "--now" ]; then
-        START=true
-        UPDATE_DEPENDENCIES=true
-    fi
+  if [ "$1" == "--now" ]; then
+    START=true
+    UPDATE_DEPENDENCIES=true
+  fi
 else
-  TEMP=`getopt --options isun --longoptions install,start,update,now -- "$@"`
+  TEMP=$(getopt --options isun --longoptions install,start,update,now -- "$@")
 
-  if [ $? != 0 ] ; then echo "Terminating..." >&2 ; exit 1 ; fi
+  if [ $? != 0 ]; then
+    echo "Terminating..." >&2
+    exit 1
+  fi
 
   # Note the quotes around `$TEMP': they are essential!
   eval set -- "$TEMP"
@@ -65,23 +65,41 @@ else
   OPTION_SPECIFIED=false
   while true; do
     case "$1" in
-      -i | --install ) OPTION_SPECIFIED=true; INSTALL=true; shift ;;
-      -s | --start ) OPTION_SPECIFIED=true; START=true; shift ;;
-      -u | --update ) OPTION_SPECIFIED=true; UPDATE_DEPENDENCIES=true; shift ;;
-      -n | --now ) OPTION_SPECIFIED=true; UPDATE_DEPENDENCIES=true; INSTALL=true; START=true; shift ;;
-      * ) break ;;
+    -i | --install)
+      OPTION_SPECIFIED=true
+      INSTALL=true
+      shift
+      ;;
+    -s | --start)
+      OPTION_SPECIFIED=true
+      START=true
+      shift
+      ;;
+    -u | --update)
+      OPTION_SPECIFIED=true
+      UPDATE_DEPENDENCIES=true
+      shift
+      ;;
+    -n | --now)
+      OPTION_SPECIFIED=true
+      UPDATE_DEPENDENCIES=true
+      INSTALL=true
+      START=true
+      shift
+      ;;
+    *) break ;;
     esac
   done
 
-  if $INSTALL ; then
+  if $INSTALL; then
     echo "[Options] Installing Greengrass"
   fi
 
-  if $START ; then
+  if $START; then
     echo "[Options] Starting Greengrass"
   fi
 
-  if $UPDATE_DEPENDENCIES ; then
+  if $UPDATE_DEPENDENCIES; then
     echo "[Options] Updating dependencies"
   fi
 fi
@@ -94,38 +112,35 @@ if [ "$OPTION_SPECIFIED" = false ]; then
 fi
 
 if [ -z "$INSTALL" ]; then
-    read -p "Install Greengrass? " -n 1 -r
-    echo
+  read -p "Install Greengrass? " -n 1 -r
+  echo
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]
-    then
-        echo "Not installing Greengrass"
-        exit 999
-    fi
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Not installing Greengrass"
+    exit 999
+  fi
 fi
 
 if [ -z "$START" ]; then
-    read -p "Start Greengrass? " -n 1 -r
-    echo
+  read -p "Start Greengrass? " -n 1 -r
+  echo
 
-    START=true
+  START=true
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]
-    then
-        START=false
-    fi
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    START=false
+  fi
 fi
 
 if [ -z "$UPDATE_DEPENDENCIES" ]; then
-    read -p "Update dependencies? " -n 1 -r
-    echo
+  read -p "Update dependencies? " -n 1 -r
+  echo
 
-    UPDATE_DEPENDENCIES=true
+  UPDATE_DEPENDENCIES=true
 
-    if [[ ! $REPLY =~ ^[Yy]$ ]]
-    then
-        UPDATE_DEPENDENCIES=false
-    fi
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    UPDATE_DEPENDENCIES=false
+  fi
 fi
 
 if [ -e "stop.sh" ]; then
@@ -133,227 +148,224 @@ if [ -e "stop.sh" ]; then
   ./stop.sh
 fi
 
-ADD_USER=`which adduser`
+ADD_USER=$(which adduser)
 ADD_USER_MISSING=$?
 
 if [ $ADD_USER_MISSING -eq 1 ]; then
-    echo "adduser is missing, cannot continue"
-    exit 1
+  echo "adduser is missing, cannot continue"
+  exit 1
 fi
 
-ADD_GROUP=`which groupadd`
+ADD_GROUP=$(which groupadd)
 ADD_GROUP_MISSING=$?
 
 if [ $ADD_GROUP_MISSING -eq 1 ]; then
-    ADD_GROUP=`which addgroup`
-    ADD_GROUP_MISSING=$?
+  ADD_GROUP=$(which addgroup)
+  ADD_GROUP_MISSING=$?
 
-    if [ $ADD_GROUP_MISSING -eq 1 ]; then
-        echo "addgroup is missing, cannot continue"
-        exit 1
-    fi
+  if [ $ADD_GROUP_MISSING -eq 1 ]; then
+    echo "addgroup is missing, cannot continue"
+    exit 1
+  fi
 fi
 
-YUM=`which yum`
+YUM=$(which yum)
 YUM_MISSING=$?
 
 if [ $YUM_MISSING -eq 0 ]; then
-    INSTALLER_UPDATE=$YUM
-    INSTALLER=$YUM
+  INSTALLER_UPDATE=$YUM
+  INSTALLER=$YUM
 
-    # Amazon Linux on EC2 needs this
-    service cgconfig start
+  # Amazon Linux on EC2 needs this
+  service cgconfig start
 
-    # mount /sys/fs/cgroup if not already done
-    if ! mountpoint -q /sys/fs/cgroup; then
-    	mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+  # mount /sys/fs/cgroup if not already done
+  if ! mountpoint -q /sys/fs/cgroup; then
+    mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
+  fi
+
+  pushd .
+  cd /sys/fs/cgroup
+
+  # get/mount list of enabled cgroup controllers
+  for sys in $(awk '!/^#/ { if ($4 == 1) print $1 }' /proc/cgroups); do
+    mkdir -p $sys
+    if ! mountpoint -q $sys; then
+      if ! mount -n -t cgroup -o $sys cgroup $sys; then
+        rmdir $sys || true
+      fi
     fi
+  done
 
-    pushd .
-    cd /sys/fs/cgroup
+  popd
 
-    # get/mount list of enabled cgroup controllers
-    for sys in $(awk '!/^#/ { if ($4 == 1) print $1 }' /proc/cgroups); do
-    	mkdir -p $sys
-    	if ! mountpoint -q $sys; then
-    		if ! mount -n -t cgroup -o $sys cgroup $sys; then
-    			rmdir $sys || true
-    		fi
-    	fi
-    done
-
-    popd
-
-    INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
+  INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
 else
-    INSTALLER_UPDATE=apt-get
-    INSTALLER=apt-get
-    # Avoid preinst and postinst tasks from asking questions
-    export DEBIAN_FRONTEND=noninteractive
-    INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre libsm6 iproute2"
+  INSTALLER_UPDATE=apt-get
+  INSTALLER=apt-get
+  # Avoid preinst and postinst tasks from asking questions
+  export DEBIAN_FRONTEND=noninteractive
+  INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre libsm6 iproute2"
 fi
 
 if [ "$UPDATE_DEPENDENCIES" = true ]; then
-    UNAME=`uname -a`
+  UNAME=$(uname -a)
 
-    # Raspbian specific setup
-    OS_RELEASE=`grep ^ID= /etc/os-release`
+  # Raspbian specific setup
+  OS_RELEASE=$(grep ^ID= /etc/os-release)
 
-    if [ "$OS_RELEASE" = "ID=raspbian" ]; then
-      if [ -f /tmp/REBOOT_REQUIRED ] ; then
-        cat /tmp/REBOOT_REQUIRED
-        exit 1
-      fi
-
-      BUSTER=`cat /etc/os-release | grep -q buster`
-
-      if [ $? -eq 0 ]; then
-        echo "Detected Raspbian Buster, adding --allow-releaseinfo-change option"
-        INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
-      fi
-
-      CMDLINE=`cat /boot/cmdline.txt`
-
-      echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
-
-      if [ $? -eq 0 ]; then
-        echo "cgroups already configured"
-      else
-        sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
-        REBOOT_REASON="Enabled cgroup_memory in /boot/cmdline.txt.  You must reboot and re-run this installer."
-        echo $REBOOT_REASON > /tmp/REBOOT_REQUIRED
-
-        cat /tmp/REBOOT_REQUIRED
-
-        exit 1
-      fi
-    fi
-
-    set +e
-    PIP=`which pip`
-    PIP_MISSING=$?
-
-    if [ $PIP_MISSING -eq 1 ]; then
-        # Only install this stuff if pip is missing
-        PIP_PACKAGES="python-pip python-setuptools"
-    else
-        PIP_PACKAGES=
-    fi
-
-    PIP3=`which pip3`
-    PIP3_MISSING=$?
-
-    if [ $PIP3_MISSING -eq 1 ]; then
-        # Only install this stuff if pip3 is missing
-        PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
-    else
-        PIP3_PACKAGES=
-    fi
-
-    COUNTER=0
-
-    until $INSTALLER_UPDATE update -y || (( COUNTER++ >= 3 ));
-    do
-      echo "Package manager update failed, trying again"
-      sleep 2
-    done
-
-    if [ "$COUNTER" -gt 3 ];
-    then
-      echo "Failed to run package manager update, can't continue"
+  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+    if [ -f /tmp/REBOOT_REQUIRED ]; then
+      cat /tmp/REBOOT_REQUIRED
       exit 1
     fi
 
-    $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PIP3_PACKAGES git
-    $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
-    $INSTALLER install -y mosh
+    BUSTER=$(cat /etc/os-release | grep -q buster)
 
-    if [[ `uname -a` =~ .*hypriotos.* ]]
-    then
-        easy_install pip
+    if [ $? -eq 0 ]; then
+      echo "Detected Raspbian Buster, adding --allow-releaseinfo-change option"
+      INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
     fi
 
-    # Just in case it wasn't installed before
-    PIP=`which pip`
+    CMDLINE=$(cat /boot/cmdline.txt)
 
-    $PIP install --upgrade pip
+    echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
 
-    # Just in case the upgrade moves it
-    PIP=`which pip`
+    if [ $? -eq 0 ]; then
+      echo "cgroups already configured"
+    else
+      sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
+      REBOOT_REASON="Enabled cgroup_memory in /boot/cmdline.txt.  You must reboot and re-run this installer."
+      echo $REBOOT_REASON >/tmp/REBOOT_REQUIRED
 
-    $PIP install AWSIoTPythonSDK
+      cat /tmp/REBOOT_REQUIRED
 
-    if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
-        $PIP install ${GGD_PIP_DEPENDENCIES}
+      exit 1
     fi
+  fi
 
-    $PIP install mxnet
-    $PIP install opencv-python
+  set +e
+  PIP=$(which pip)
+  PIP_MISSING=$?
 
+  if [ $PIP_MISSING -eq 1 ]; then
+    # Only install this stuff if pip is missing
+    PIP_PACKAGES="python-pip python-setuptools"
+  else
+    PIP_PACKAGES=
+  fi
+
+  PIP3=$(which pip3)
+  PIP3_MISSING=$?
+
+  if [ $PIP3_MISSING -eq 1 ]; then
+    # Only install this stuff if pip3 is missing
+    PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
+  else
+    PIP3_PACKAGES=
+  fi
+
+  COUNTER=0
+
+  until $INSTALLER_UPDATE update -y || ((COUNTER++ >= 3)); do
+    echo "Package manager update failed, trying again"
+    sleep 2
+  done
+
+  if [ "$COUNTER" -gt 3 ]; then
+    echo "Failed to run package manager update, can't continue"
+    exit 1
+  fi
+
+  $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PIP3_PACKAGES git jq
+  $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
+  $INSTALLER install -y mosh
+
+  if [[ $(uname -a) =~ .*hypriotos.* ]]; then
+    easy_install pip
+  fi
+
+  # Just in case it wasn't installed before
+  PIP=$(which pip)
+
+  $PIP install --upgrade pip
+
+  # Just in case the upgrade moves it
+  PIP=$(which pip)
+
+  $PIP install AWSIoTPythonSDK
+
+  if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
+    $PIP install ${GGD_PIP_DEPENDENCIES}
+  fi
+
+  $PIP install mxnet
+  $PIP install opencv-python
+  $PIP install awscli
 fi
 
 EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
-NODEJS_8_10=`which nodejs8.10`
+NODEJS_8_10=$(which nodejs8.10)
 NODEJS_8_10_MISSING=$?
 
 if [ $NODEJS_8_10_MISSING -eq 1 ]; then
-    # Install NodeJS
-    echo "Node is missing"
-    GIT=`which git`
-    GIT_MISSING=$?
+  # Install NodeJS
+  echo "Node is missing"
+  GIT=$(which git)
+  GIT_MISSING=$?
 
-    if [ $GIT_MISSING -eq 1 ]; then
-        echo "git is missing, not installing node"
-    else
-        git clone https://github.com/tj/n.git
-        pushd .
-        cd n
-        export PATH="$PATH:/usr/local/bin"
-        make install
-        n 8.10.0
-        NODEJS=`which node`
-        ln -s $NODEJS `dirname $NODEJS`/nodejs8.10
-        popd
-    fi
+  if [ $GIT_MISSING -eq 1 ]; then
+    echo "git is missing, not installing node"
+  else
+    git clone https://github.com/tj/n.git
+    pushd .
+    cd n
+    export PATH="$PATH:/usr/local/bin"
+    make install
+    n 8.10.0
+    NODEJS=$(which node)
+    ln -s $NODEJS $(dirname $NODEJS)/nodejs8.10
+    popd
+  fi
 fi
 
 $ADD_USER --system ggc_user
 $ADD_GROUP --system ggc_group
 
 EXPECTED_JAVA_LOCATION="/usr/local/bin/java8"
-JAVA_8=`which java8`
+JAVA_8=$(which java8)
 JAVA_8_MISSING=$?
 
 if [ $JAVA_8_MISSING -eq 1 ]; then
-    JAVA=`which java`
-    JAVA_MISSING=$?
+  JAVA=$(which java)
+  JAVA_MISSING=$?
 
-    if [ $JAVA_MISSING -eq 1 ]; then
-        # Can't set up the symlink
-        echo "[WARN] Java is not present, not setting up the symlink for it"
-    else
-        ln -s $JAVA $EXPECTED_JAVA_LOCATION
-    fi
+  if [ $JAVA_MISSING -eq 1 ]; then
+    # Can't set up the symlink
+    echo "[WARN] Java is not present, not setting up the symlink for it"
+  else
+    ln -s $JAVA $EXPECTED_JAVA_LOCATION
+  fi
 fi
 
 untar_payload
 ./install.sh
 
 if [ $? -ne 0 ]; then
-    exit
+  exit
 fi
 
 if [ -d "${SYSTEMD_DESTINATION_PATH}" ]; then
-    echo "systemd detected"
+  echo "systemd detected"
 
-    if [ ! -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
-        echo "Creating Greengrass systemd service"
-        cp ${SYSTEMD_SCRIPT} ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}
-        systemctl daemon-reload
-        systemctl enable greengrass
-    else
-        echo "Greengrass service already exists, skipping installation of systemd file"
-    fi
+  if [ ! -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
+    echo "Creating Greengrass systemd service"
+    cp ${SYSTEMD_SCRIPT} ${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}
+    systemctl daemon-reload
+    systemctl enable greengrass
+  else
+    echo "Greengrass service already exists, skipping installation of systemd file"
+  fi
 fi
 
 grep -q libsofthsm2.so /greengrass/config/config.json
@@ -365,21 +377,21 @@ if [ $? -eq 0 ]; then
     # Find libsofthsm2.so, ignore the one in the greengrass directory
     $INSTALLER install -y softhsm2 libsofthsm2-dev pkcs11-dump
 
-    LIBSOFTHSM_LOCATION=`dpkg -L libsofthsm2 | grep libsofthsm2.so | head -n 1`
+    LIBSOFTHSM_LOCATION=$(dpkg -L libsofthsm2 | grep libsofthsm2.so | head -n 1)
     ln -sf $LIBSOFTHSM_LOCATION /greengrass/libsofthsm2.so
 
     # NOTE: This symlink is not necessary yet
     # LIBP11KIT_LOCATION=`dpkg -L libp11-kit0 | grep libp11-kit.so.0 | head -n 1`
     # ln -sf $LIBP11KIT_LOCATION /greengrass/libp11-kit.so.0
 
-    SOFTHSMCONF_LOCATION=`strings /greengrass/libsofthsm2.so | grep '^[a-zA-Z0-9./]*conf$'`
+    SOFTHSMCONF_LOCATION=$(strings /greengrass/libsofthsm2.so | grep '^[a-zA-Z0-9./]*conf$')
     mkdir -p /greengrass/softhsm2/tokens
-    echo "directories.tokendir = /greengrass/softhsm2/tokens" > $SOFTHSMCONF_LOCATION
-    echo "objectstore.backend = file" >> $SOFTHSMCONF_LOCATION
+    echo "directories.tokendir = /greengrass/softhsm2/tokens" >$SOFTHSMCONF_LOCATION
+    echo "objectstore.backend = file" >>$SOFTHSMCONF_LOCATION
     softhsm2-util --init-token --slot 0 --label greengrass --so-pin 12345 --pin 1234
     openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt -in /greengrass/certs/core.key -out hash.private.pem
 
-    SOFTHSM2_UTIL_VERSION=`softhsm2-util --version`
+    SOFTHSM2_UTIL_VERSION=$(softhsm2-util --version)
 
     if [ "$SOFTHSM2_UTIL_VERSION" == "2.0.0" ]; then
       softhsm2-util --import hash.private.pem --slot 0 --label iotkey --id 0000 --pin 1234
@@ -395,7 +407,7 @@ fi
 mv $SCRIPT_NAME $SCRIPT_NAME.DEPLOYED
 
 if [ "$START" = true ]; then
-    ./${START_SCRIPT}
+  ./${START_SCRIPT}
 fi
 
 exit 0
