@@ -975,11 +975,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
+        String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
+
         return ImmutableDeploymentConf.builder()
                 .isSyncShadow(true)
                 .name(EMPTY)
                 .groupName(deploymentArguments.groupName)
                 .coreRoleName(deploymentArguments.coreRoleName)
+                .coreRoleAlias(coreRoleAlias)
                 .corePolicy(deploymentArguments.corePolicyName)
                 .functions(new ArrayList<>())
                 .build();
