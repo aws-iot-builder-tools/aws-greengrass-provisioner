@@ -22,6 +22,7 @@ public class BasicScriptHelper implements ScriptHelper {
     private final String startTemplatePath = shellPath + getStartScriptName() + ".in";
     private final String stopTemplatePath = shellPath + getStopScriptName() + ".in";
     private final String cleanTemplatePath = shellPath + getCleanScriptName() + ".in";
+    private final String credentialsScriptPath = shellPath + getCredentialsScriptName();
     private final String ggScriptTemplatePath = shellPath + "template.sh.in";
     private final String monitorTemplatePath = shellPath + getMonitorScriptName() + ".in";
     private final String systemdTemplatePath = shellPath + getSystemdScriptName() + ".in";
@@ -39,6 +40,11 @@ public class BasicScriptHelper implements ScriptHelper {
     @Override
     public String getCleanScriptName() {
         return "clean.sh";
+    }
+
+    @Override
+    public String getCredentialsScriptName() {
+        return "credentials.sh";
     }
 
     @Override
@@ -84,6 +90,11 @@ public class BasicScriptHelper implements ScriptHelper {
     @Override
     public String generateCleanScript(Architecture architecture, String ggShScriptName) {
         return innerGenerateRunScriptWithArchitecture(cleanTemplatePath, Optional.ofNullable(architecture), Optional.ofNullable(ggShScriptName));
+    }
+
+    @Override
+    public String generateCredentialsScript() {
+        return innerGenerateRunScriptWithArchitecture(credentialsScriptPath, Optional.empty(), Optional.empty());
     }
 
     @Override
@@ -146,6 +157,7 @@ public class BasicScriptHelper implements ScriptHelper {
         variables.put("GREENGRASS_DAEMON", ggConstants.getGreengrassDaemonName());
         variables.put("MONITOR_SCRIPT", getMonitorScriptName());
         variables.put("SYSTEMD_SCRIPT", getSystemdScriptName());
+        variables.put("CREDENTIALS_SCRIPT", getCredentialsScriptName());
         variables.put("SYSTEMD_DESTINATION_PATH", LIB_SYSTEMD_SYSTEM_PATH);
 
         architecture.ifPresent(arch -> variables.put("GG_BITS", arch.getFilename()));

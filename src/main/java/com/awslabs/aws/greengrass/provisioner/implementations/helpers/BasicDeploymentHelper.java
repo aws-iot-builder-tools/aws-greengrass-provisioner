@@ -176,6 +176,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         deploymentConfBuilder.coreRoleName(config.getString("conf.core.roleName"));
+        deploymentConfBuilder.coreRoleAlias(config.getString("conf.core.roleAlias"));
         deploymentConfBuilder.coreRoleAssumeRolePolicy(config.getObject("conf.core.roleAssumeRolePolicy").render(ConfigRenderOptions.concise()));
         deploymentConfBuilder.coreRolePolicies(config.getStringList("conf.core.rolePolicies"));
         deploymentConfBuilder.corePolicy(config.getObject("conf.core.policy").render(ConfigRenderOptions.concise()));
@@ -347,15 +348,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<Role> optionalGreengrassServiceRole;
         Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse = Optional.empty();
 
-        if (!deploymentArguments.serviceRoleExists) {
-            // If the service role does not exist we should create it
-            Role greengrassServiceRole = createServiceRole(deploymentConf);
-            optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(greengrassServiceRole, GREENGRASS_SERVICE_ROLE_NAME));
-            optionalGreengrassServiceRole = Optional.of(greengrassServiceRole);
-        } else {
-            // The service role exists already, do not try to create or modify it
-            optionalGreengrassServiceRole = Optional.empty();
-        }
 
         // Create the role for the core, if necessary
         Role greengrassRole;
@@ -370,6 +362,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             greengrassRole = optionalGreengrassRole.get();
         } else {
             greengrassRole = createGreengrassRole(deploymentConf);
+        }
+
+        if (!deploymentArguments.serviceRoleExists) {
+            // If the service role does not exist we should create it
+            Role greengrassServiceRole = createServiceRole(deploymentConf);
+            optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(greengrassRole, deploymentConf.getCoreRoleAlias()));
+            optionalGreengrassServiceRole = Optional.of(greengrassServiceRole);
+        } else {
+            // The service role exists already, do not try to create or modify it
+            optionalGreengrassServiceRole = Optional.empty();
         }
 
         ///////////////////////////////////////////////////
@@ -973,11 +975,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
+        String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
+
         return ImmutableDeploymentConf.builder()
                 .isSyncShadow(true)
                 .name(EMPTY)
                 .groupName(deploymentArguments.groupName)
                 .coreRoleName(deploymentArguments.coreRoleName)
+                .coreRoleAlias(coreRoleAlias)
                 .corePolicy(deploymentArguments.corePolicyName)
                 .functions(new ArrayList<>())
                 .build();
@@ -1425,6 +1430,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCleanScriptName(), scriptHelper.generateCleanScript(architecture.get(), baseGgShScriptName).getBytes(), scriptPermissions));
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getMonitorScriptName(), scriptHelper.generateMonitorScript(architecture.get()).getBytes(), scriptPermissions));
         installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getSystemdScriptName(), scriptHelper.generateSystemdScript().getBytes(), scriptPermissions));
+        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCredentialsScriptName(), scriptHelper.generateCredentialsScript().getBytes(), scriptPermissions));
 
         for (GGDConf ggdConf : ggdConfs) {
             File mainScript = null;

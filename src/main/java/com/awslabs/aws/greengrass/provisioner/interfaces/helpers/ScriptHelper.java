@@ -22,7 +22,11 @@ public interface ScriptHelper {
 
     String generateCleanScript(Architecture architecture, String ggShScriptName);
 
+    String generateCredentialsScript();
+
     String generateGgScript(Set<String> ggdPipDependencies);
+
+    String getCredentialsScriptName();
 
     String getMonitorScriptName();
 
