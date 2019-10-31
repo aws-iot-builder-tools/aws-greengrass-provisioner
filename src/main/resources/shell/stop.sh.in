@@ -1,20 +1,19 @@
 #!/usr/bin/env bash
 
 # Check if we're root and re-execute if we're not.
-rootcheck () {
-    if [ $(id -u) != "0" ]
-    then
-        sudo "$0" "$@"  # Modified as suggested below.
-        exit $?
-    fi
+rootcheck() {
+  if [ $(id -u) != "0" ]; then
+    sudo "$0" "$@"
+    exit $?
+  fi
 }
 
 rootcheck "${@}"
 
 if [ -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
-    echo "Stopping with systemd"
-    systemctl stop greengrass
+  echo "Stopping with systemd"
+  systemctl stop greengrass
 else
-    echo "Stopping manually"
-    ${GREENGRASS_DAEMON} stop
+  echo "Stopping manually"
+  ${GREENGRASS_DAEMON} stop
 fi

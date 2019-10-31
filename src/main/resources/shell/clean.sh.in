@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 
 # Check if we're root and re-execute if we're not.
-rootcheck () {
-    if [ $(id -u) != "0" ]
-    then
-        sudo "$0" "$@"  # Modified as suggested below.
-        exit $?
-    fi
+rootcheck() {
+  if [ $(id -u) != "0" ]; then
+    sudo "$0" "$@"
+    exit $?
+  fi
 }
 
 rootcheck "${@}"
@@ -18,6 +17,28 @@ if [ -f "${SYSTEMD_DESTINATION_PATH}/${SYSTEMD_SCRIPT}" ]; then
   systemctl daemon-reload
 fi
 
+clean_aws_credential_process() {
+  # Get the user from the first parameter and get their home directory
+  INPUT_USER=$1
+  DIR=$(eval echo "~$INPUT_USER")
+
+  # Are there AWS credentials present?
+  if [ -f $DIR/.aws/credentials ]; then
+    # Yes, they may have their own special configuration options as well. Just remove the options we added.
+    sed -i '/^credential_process.*credentials.sh/d' $DIR/.aws/config
+    sed -i '/^configured_by_ggp.*/d' $DIR/.aws/config
+  else
+    # No, it is likely we created the configuration because there are no credentials stored. Just delete it.
+    rm $DIR/.aws/config
+
+    # Delete the directory if it is empty (ignore errors)
+    rmdir $DIR/.aws &> /dev/null
+  fi
+}
+
+clean_aws_credential_process "root"
+clean_aws_credential_process "${SUDO_USER}"
+
 rm -rf /greengrass \
   ./${START_SCRIPT} \
   ./${STOP_SCRIPT} \
@@ -25,6 +46,7 @@ rm -rf /greengrass \
   ./${CLEAN_SCRIPT} \
   ./${INSTALL_SCRIPT} \
   ./${SYSTEMD_SCRIPT} \
+  ./${CREDENTIALS_SCRIPT} \
   ./${GG_SH} \
   ./${GG_SH}.DEPLOYED \
   ./${GG_BITS} \
@@ -36,5 +58,4 @@ rm -rf /greengrass \
   ./run-*.sh \
   ./config \
   ./certs \
-  ./n \
-
+  ./n
