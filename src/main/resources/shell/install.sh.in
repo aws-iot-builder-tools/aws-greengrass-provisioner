@@ -32,6 +32,8 @@ install_aws_credential_process() {
     RUN_USER_SUFFIX=""
   fi
 
+  REGION=$(cat $GREENGRASS_REGION_FILE)
+
   CMD="$RUN_USER_PREFIX aws configure set $PROFILE region $REGION $RUN_USER_SUFFIX"
   eval $CMD
   CMD="$RUN_USER_PREFIX aws configure set $PROFILE output json $RUN_USER_SUFFIX"
