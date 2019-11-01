@@ -39,8 +39,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     public static final String NO_COLONS_REGEX = "[^:]*";
     public static final String ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX = "arn:aws:lambda:" + NO_COLONS_REGEX + ":" + NO_COLONS_REGEX + ":function:";
     public static final String FULL_LAMBDA_ARN_CHECK_REGEX = String.join("", ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX, NO_COLONS_REGEX, ":", NO_COLONS_REGEX);
-    public static final String EXISTING_LAMBDA_FUNCTION_PREFIX = "~";
-    public static final String EXISTING_LAMBDA_FUNCTION_PARTIAL_NAME_REGEX = EXISTING_LAMBDA_FUNCTION_PREFIX + "[^:]*:[^:].*$";
+    public static final String EXISTING_LAMBDA_FUNCTION_WILDCARD = "~";
+    public static final String ENDS_WITH_ALIAS_REGEX = "[^:]*:[^:]*$";
     private final Logger log = LoggerFactory.getLogger(BasicFunctionHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
@@ -72,9 +72,9 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private Either<String, File> innerGetFunctionConfPathOrArn(String functionName) throws IOException {
-        if (functionName.startsWith(EXISTING_LAMBDA_FUNCTION_PREFIX)) {
-            if (functionName.matches(EXISTING_LAMBDA_FUNCTION_PARTIAL_NAME_REGEX)) {
-                return Either.left(lambdaHelper.findFullFunctionArnByPartialName(functionName.substring(1)));
+        if (functionName.contains(EXISTING_LAMBDA_FUNCTION_WILDCARD)) {
+            if (functionName.matches(ENDS_WITH_ALIAS_REGEX)) {
+                return Either.left(lambdaHelper.findFullFunctionArnByPartialName(functionName));
             } else {
                 throw new RuntimeException("Lambda function reference [" + functionName + "] does not include an alias. Append a colon and the alias to the partial name and try again.");
             }

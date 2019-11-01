@@ -13,6 +13,7 @@ import io.vavr.control.Either;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.tooling.BuildException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class BasicLambdaHelper implements LambdaHelper {
@@ -421,8 +423,12 @@ public class BasicLambdaHelper implements LambdaHelper {
     public String findFullFunctionArnByPartialName(String partialName) {
         ListFunctionsResponse listFunctionsResponse;
 
-        String partialNameWithoutAlias = partialName.replaceAll(":.*$", "");
-        String alias = partialName.replaceAll("^.*:", "");
+        String partialNameWithoutAlias = partialName.substring(0, partialName.lastIndexOf(":"));
+        String escapedPartialName = StringEscapeUtils.escapeJava(partialNameWithoutAlias);
+        String patternString = "^" + escapedPartialName.replaceAll("~", ".*") + "$";
+        Pattern pattern = Pattern.compile(patternString);
+
+        String alias = partialName.substring(partialName.lastIndexOf(":") + 1);
 
         Optional<String> optionalFunctionArn = Optional.empty();
         Optional<String> optionalNextMarker = Optional.empty();
@@ -436,7 +442,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             optionalNextMarker = Optional.ofNullable(listFunctionsResponse.nextMarker());
 
             List<String> functionArns = listFunctionsResponse.functions().stream()
-                    .filter(function -> function.functionArn().endsWith(partialNameWithoutAlias))
+                    .filter(function -> pattern.matcher(function.functionName()).find())
                     .map(FunctionConfiguration::functionArn)
                     .collect(Collectors.toList());
 
