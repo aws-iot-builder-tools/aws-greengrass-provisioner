@@ -60,6 +60,7 @@ def gsonVersion = '2.8.6'
 def dockerClientVersion = '8.16.0'
 def awsSdk2Version = '2.10.7'
 def mavenInvokerVersion = '3.0.1'
+def commonsTextVersion = '1.8'
 def commonsLangVersion = '3.9'
 def junitVersion = '4.12'
 def systemRulesVersion = '1.19.0'
@@ -227,6 +228,7 @@ dependencies {
     compile "software.amazon.awssdk:s3:$awsSdk2Version"
     compile "software.amazon.awssdk:cloudwatchlogs:$awsSdk2Version"
     compile "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
+    compile "org.apache.commons:commons-text:$commonsTextVersion"
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
     compile "io.vavr:vavr:$vavrVersion"
