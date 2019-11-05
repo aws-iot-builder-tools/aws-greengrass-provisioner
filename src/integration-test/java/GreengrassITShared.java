@@ -12,6 +12,9 @@ import java.io.IOException;
 import java.util.Optional;
 
 class GreengrassITShared {
+    static final String HELLO_WORLD_PYTHON_3_PROD_PARTIAL = "~HelloWorldPython3:PROD";
+    static final String BENCHMARK_JAVA_PROD_PARTIAL = "~CDDBenchmarkJava:PROD";
+    static final String BENCHMARK_PROD_PARTIAL = "~Benchmark~:PROD";
     static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
     static final File NODEJS_SDK_REQUIRED_FOR_TESTING = new File("foundation/aws-greengrass-core-sdk-js.zip");
     static final File MASTER_DEPLOYMENTS = new File("../aws-greengrass-lambda-functions/deployments");
@@ -33,6 +36,7 @@ class GreengrassITShared {
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
     static final String PYTHON2_HELLO_WORLD_DEPLOYMENT = "python2-hello-world.conf";
     static final String PYTHON3_HELLO_WORLD_DEPLOYMENT = "python3-hello-world.conf";
+    static final String BENCHMARK_DEPLOYMENT = "benchmark.conf";
     static final String LIFX_DEPLOYMENT = "lifx.conf";
     static final String NODE_WEBSERVER_DEPLOYMENT = "web-server-node.conf";
     static final String NODE_HELLO_WORLD_DEPLOYMENT = "node-hello-world.conf";
@@ -102,6 +106,10 @@ class GreengrassITShared {
         return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
 
+    String getBenchmarkDeploymentCommand(Optional<String> groupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, BENCHMARK_DEPLOYMENT, " ", getGroupOption(groupName));
+    }
+
     String getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional<String> groupName) {
         return String.join("", DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
     }
@@ -135,14 +143,14 @@ class GreengrassITShared {
     }
 
     @NotNull
-    private String getReusedFunctionDeploymentConfContents(String groupName) {
-        String functionToReuse = String.join("-", groupName, "HelloWorldPython3:PROD");
-        return "conf { functions = [\"~" + functionToReuse + "\"] }";
+    private String getReusedFunctionDeploymentConfContents(String partialFunctionName, String groupName) {
+        String functionToReuse = String.join("-", groupName, partialFunctionName);
+        return "conf { functions = [\"" + functionToReuse + "\"] }";
     }
 
     @NotNull
-    File setupReusedFunctionDeploymentConf(Optional<String> optionalDirectoryPrefix, String groupName) throws IOException {
-        String tempDeploymentConfContents = getReusedFunctionDeploymentConfContents(groupName);
+    File setupReusedFunctionDeploymentConf(Optional<String> optionalDirectoryPrefix, String partialFunctionName, String groupName) throws IOException {
+        String tempDeploymentConfContents = getReusedFunctionDeploymentConfContents(partialFunctionName, groupName);
         return writeTempDeploymentConfFile(optionalDirectoryPrefix, tempDeploymentConfContents);
     }
 

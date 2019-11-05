@@ -109,10 +109,36 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     // Test set 12: Reuse Python 3 Hello World in another group without Docker
     @Test
     public void shouldReusePython3FunctionWithoutDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.HELLO_WORLD_PYTHON_3_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it the first time
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty())));
+
+        // Reuse it
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getReusedFunctionDeploymentCommand(tempDeploymentConfFile)));
+    }
+
+    // Test set 13: Reuse Java function in another group without Docker
+    @Test
+    public void shouldReuseJavaFunctionWithoutDocker() throws IOException {
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_JAVA_PROD_PARTIAL, greengrassITShared.getGroupName());
+
+        // Build it the first time
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty())));
+
+        // Reuse it
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getReusedFunctionDeploymentCommand(tempDeploymentConfFile)));
+    }
+
+    // Test set 14: Reuse a function that has a name that is too broad and fail
+    @Test
+    public void shouldFailToReuseBroadPatternWithoutDocker() throws IOException {
+        expectedSystemExit.expectSystemExitWithStatus(1);
+
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_PROD_PARTIAL, greengrassITShared.getGroupName());
+
+        // Build it the first time
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty())));
 
         // Reuse it
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getReusedFunctionDeploymentCommand(tempDeploymentConfFile)));
