@@ -36,6 +36,11 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class BasicFunctionHelper implements FunctionHelper {
+    public static final String NO_COLONS_REGEX = "[^:]*";
+    public static final String ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX = "arn:aws:lambda:" + NO_COLONS_REGEX + ":" + NO_COLONS_REGEX + ":function:";
+    public static final String FULL_LAMBDA_ARN_CHECK_REGEX = String.join("", ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX, NO_COLONS_REGEX, ":", NO_COLONS_REGEX);
+    public static final String EXISTING_LAMBDA_FUNCTION_WILDCARD = "~";
+    public static final String ENDS_WITH_ALIAS_REGEX = "[^:]*:[^:]*$";
     private final Logger log = LoggerFactory.getLogger(BasicFunctionHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
@@ -51,6 +56,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     GGConstants ggConstants;
     @Inject
     GGVariables ggVariables;
+    @Inject
+    IoHelper ioHelper;
 
     @Inject
     public BasicFunctionHelper() {
@@ -60,19 +67,49 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionConf.toPath().getParent();
     }
 
-    private File getFunctionConfPath(String functionName) {
-        return Try.of(() -> innerGetFunctionConfPath(functionName)).get();
+    private Either<String, File> getFunctionConfPathOrArn(String functionName) {
+        return Try.of(() -> innerGetFunctionConfPathOrArn(functionName)).get();
     }
 
-    private File innerGetFunctionConfPath(String functionName) throws IOException {
+    private Either<String, File> innerGetFunctionConfPathOrArn(String functionName) throws IOException {
+        if (functionName.contains(EXISTING_LAMBDA_FUNCTION_WILDCARD)) {
+            if (functionName.matches(ENDS_WITH_ALIAS_REGEX)) {
+                return Either.left(lambdaHelper.findFullFunctionArnByPartialName(functionName));
+            } else {
+                throw new RuntimeException("Lambda function reference [" + functionName + "] does not include an alias. Append a colon and the alias to the partial name and try again.");
+            }
+        }
+
         if (functionName.startsWith(HTTPS)) {
-            return getFunctionFromGit(functionName);
+            return Either.right(getGitFunctionConfFile(functionName));
+        } else if (functionName.matches(ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX + ".*$")) {
+            throwExceptionIfLambdaArnIsIncomplete(functionName);
+
+            return Either.left(functionName);
         } else {
-            return getLocalFunction(functionName);
+            return Either.right(getLocalFunctionConfFile(functionName));
         }
     }
 
-    private File getLocalFunction(String functionName) throws IOException {
+    private void throwExceptionIfLambdaArnIsIncomplete(String functionName) {
+        if (!functionName.matches(FULL_LAMBDA_ARN_CHECK_REGEX)) {
+            throw new RuntimeException("Existing Lambda ARN [" + functionName + "] is malformed or incomplete. The Lambda ARN must be the fully qualified ARN with an alias.");
+        }
+    }
+
+    private String getLambdaFunctionConf(String functionName) {
+        Map<String, String> existingEnvironment = lambdaHelper.getFunctionEnvironment(functionName);
+
+        Optional<String> optionalFunctionConfString = Optional.ofNullable(existingEnvironment.get(LambdaHelper.GGP_FUNCTION_CONF));
+
+        if (!optionalFunctionConfString.isPresent()) {
+            throw new RuntimeException("This function does not contain the required [" + LambdaHelper.GGP_FUNCTION_CONF + "] key. Add this key to the function and try again.");
+        }
+
+        return optionalFunctionConfString.get();
+    }
+
+    private File getLocalFunctionConfFile(String functionName) throws IOException {
         String sourceDirectory = String.join("/", FUNCTIONS, functionName);
         Path sourcePath = new File(sourceDirectory).toPath();
 
@@ -86,13 +123,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         File tempFile = tempPath.toFile();
         tempFile.deleteOnExit();
 
-
         FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
 
         return tempPath.resolve(FUNCTION_CONF).toFile();
     }
 
-    private File getFunctionFromGit(String functionName) throws IOException {
+    private File getGitFunctionConfFile(String functionName) throws IOException {
         // This is a git repo, fetch it
         String tempFunctionName = functionName.substring(HTTPS.length());
 
@@ -117,7 +153,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             repoName = repoAndDirectory[0];
             directoryName = repoAndDirectory[1];
-            cloneName = functionName.replaceAll(":[^:]*$", "");
+            cloneName = functionName.replaceAll(":" + NO_COLONS_REGEX + "$", "");
         } else {
             repoName = last;
             directoryName = ".";
@@ -162,6 +198,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             stderrStrings.stream().forEach(log::error);
             throw new RuntimeException("An error occurred while checking out the git repo");
         }
+
         return tempDir;
     }
 
@@ -175,36 +212,40 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     @Override
     public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
-        List<File> enabledFunctionConfigFiles = getEnabledFunctionConfigFiles(deploymentConf);
+        // Get each enabled function conf file OR the ARN of an existing function
+        List<Either<String, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
 
-        // Find any functions with missing config files
-        detectMissingConfigFiles(enabledFunctionConfigFiles);
+        warnAboutMissingDefaultsIfNecessary();
 
-        return buildFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfigFiles, defaultFunctionIsolationMode);
+        return getFunctionConfs(defaultEnvironment, deploymentConf, enabledFunctions, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> buildFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<File> enabledFunctionConfigFiles, FunctionIsolationMode defaultFunctionIsolationMode) {
-        List<String> enabledFunctions = new ArrayList<>();
-
-        List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
-
+    private void warnAboutMissingDefaultsIfNecessary() {
         if (!ggConstants.getFunctionDefaultsConf().exists()) {
             log.warn(ggConstants.getFunctionDefaultsConf().toString() + " does not exist.  All function configurations MUST contain all required values.");
         }
+    }
 
-        for (File enabledFunctionConf : enabledFunctionConfigFiles) {
-            Path functionPath = getFunctionPath(enabledFunctionConf);
+    private List<FunctionConf> getFunctionConfs(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+        // Find any functions with missing config files
+        detectMissingConfigFiles(enabledFunctionConfs);
 
-            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, functionPath, defaultFunctionIsolationMode)).get();
+        return getFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
+    }
 
-            enabledFunctions.add(functionConf.getFunctionName());
+    private List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+        List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
+
+        for (Either<String, File> enabledFunctionConf : enabledFunctionConfs) {
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
+
             enabledFunctionConfObjects.add(functionConf);
         }
 
-        if (enabledFunctions.size() > 0) {
+        if (enabledFunctionConfObjects.size() > 0) {
             log.info("Enabled functions: ");
-            enabledFunctions.stream()
-                    .forEach(functionName -> log.info("  " + functionName));
+            enabledFunctionConfObjects
+                    .forEach(functionConf -> log.info("  " + functionConf.getFunctionName()));
         } else {
             log.warn("NO FUNCTIONS ENABLED");
         }
@@ -212,11 +253,37 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, File enabledFunctionConf, Path functionPath, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, Either<String, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
-        // Load function config file and use function.defaults.conf as the fallback for missing values
-        Config config = ConfigFactory.parseFile(enabledFunctionConf);
+        Config config;
+        Optional<Path> optionalFunctionPath = Optional.empty();
+
+        // Store the config file info and load it using function.defaults.conf as the fallback for missing values
+
+        if (functionConf.isLeft()) {
+            // We have the function conf in Lambda
+            String functionArn = functionConf.getLeft();
+            functionConfBuilder.existingArn(functionArn);
+
+            String functionConfFromLambda = getLambdaFunctionConf(functionArn);
+            functionConfBuilder.rawConfig(functionConfFromLambda);
+
+            config = ConfigFactory.parseString(functionConfFromLambda);
+        } else {
+            // We have the function conf in a file
+            File functionConfFile = functionConf.get();
+
+            functionConfBuilder.rawConfig(ioHelper.readFileAsString(functionConfFile));
+
+            config = ConfigFactory.parseFile(functionConfFile);
+
+            Path functionPath = getFunctionPath(functionConfFile);
+            functionConfBuilder.buildDirectory(functionPath);
+
+            optionalFunctionPath = Optional.of(functionPath);
+        }
+
         Config functionDefaults = ggVariables.getFunctionDefaults();
 
         // Make sure we use the calculated default function isolation mode as the default (forced to no container when using Docker)
@@ -232,8 +299,6 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         // Resolve the entire fallback config
         config = config.resolve();
-
-        functionConfBuilder.buildDirectory(functionPath);
 
         Language language = Language.valueOf(config.getString("conf.language"));
 
@@ -279,10 +344,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         setEnvironmentVariablesFromConf(functionConfBuilder, config);
         addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
 
-        File cfTemplate = getFunctionCfTemplatePath(functionPath).toFile();
+        if (optionalFunctionPath.isPresent()) {
+            File cfTemplate = getFunctionCfTemplatePath(optionalFunctionPath.get()).toFile();
 
-        if (cfTemplate.exists()) {
-            functionConfBuilder.cfTemplate(cfTemplate);
+            if (cfTemplate.exists()) {
+                functionConfBuilder.cfTemplate(cfTemplate);
+            }
         }
 
         return functionConfBuilder.build();
@@ -297,8 +364,10 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private void detectMissingConfigFiles(List<File> enabledFunctionConfigFiles) {
+    private void detectMissingConfigFiles(List<Either<String, File>> enabledFunctionConfigFiles) {
         List<String> missingConfigFunctions = enabledFunctionConfigFiles.stream()
+                .filter(Either::isRight)
+                .map(Either::get)
                 .filter(not(File::exists))
                 .map(File::getPath)
                 .collect(Collectors.toList());
@@ -311,13 +380,11 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private List<File> getEnabledFunctionConfigFiles(DeploymentConf deploymentConf) {
+    private List<Either<String, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
-        List<File> enabledFunctionConfigFiles = deploymentConf.getFunctions().stream()
-                .map(this::getFunctionConfPath)
+        return deploymentConf.getFunctions().stream()
+                .map(this::getFunctionConfPathOrArn)
                 .collect(Collectors.toList());
-
-        return enabledFunctionConfigFiles;
     }
 
     private List<String> getConnectedShadows(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
@@ -490,30 +557,33 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public void verifyFunctionsAreBuildable(List<FunctionConf> functionConfs) {
-        List<FunctionConf> javaMavenFunctions = functionConfs.stream()
+    public void verifyFunctionsAreSupported(List<FunctionConf> functionConfs) {
+        // Only check the function confs that aren't already in Lambda
+        List<FunctionConf> functionConfsToCheck = getBuildableFunctions(functionConfs);
+
+        List<FunctionConf> javaMavenFunctions = functionConfsToCheck.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
                 .collect(Collectors.toList());
 
-        List<FunctionConf> javaGradleFunctions = functionConfs.stream()
+        List<FunctionConf> javaGradleFunctions = functionConfsToCheck.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> gradleBuilder.isGradleFunction(functionConf))
                 .collect(Collectors.toList());
 
-        List<FunctionConf> python2Functions = functionConfs.stream()
+        List<FunctionConf> python2Functions = functionConfsToCheck.stream()
                 .filter(getPython2Predicate())
                 .collect(Collectors.toList());
 
-        List<FunctionConf> python3Functions = functionConfs.stream()
+        List<FunctionConf> python3Functions = functionConfsToCheck.stream()
                 .filter(getPython3Predicate())
                 .collect(Collectors.toList());
 
-        List<FunctionConf> nodeFunctions = functionConfs.stream()
+        List<FunctionConf> nodeFunctions = functionConfsToCheck.stream()
                 .filter(getNodePredicate())
                 .collect(Collectors.toList());
 
-        List<FunctionConf> executableFunctions = functionConfs.stream()
+        List<FunctionConf> executableFunctions = functionConfsToCheck.stream()
                 .filter(getExecutablePredicate())
                 .collect(Collectors.toList());
 
@@ -525,7 +595,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         allBuildableFunctions.addAll(nodeFunctions);
         allBuildableFunctions.addAll(executableFunctions);
 
-        if (allBuildableFunctions.size() != functionConfs.size()) {
+        if (allBuildableFunctions.size() != functionConfsToCheck.size()) {
             // If there is a mismatch here it means that some of the functions are not able to be built
             List<FunctionConf> functionsNotBuilt = functionConfs.stream()
                     .filter(functionConf -> !allBuildableFunctions.contains(functionConf))
@@ -574,66 +644,124 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     @Override
     public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> functionConfList, Role lambdaRole) {
-        // Build the functions
-        List<ZipFilePathAndFunctionConf> zipFilePathAndFunctionConfs = buildFunctions(functionConfList);
-
-        // Were there any errors?
-        List<ZipFilePathAndFunctionConf> errors = zipFilePathAndFunctionConfs.stream()
-                .filter(immutableZipFilePathAndFunctionConf -> immutableZipFilePathAndFunctionConf.getError().isPresent())
-                .collect(Collectors.toList());
-
-        if (errors.size() != 0) {
-            log.error("Errors detected in Lambda functions");
-
-            errors.forEach(this::logErrorInLambdaFunction);
-
-            System.exit(1);
-        }
+        List<ZipFilePathAndFunctionConf> builtFunctions = buildExistingFunctions(functionConfList);
 
         // Create or update the functions as necessary
-        List<Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse>> lambdaResponses = zipFilePathAndFunctionConfs.stream()
+        List<Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse>> lambdaResponsesForBuiltFunctions = builtFunctions.stream()
                 .map(zipFilePathAndFunctionConf -> lambdaHelper.createOrUpdateFunction(zipFilePathAndFunctionConf.getFunctionConf(), lambdaRole, zipFilePathAndFunctionConf.getZipFilePath().get()))
                 .collect(Collectors.toList());
 
-        // Get the function ARNs
-        List<String> functionArns = lambdaResponses.stream()
+        // Get the function ARNs from the built functions
+        List<String> functionArnsForBuiltFunctions = lambdaResponsesForBuiltFunctions.stream()
                 .map(either -> either.fold(CreateFunctionResponse::functionArn, UpdateFunctionConfigurationResponse::functionArn))
                 .collect(Collectors.toList());
 
-        // Create a map of the function ARN to function conf
-        Map<String, FunctionConf> functionArnToFunctionConfMap = getFunctionArnToFunctionConfMap(functionConfList, functionArns);
+        // Create a map of the unqualified function ARN to the function conf for functions we built
+        Map<String, FunctionConf> builtFunctionArnMap = getFunctionArnToFunctionConfMap(getBuildableFunctions(functionConfList), functionArnsForBuiltFunctions);
 
-        // Convert the alias ARNs into variables to be put in the environment of each function
-        Map<String, String> environmentVariablesForLocalLambdas = functionArnToFunctionConfMap.entrySet().stream()
+        // Convert the alias ARNs for built functions into variables to be put in the environment of each function
+        Map<String, String> environmentVariablesForLocalBuiltLambdas = builtFunctionArnMap.entrySet().stream()
                 .map(functionArnAndFunctionConf -> getNameToAliasEntry(functionArnAndFunctionConf.getValue(), functionArnAndFunctionConf.getKey()))
                 .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
 
+        // Convert the alias ARNs for existing functions into variables to be put in the environment of each function
+        Map<String, String> environmentVariablesForLocalExistingLambdas = getExistingFunctions(functionConfList).stream()
+                .map(this::getNameToAliasEntry)
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+
+        // Combine the list of all of the local function ARNs
+        Map<String, String> environmentVariablesForLocalLambdas = new HashMap<>();
+        environmentVariablesForLocalLambdas.putAll(environmentVariablesForLocalBuiltLambdas);
+        environmentVariablesForLocalLambdas.putAll(environmentVariablesForLocalExistingLambdas);
+
         // Put the environment variables into each environment and create new function confs for them all
-        functionConfList = functionConfList.stream()
+        List<FunctionConf> functionConfsWithEnvironmentVariables = functionConfList.stream()
                 .map(functionConf -> setEnvironmentVariables(environmentVariablesForLocalLambdas, functionConf))
                 .collect(Collectors.toList());
 
-        // Publish all of the functions to Lambda
-        List<LambdaFunctionArnInfo> lambdaFunctionArnInfoList = functionConfList.stream()
+        return buildCombinedMapOfGreengrassFunctionModels(functionConfsWithEnvironmentVariables);
+    }
+
+    @NotNull
+    private List<FunctionConf> getExistingFunctions(List<FunctionConf> functionConfList) {
+        return functionConfList.stream()
+                .filter(functionConf -> functionConf.getExistingArn().isPresent())
+                .collect(Collectors.toList());
+    }
+
+    @NotNull
+    private List<FunctionConf> getBuildableFunctions(List<FunctionConf> functionConfList) {
+        return functionConfList.stream()
+                .filter(functionConf -> !functionConf.getExistingArn().isPresent())
+                .collect(Collectors.toList());
+    }
+
+    @NotNull
+    private List<ZipFilePathAndFunctionConf> buildExistingFunctions(List<FunctionConf> functionConfList) {
+        // Get the list of functions to be built
+        List<FunctionConf> functionsToBeBuilt = getBuildableFunctions(functionConfList);
+
+        // Build the functions
+        List<ZipFilePathAndFunctionConf> builtFunctions = buildFunctions(functionsToBeBuilt);
+
+        // Were there any errors?
+        List<ZipFilePathAndFunctionConf> buildProcessErrors = builtFunctions.stream()
+                .filter(immutableZipFilePathAndFunctionConf -> immutableZipFilePathAndFunctionConf.getError().isPresent())
+                .collect(Collectors.toList());
+
+        if (buildProcessErrors.size() != 0) {
+            log.error("Errors detected when building Lambda functions");
+
+            buildProcessErrors.forEach(this::logErrorInLambdaFunction);
+
+            System.exit(1);
+        }
+        return builtFunctions;
+    }
+
+    @NotNull
+    private Map<Function, FunctionConf> buildCombinedMapOfGreengrassFunctionModels(List<FunctionConf> functionConfList) {
+        // Get the map for functions that are built (conversion step adds the lambda ARN to the function conf)
+        Map<Function, FunctionConf> builtFunctionToConfMap = buildGreengrassFunctionModels(convertToCompleteFunctionConf(getBuiltFunctionMap(functionConfList)));
+
+        // Get the map for functions that exist already
+        Map<Function, FunctionConf> existingFunctionToConfMap = buildGreengrassFunctionModels(getExistingFunctions(functionConfList));
+
+        // Combine the built and existing functions
+        Map<Function, FunctionConf> functionToConfMap = new HashMap<>();
+        functionToConfMap.putAll(builtFunctionToConfMap);
+        functionToConfMap.putAll(existingFunctionToConfMap);
+
+        return functionToConfMap;
+    }
+
+    private List<FunctionConf> convertToCompleteFunctionConf(Map<LambdaFunctionArnInfo, FunctionConf> map) {
+        return map.entrySet().stream()
+                .map(entry -> ImmutableFunctionConf.builder().from(entry.getValue()).existingArn(entry.getKey().getAliasArn().get()).build())
+                .collect(Collectors.toList());
+    }
+
+    private Map<LambdaFunctionArnInfo, FunctionConf> getBuiltFunctionMap(List<FunctionConf> functionConfList) {
+        // Get the list of functions that were built
+        List<FunctionConf> builtFunctions = getBuildableFunctions(functionConfList);
+
+        // Publish all of the built functions to Lambda
+        List<LambdaFunctionArnInfo> builtFunctionLambdaInfo = builtFunctions.stream()
                 .map(FunctionConf::getGroupFunctionName)
                 .map(lambdaHelper::publishLambdaFunctionVersion)
                 .collect(Collectors.toList());
 
-        // Create aliases for all of the functions in Lambda
-        Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap = getLambdaFunctionArnToFunctionConfMap(lambdaFunctionArnInfoList, functionConfList);
+        // Associate the Lambda function ARNs with the built function list
+        Map<LambdaFunctionArnInfo, FunctionConf> builtLambdaFunctionArnToFunctionConfMap = getLambdaFunctionArnToFunctionConfMap(builtFunctionLambdaInfo, builtFunctions);
 
-        List<String> aliases = lambdaFunctionArnToFunctionConfMap.entrySet().stream()
+        // Create aliases for all of the built functions in Lambda
+        List<String> aliases = builtLambdaFunctionArnToFunctionConfMap.entrySet().stream()
                 .map(entry -> lambdaHelper.createAlias(entry.getValue(), entry.getKey().getQualifier()))
                 .collect(Collectors.toList());
 
-        lambdaFunctionArnToFunctionConfMap = addAliasesToMap(lambdaFunctionArnToFunctionConfMap, aliases);
+        builtLambdaFunctionArnToFunctionConfMap = addAliasesToMap(builtLambdaFunctionArnToFunctionConfMap, aliases);
 
-        // Build the function models
-        Map<Function, FunctionConf> functionToConfMap = lambdaFunctionArnToFunctionConfMap.entrySet().stream()
-                .map(entry -> buildGreengrassFunctionModel(entry.getKey(), entry.getValue()))
-                .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue()));
-
-        return functionToConfMap;
+        return builtLambdaFunctionArnToFunctionConfMap;
     }
 
     private Map<LambdaFunctionArnInfo, FunctionConf> addAliasesToMap(Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap, List<String> aliases) {
@@ -688,8 +816,20 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .get();
     }
 
-    private AbstractMap.SimpleEntry<Function, FunctionConf> buildGreengrassFunctionModel(LambdaFunctionArnInfo lambdaFunctionArnInfo, FunctionConf functionConf) {
-        Function function = greengrassHelper.buildFunctionModel(lambdaFunctionArnInfo.getAliasArn().get(), functionConf);
+    private Map<Function, FunctionConf> buildGreengrassFunctionModels(List<FunctionConf> functionConfs) {
+        return functionConfs.stream()
+                .map(this::buildGreengrassFunctionModel)
+                .collect(Collectors.toMap(AbstractMap.SimpleEntry::getKey, AbstractMap.SimpleEntry::getValue));
+    }
+
+    private AbstractMap.SimpleEntry<Function, FunctionConf> buildGreengrassFunctionModel(FunctionConf functionConf) {
+        Function function = greengrassHelper.buildFunctionModel(functionConf.getExistingArn().get(), functionConf);
+
+        return new AbstractMap.SimpleEntry<>(function, functionConf);
+    }
+
+    private AbstractMap.SimpleEntry<Function, FunctionConf> buildGreengrassFunctionModel(String aliasArn, FunctionConf functionConf) {
+        Function function = greengrassHelper.buildFunctionModel(aliasArn, functionConf);
 
         return new AbstractMap.SimpleEntry<>(function, functionConf);
     }
@@ -712,6 +852,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         String aliasArn = String.join(":", functionArn, functionConf.getAliasName());
 
         return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
+    }
+
+    private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(FunctionConf functionConf) {
+        String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
+
+        return new AbstractMap.SimpleEntry<>(nameInEnvironment, functionConf.getExistingArn().get());
     }
 
     private void logErrorInLambdaFunction(ZipFilePathAndFunctionConf error) {

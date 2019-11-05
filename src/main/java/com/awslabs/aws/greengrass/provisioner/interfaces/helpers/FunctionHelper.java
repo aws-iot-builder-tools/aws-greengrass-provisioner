@@ -23,7 +23,7 @@ public interface FunctionHelper {
 
     List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode);
 
-    void verifyFunctionsAreBuildable(List<FunctionConf> functionConfs);
+    void verifyFunctionsAreSupported(List<FunctionConf> functionConfs);
 
     Predicate<FunctionConf> getPython2Predicate();
 

@@ -16,11 +16,15 @@ import java.util.Optional;
 
 @Value.Immutable
 public abstract class FunctionConf {
+    public abstract Optional<String> getExistingArn();
+
+    public abstract String getRawConfig();
+
     public abstract Language getLanguage();
 
     public abstract EncodingType getEncodingType();
 
-    public abstract Path getBuildDirectory();
+    public abstract Optional<Path> getBuildDirectory();
 
     public abstract String getGroupName();
 
@@ -65,7 +69,7 @@ public abstract class FunctionConf {
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract Optional<File> getCfTemplate();
-
+   
     public String getGroupFunctionName() {
         return String.join("-", getGroupName(), getFunctionName());
     }

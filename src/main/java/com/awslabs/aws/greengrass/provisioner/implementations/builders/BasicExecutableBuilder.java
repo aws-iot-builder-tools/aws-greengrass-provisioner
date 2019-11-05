@@ -42,7 +42,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
 
     @NotNull
     private String getBuildScriptName(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().toString(), BUILD_SH);
+        return String.join("/", functionConf.getBuildDirectory().get().toString(), BUILD_SH);
     }
 
     private void buildExecutable(FunctionConf functionConf) {
@@ -57,7 +57,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
         programAndArguments.add(buildScriptName);
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(functionConf.getBuildDirectory().toFile());
+        processBuilder.directory(functionConf.getBuildDirectory().get().toFile());
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();

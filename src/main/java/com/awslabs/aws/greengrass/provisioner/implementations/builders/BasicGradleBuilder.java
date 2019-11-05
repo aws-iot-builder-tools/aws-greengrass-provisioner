@@ -22,12 +22,12 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public String getArchivePath(FunctionConf functionConf) {
         // The gradle build output is expected in the /build/libs directory in an artifact that ends with "-1.0-SNAPSHOT-all.jar"
-        return functionConf.getBuildDirectory().toString() + "/build/libs/" + functionConf.getFunctionName() + "-1.0-SNAPSHOT-all.jar";
+        return functionConf.getBuildDirectory().get().toString() + "/build/libs/" + functionConf.getFunctionName() + "-1.0-SNAPSHOT-all.jar";
     }
 
     @Override
     public String getGradleBuildPath(FunctionConf functionConf) {
-        return functionConf.getBuildDirectory().toString();
+        return functionConf.getBuildDirectory().get().toString();
     }
 
     @Override

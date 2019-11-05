@@ -49,7 +49,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
         copySdk(log, functionConf, resourceHelper, ioHelper);
 
-        if (hasDependencies(functionConf.getBuildDirectory())) {
+        if (hasDependencies(functionConf.getBuildDirectory().get())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
 
             // Install all of the dependencies for this function
@@ -61,7 +61,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         File tempFile = Try.of(() -> ioHelper.getTempFile("node-lambda-build", "zip")).get();
 
         // Create the deployment package
-        ZipUtil.pack(new File(functionConf.getBuildDirectory().toString()), tempFile);
+        ZipUtil.pack(new File(functionConf.getBuildDirectory().get().toString()), tempFile);
 
         moveDeploymentPackage(functionConf, tempFile);
     }
@@ -78,7 +78,7 @@ public class BasicNodeBuilder implements NodeBuilder {
         programAndArguments.add("install");
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(new File(functionConf.getBuildDirectory().toString()));
+        processBuilder.directory(new File(functionConf.getBuildDirectory().get().toString()));
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();

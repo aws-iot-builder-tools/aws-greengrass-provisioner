@@ -13,7 +13,9 @@ import io.vavr.control.Either;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
+import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.tooling.BuildException;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.SdkBytes;
@@ -25,7 +27,12 @@ import javax.inject.Inject;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class BasicLambdaHelper implements LambdaHelper {
     private static final String ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE = "arn:aws:greengrass:::runtime/function/executable";
@@ -68,7 +75,7 @@ public class BasicLambdaHelper implements LambdaHelper {
     public ImmutableZipFilePathAndFunctionConf buildExecutableFunction(FunctionConf functionConf) {
         log.info("Creating executable/native function [" + functionConf.getFunctionName() + "]");
 
-        String zipFilePath = String.join("/", functionConf.getBuildDirectory().toString(), functionConf.getFunctionName() + ".zip");
+        String zipFilePath = String.join("/", functionConf.getBuildDirectory().get().toString(), functionConf.getFunctionName() + ".zip");
 
         File zipFile = new File(zipFilePath);
 
@@ -136,7 +143,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         python2Builder.buildFunctionIfNecessary(functionConf);
@@ -157,7 +166,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         python3Builder.buildFunctionIfNecessary(functionConf);
@@ -178,7 +189,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (error.isPresent()) {
             return ImmutableZipFilePathAndFunctionConf.builder()
-                    .error(error).build();
+                    .functionConf(functionConf)
+                    .error(error)
+                    .build();
         }
 
         nodeBuilder.buildFunctionIfNecessary(functionConf);
@@ -226,8 +239,8 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String groupFunctionName) {
-        PublishVersionResponse publishVersionResponse = publishFunctionVersion(groupFunctionName);
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String functionName) {
+        PublishVersionResponse publishVersionResponse = publishFunctionVersion(functionName);
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
@@ -240,11 +253,11 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
-    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function code");
 
         UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .zipFile(functionCode.zipFile())
                 .build();
 
@@ -254,13 +267,20 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
+        Map<String, String> existingEnvironment = getFunctionEnvironment(functionName);
+
+        HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, existingEnvironment);
+
+        Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
+
         loggingHelper.logInfoWithName(log, baseFunctionName, "Updating Lambda function configuration");
 
         UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .runtime(runtime)
+                .environment(lambdaEnvironment)
                 .build();
 
         // Make sure multiple threads don't do this at the same time
@@ -270,15 +290,49 @@ public class BasicLambdaHelper implements LambdaHelper {
         }
     }
 
-    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String groupFunctionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    @NotNull
+    private HashMap<String, String> updateGgpFunctionConfInEnvironment(FunctionConf functionConf, Map<String, String> existingEnvironment) {
+        // The map that comes from the AWS SDK is unmodifiable. We need to make sure we return a regular hash map so we can modify it.
+        HashMap<String, String> newEnvironment = new HashMap<>(existingEnvironment);
+
+        // Overwrite any existing function configuration information
+        newEnvironment.put(GGP_FUNCTION_CONF, functionConf.getRawConfig());
+        return newEnvironment;
+    }
+
+    @Override
+    public Map<String, String> getFunctionEnvironment(String functionName) {
+        GetFunctionConfigurationResponse getFunctionConfigurationResponse = getFunctionConfigurationByName(functionName);
+
+        return Optional.ofNullable(getFunctionConfigurationResponse.environment())
+                .map(EnvironmentResponse::variables)
+                .orElseGet(HashMap::new);
+    }
+
+    @Override
+    public GetFunctionConfigurationResponse getFunctionConfigurationByName(String functionName) {
+        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
+                .functionName(functionName)
+                .build();
+
+        return lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
+    }
+
+    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, String baseFunctionName, String functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName, "Creating new Lambda function");
 
+        // No environment, start with an empty one
+        HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, new HashMap<>());
+
+        Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
+
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .role(role.arn())
                 .handler(functionConf.getHandlerName())
                 .code(functionCode)
                 .runtime(runtime)
+                .environment(lambdaEnvironment)
                 .build();
 
         // Make sure multiple threads don't do this at the same time
@@ -289,9 +343,9 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public PublishVersionResponse publishFunctionVersion(String groupFunctionName) {
+    public PublishVersionResponse publishFunctionVersion(String functionName) {
         PublishVersionRequest publishVersionRequest = PublishVersionRequest.builder()
-                .functionName(groupFunctionName)
+                .functionName(functionName)
                 .build();
 
         return lambdaClient.publishVersion(publishVersionRequest);
@@ -363,5 +417,60 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
 
         lambdaClient.deleteAlias(deleteAliasRequest);
+    }
+
+    @Override
+    public String findFullFunctionArnByPartialName(String partialName) {
+        ListFunctionsResponse listFunctionsResponse;
+
+        String partialNameWithoutAlias = partialName.substring(0, partialName.lastIndexOf(":"));
+        String escapedPartialName = StringEscapeUtils.escapeJava(partialNameWithoutAlias);
+        String patternString = "^" + escapedPartialName.replaceAll("~", ".*") + "$";
+        Pattern pattern = Pattern.compile(patternString);
+
+        String alias = partialName.substring(partialName.lastIndexOf(":") + 1);
+
+        Optional<String> optionalFunctionArn = Optional.empty();
+        Optional<String> optionalNextMarker = Optional.empty();
+
+        do {
+            ListFunctionsRequest.Builder listFunctionsRequestBuilder = ListFunctionsRequest.builder();
+            optionalNextMarker.ifPresent(listFunctionsRequestBuilder::marker);
+
+            listFunctionsResponse = lambdaClient.listFunctions(listFunctionsRequestBuilder.build());
+
+            optionalNextMarker = Optional.ofNullable(listFunctionsResponse.nextMarker());
+
+            List<String> functionArns = listFunctionsResponse.functions().stream()
+                    .filter(function -> pattern.matcher(function.functionName()).find())
+                    .map(FunctionConfiguration::functionArn)
+                    .collect(Collectors.toList());
+
+            if (functionArns.size() > 1) {
+                return throwMoreThanOneLambdaMatchedException(partialName);
+            } else if (functionArns.size() == 1) {
+                if (optionalFunctionArn.isPresent()) {
+                    return throwMoreThanOneLambdaMatchedException(partialName);
+                }
+
+                optionalFunctionArn = Optional.ofNullable(functionArns.get(0));
+            }
+        } while (optionalNextMarker.isPresent());
+
+        if (optionalFunctionArn.isPresent()) {
+            String fullFunctionArn = optionalFunctionArn.get() + ":" + alias;
+
+            if (!functionExists(fullFunctionArn)) {
+                throw new RuntimeException("The specified Lambda ARN [" + fullFunctionArn + "] does not exist");
+            }
+
+            return fullFunctionArn;
+        }
+
+        throw new RuntimeException("No Lambda function matched the partial name [" + partialName + "]");
+    }
+
+    private String throwMoreThanOneLambdaMatchedException(String partialName) {
+        throw new RuntimeException("More than one Lambda function matched the partial name [" + partialName + "]");
     }
 }
