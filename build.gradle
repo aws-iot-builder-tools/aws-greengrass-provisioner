@@ -13,7 +13,7 @@ apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'idea'
 
-def gradleDependencyVersion = '5.6.3'
+def gradleDependencyVersion = '5.6.4'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -53,12 +53,12 @@ def guiceVersion = '4.2.2'
 def configVersion = '1.4.0'
 def ztZipVersion = '1.13'
 def jcommanderVersion = '1.78'
-def slf4jVersion = '1.7.28'
+def slf4jVersion = '1.7.29'
 def jcabiVersion = '0.18'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.6'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.10.3'
+def awsSdk2Version = '2.10.7'
 def mavenInvokerVersion = '3.0.1'
 def commonsLangVersion = '3.9'
 def junitVersion = '4.12'
