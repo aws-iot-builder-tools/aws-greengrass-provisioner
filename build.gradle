@@ -13,7 +13,7 @@ apply plugin: 'java'
 apply plugin: 'application'
 apply plugin: 'idea'
 
-def gradleDependencyVersion = '5.6.3'
+def gradleDependencyVersion = '5.6.4'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
