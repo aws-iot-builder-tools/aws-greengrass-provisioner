@@ -10,6 +10,8 @@ import java.util.Optional;
 public interface ArchiveHelper {
     void addVirtualTarEntry(Optional<List<VirtualTarEntry>> virtualTarEntries, String filename, byte[] content, int permissions);
 
+    void addVirtualTarEntry(List<VirtualTarEntry> virtualTarEntries, String filename, byte[] content, int permissions);
+
     VirtualTarEntry createVirtualTarEntry(String filename, byte[] content, int permissions);
 
     Optional<ByteArrayOutputStream> tar(Optional<List<VirtualTarEntry>> virtualTarEntryList) throws IOException;

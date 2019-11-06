@@ -24,7 +24,12 @@ public class BasicArchiveHelper implements ArchiveHelper {
             return;
         }
 
-        virtualTarEntries.get().add(createVirtualTarEntry(filename, content, permissions));
+        addVirtualTarEntry(virtualTarEntries.get(), filename, content, permissions);
+    }
+
+    @Override
+    public void addVirtualTarEntry(List<VirtualTarEntry> virtualTarEntries, String filename, byte[] content, int permissions) {
+        virtualTarEntries.add(createVirtualTarEntry(filename, content, permissions));
     }
 
     @Override

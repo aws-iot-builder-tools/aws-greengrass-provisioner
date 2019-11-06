@@ -1345,23 +1345,28 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Adding keys and certificate files to archive");
 
+        String coreCertificatePath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName());
+        String coreCertificateArnPath = String.join(".", coreCertificatePath, "arn");
+
         if (optionalCoreKeysAndCertificate.isPresent()) {
             KeysAndCertificate coreKeysAndCertificate = optionalCoreKeysAndCertificate.get();
 
-            String privateKeyPath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName());
-            String publicCertificatePath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName());
+            String coreKeyPath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePrivateKeyName());
 
-            addPrivateAndPublicKeyFiles(installScriptVirtualTarEntries, coreKeysAndCertificate, privateKeyPath, publicCertificatePath);
-            addPrivateAndPublicKeyFiles(oemVirtualTarEntries, coreKeysAndCertificate, privateKeyPath, publicCertificatePath);
+            addPrivateAndPublicKeyFiles(installScriptVirtualTarEntries, coreKeysAndCertificate, coreKeyPath, coreCertificatePath);
+            addPrivateAndPublicKeyFiles(oemVirtualTarEntries, coreKeysAndCertificate, coreKeyPath, coreCertificatePath);
         } else {
             log.info("- Adding only client certificate to archive");
 
             String coreCertificatePEM = iotHelper.getCertificatePem(coreCertificateArn);
-            String coreCertificatePath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getCorePublicCertificateName());
 
-            installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions));
-            oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions));
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
         }
+
+        // Add a file for the certificate ARN so it is easier to find on the host or when using the Lambda version of GGP
+        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getBytes(), normalFilePermissions);
 
         for (String thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
@@ -1390,8 +1395,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Adding config.json to archive");
         String configJsonPath = String.join("/", ggConstants.getConfigDirectoryPrefix(), ggConstants.getConfigFileName());
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, configJsonPath, configJson.getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, configJsonPath, configJson.getBytes(), normalFilePermissions));
+        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, configJsonPath, configJson.getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, configJsonPath, configJson.getBytes(), normalFilePermissions);
 
         /////////////////////////
         // Get the AWS root CA //
@@ -1399,9 +1404,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Getting root CA");
         String rootCaPath = String.join("/", ggConstants.getCertsDirectoryPrefix(), ggConstants.getRootCaName());
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, rootCaPath, ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
-        oemVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, rootCaPath, ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
-        ggdVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getRootCaName(), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
+
+        // Use ifPresent here so we don't download the root CA if we don't need to add it to the archive
+        installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, rootCaPath, ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
+        oemVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, rootCaPath, ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
+        ggdVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, ggConstants.getRootCaName(), ioHelper.download(ggConstants.getRootCaUrl()).getBytes(), normalFilePermissions));
 
         //////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Add some extra files to the OEM deployment so that Docker based deployments can do a redeployment on startup //
@@ -1424,13 +1431,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Adding scripts to archive");
         Optional<Architecture> architecture = getArchitecture(deploymentArguments);
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getInstallScriptName(), scriptHelper.generateInstallScript(architecture.get()).getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStartScriptName(), scriptHelper.generateStartScript(architecture.get()).getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStopScriptName(), scriptHelper.generateStopScript(architecture.get()).getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCleanScriptName(), scriptHelper.generateCleanScript(architecture.get(), baseGgShScriptName).getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getMonitorScriptName(), scriptHelper.generateMonitorScript(architecture.get()).getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getSystemdScriptName(), scriptHelper.generateSystemdScript().getBytes(), scriptPermissions));
-        installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCredentialsScriptName(), scriptHelper.generateCredentialsScript().getBytes(), scriptPermissions));
+
+        // Skip this block if we're not generating the install script so we don't generate all of the other inner scripts
+        if (installScriptVirtualTarEntries.isPresent()) {
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getInstallScriptName(), scriptHelper.generateInstallScript(architecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStartScriptName(), scriptHelper.generateStartScript(architecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStopScriptName(), scriptHelper.generateStopScript(architecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCleanScriptName(), scriptHelper.generateCleanScript(architecture.get(), baseGgShScriptName).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getMonitorScriptName(), scriptHelper.generateMonitorScript(architecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getSystemdScriptName(), scriptHelper.generateSystemdScript().getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCredentialsScriptName(), scriptHelper.generateCredentialsScript().getBytes(), scriptPermissions);
+        }
 
         for (GGDConf ggdConf : ggdConfs) {
             File mainScript = null;
@@ -1443,8 +1454,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     mainScript = file;
                 }
 
-                installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, file.getPath(), ioHelper.readFile(file), scriptPermissions));
-                ggdVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, file.getPath(), ioHelper.readFile(file), scriptPermissions));
+                // Use ifPresent here to avoid reading the files when it isn't necessary
+                installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, file.getPath(), ioHelper.readFile(file), scriptPermissions));
+                ggdVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, file.getPath(), ioHelper.readFile(file), scriptPermissions));
             }
 
             if (mainScript == null) {
@@ -1455,8 +1467,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             File finalMainScript = mainScript;
 
-            installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions));
-            ggdVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions));
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
         }
 
         ///////////////////////////
@@ -1466,7 +1478,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (installScriptVirtualTarEntries.isPresent()) {
             log.info("Adding Greengrass binary to archive");
             URL architectureUrl = getArchitectureUrl(deploymentArguments);
-            installScriptVirtualTarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, architecture.get().getFilename(), ioHelper.readFile(architectureUrl), normalFilePermissions));
+
+            // Use ifPresent here to avoid reading the file if it isn't necessary
+            installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, architecture.get().getFilename(), ioHelper.readFile(architectureUrl), normalFilePermissions));
 
             log.info("Building script [" + ggShScriptName + "]");
             ByteArrayOutputStream ggScriptTemplate = new ByteArrayOutputStream();
@@ -1507,11 +1521,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, String groupId, String awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse) {
-        tarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions));
-        tarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions));
-        tarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions));
-        tarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions));
-        tarEntries.ifPresent(a -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions));
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions);
     }
 
     private void addPrivateAndPublicKeyFiles(Optional<List<VirtualTarEntry>> tarEntries, KeysAndCertificate coreKeysAndCertificate, String privateKeyPath, String publicCertificatePath) {
