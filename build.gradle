@@ -1,4 +1,8 @@
 plugins {
+    id 'java'
+    id 'application'
+    id 'idea'
+
     // Creates fat JAR
     id 'com.github.johnrengelman.shadow' version '5.1.0'
 
@@ -8,10 +12,6 @@ plugins {
     // Adds dependencyUpdates task
     id 'com.github.ben-manes.versions' version '0.27.0'
 }
-
-apply plugin: 'java'
-apply plugin: 'application'
-apply plugin: 'idea'
 
 def gradleDependencyVersion = '5.6.4'
 
