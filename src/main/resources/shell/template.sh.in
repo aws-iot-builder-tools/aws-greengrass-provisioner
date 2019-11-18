@@ -245,24 +245,45 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
   fi
 
   set +e
+
   PIP=$(which pip)
   PIP_MISSING=$?
 
   if [ $PIP_MISSING -eq 1 ]; then
-    # Only install this stuff if pip is missing
-    PIP_PACKAGES="python-pip python-setuptools"
+    # Only install these if pip3 is missing
+    PIP_PACKAGES="python2.7 python-pip python-setuptools"
   else
     PIP_PACKAGES=
+  fi
+
+  PYTHON2_7=$(which python2.7)
+  PYTHON2_7_MISSING=$?
+
+  if [ $PYTHON2_7_MISSING -eq 1 ]; then
+    # Only install these if python2.7 is missing
+    PYTHON2_7_PACKAGES="python2.7"
+  else
+    PYTHON2_7_PACKAGES=
   fi
 
   PIP3=$(which pip3)
   PIP3_MISSING=$?
 
   if [ $PIP3_MISSING -eq 1 ]; then
-    # Only install this stuff if pip3 is missing
+    # Only install these if pip3 is missing
     PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
   else
     PIP3_PACKAGES=
+  fi
+
+  PYTHON3_7=$(which python3.7)
+  PYTHON3_7_MISSING=$?
+
+  if [ $PYTHON3_7_MISSING -eq 1 ]; then
+    # Only install these if python3.7 is missing (this can happen if python 3.6 with pip3 is installed but python 3.7 is not e.g. Ubuntu1804)
+    PYTHON3_7_PACKAGES="python3.7 python3-pip python3-setuptools"
+  else
+    PYTHON3_7_PACKAGES=
   fi
 
   COUNTER=0
@@ -277,7 +298,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     exit 1
   fi
 
-  $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PIP3_PACKAGES git jq
+  $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PYTHON2_7_PACKAGES $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
   $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
   $INSTALLER install -y mosh
 
@@ -286,22 +307,22 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
   fi
 
   # Just in case it wasn't installed before
-  PIP=$(which pip)
+  PIP3=$(which pip3)
 
-  $PIP install --upgrade pip
+  $PIP3 install --upgrade pip
 
   # Just in case the upgrade moves it
-  PIP=$(which pip)
+  PIP3=$(which pip3)
 
-  $PIP install AWSIoTPythonSDK
+  $PIP3 install AWSIoTPythonSDK
 
   if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
-    $PIP install ${GGD_PIP_DEPENDENCIES}
+    $PIP3 install ${GGD_PIP_DEPENDENCIES}
   fi
 
-  $PIP install mxnet
-  $PIP install opencv-python
-  $PIP install awscli
+  $PIP3 install mxnet
+  $PIP3 install opencv-python
+  $PIP3 install awscli
 fi
 
 EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
