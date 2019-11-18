@@ -72,7 +72,7 @@ def testContainersVersion = '1.12.3'
 def hamcrestVersion = '2.2'
 def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.1'
-def immutablesValueVersion = '2.8.1'
+def immutablesValueVersion = '2.8.2'
 def awsLambdaJavaCoreVersion = '1.2.0'
 
 def buildDirDist = "$buildDir/dist"
