@@ -72,4 +72,4 @@ RUN apt-get install -y zip
 
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
-ENTRYPOINT ["java", "-XX:+UnlockExperimentalVMOptions", "-XX:+UseCGroupMemoryLimitForHeap", "-jar", "AwsGreengrassProvisioner.jar"]
+ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
