@@ -23,8 +23,6 @@ import com.typesafe.config.*;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
-import org.awaitility.Durations;
-import org.awaitility.core.ConditionTimeoutException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +57,6 @@ import java.util.stream.Collectors;
 
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
-import static org.awaitility.Awaitility.await;
 
 public class BasicDeploymentHelper implements DeploymentHelper {
     public static final IpRange ALL_IPS = IpRange.builder().cidrIp("0.0.0.0/0").build();
@@ -76,7 +73,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String DOES_NOT_EXIST = "does not exist";
     private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
-    private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
+    private static final String GREENGRASS_SESSION_NAME = "greengrass";
+    private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name [" + GREENGRASS_SESSION_NAME + "] already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
+    private static final String GREENGRASS_EC2_INSTANCE_TAG_PREFIX = "greengrass";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
     private final int scriptPermissions = 0755;
@@ -1028,7 +1027,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
         log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + host + "] and run 'screen -r' to see the progress");
-        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of("greengrass"), true);
+        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of(GREENGRASS_SESSION_NAME), true);
         session.disconnect();
         return true;
     }
@@ -1057,8 +1056,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             ioHelper.runCommand(session, String.join(" ", "screen", sessionNameOptions, "-Q", "select", "."), Optional.of(screenSessionNameChecker));
 
-            // TODO: This wait could be removed with better response handling
-            waitForFlagToToggle(screenSessionNameAvailable, SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+            if (!screenSessionNameAvailable.get()) {
+                session.disconnect();
+                throwRuntimeException(SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE);
+            }
         }
 
         if (keepSessionOpen) {
@@ -1096,26 +1097,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         };
     }
 
-    private void waitForFlagToToggle(AtomicBoolean flag, String errorMessage) {
-        Try.of(() -> waitForFlagToToggle(flag))
-                .recover(ConditionTimeoutException.class, exception -> throwRuntimeException(errorMessage))
-                .get();
-    }
-
     private Void throwRuntimeException(String errorMessage) {
         throw new RuntimeException(errorMessage);
     }
 
-    private Void waitForFlagToToggle(AtomicBoolean flag) {
-        await()
-                .atMost(Durations.ONE_MINUTE)
-                .until(flag::get);
-
-        return null;
-    }
-
     private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion) {
-        String instanceTagName = String.join("-", "greengrass", groupName);
+        String instanceTagName = String.join("-", GREENGRASS_EC2_INSTANCE_TAG_PREFIX, groupName);
 
         Optional<String> optionalAccountId = getAccountId(ec2LinuxVersion);
 
