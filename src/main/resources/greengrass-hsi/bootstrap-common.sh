@@ -4,6 +4,8 @@ set -x
 
 CERTIFICATE_ARN_FILE=certificate.arn
 CERTIFICATE_ID_FILE=certificate.id
+P11_PROVIDER=""
+PKCS11_ENGINE_FOR_CURL=""
 
 function error() {
   ARGS=$@
@@ -18,7 +20,12 @@ function success() {
 }
 
 function finish() {
-  success "$(cat $CERTIFICATE_ARN_FILE)"
+  CERTIFICATE_ARN=$(cat $CERTIFICATE_ARN_FILE)
+  echo "If you are using GGP your HSI options will be:"
+  echo " "
+  echo "  --hsi P11Provider=$P11_PROVIDER,slotLabel=greengrass,slotUserPin=1234$PKCS11_ENGINE_FOR_CURL --certificate-arn $CERTIFICATE_ARN"
+  echo " "
+  success "$CERTIFICATE_ARN"
 }
 
 hash aws &>/dev/null
@@ -86,10 +93,6 @@ echo -e $CERTIFICATE_PEM >certificate.pem
 echo $CERTIFICATE_ID >certificate.id
 
 if [[ $CERTIFICATE_ARN == arn:* ]]; then
-  echo "If you are using GGP your HSI options will be:"
-  echo " "
-  echo "  --hsi P11Provider=$P11_PROVIDER,slotLabel=greengrass,slotUserPin=1234$PKCS11_ENGINE_FOR_CURL --certificate-arn $CERTIFICATE_ARN"
-  echo " "
   finish
 else
   error "Failed to get CSR signed by AWS IoT Core"
