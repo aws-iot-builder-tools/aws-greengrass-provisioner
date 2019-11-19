@@ -9,6 +9,7 @@ documents below describes the options for the different modes.
 - [Update Group](/docs/UpdateGroupCommandLine.md)
 - [Query Group](/docs/QueryGroupCommandLine.md)
 - [Test Group](/docs/TestGroupCommandLine.md)
+- [HSI Bootstrap](/docs/HSIBootstrapCommandLine.md)
 
 ## Examples
 
