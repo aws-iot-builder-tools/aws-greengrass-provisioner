@@ -39,7 +39,7 @@ Long form: `--vendor`
 
 Specifies the name of the vendor supplying the HSI support.
 
-Valid values: `SoftHSM2`
+Valid values: `SoftHSM2`, `Zymbit`
 
 ## Target
 
