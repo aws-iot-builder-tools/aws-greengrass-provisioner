@@ -50,6 +50,26 @@ RUN apt-get install -y gradle && \
            /root/.gradle/wrapper/dists/*/*/*.zip \
            /root/.gradle/wrapper/dists/*/*/*/docs
 
+# Added Docker CLI to allow Docker builds of native functions inside of the container
+RUN apt-get -y install \
+    apt-transport-https \
+    ca-certificates \
+    curl \
+    gnupg-agent \
+    software-properties-common && \
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
+    add-apt-repository \
+      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) \
+      stable" && \
+    apt-get update && \
+    apt-get -y install docker-ce-cli && \
+    apt-get --purge -y autoremove && \
+    apt-get -y clean
+
+# Install zip since native builds require it
+RUN apt-get install -y zip
+
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
 ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
