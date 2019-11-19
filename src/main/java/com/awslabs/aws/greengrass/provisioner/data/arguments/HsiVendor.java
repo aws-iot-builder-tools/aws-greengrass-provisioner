@@ -4,7 +4,8 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 
 public enum HsiVendor {
-    SoftHSM2("pkcs11", Constants.STANDARD_PKCS11_URL);
+    SoftHSM2("pkcs11", Constants.STANDARD_PKCS11_URL),
+    Zymbit("zymkey_ssl", Constants.STANDARD_PKCS11_URL);
 
     private final String engineName;
     private final String pkcs11Url;
