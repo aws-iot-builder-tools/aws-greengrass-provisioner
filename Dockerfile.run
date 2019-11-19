@@ -37,7 +37,7 @@ RUN apt-get install -y gradle && \
     mkdir temp && \
     cd temp && \
     gradle init && \
-    gradle wrapper --gradle-version 5.4.1 --distribution-type all && \
+    gradle wrapper --gradle-version 6.0 --distribution-type all && \
     ./gradlew tasks && \
     cd .. && \
     rm -rf temp && \
