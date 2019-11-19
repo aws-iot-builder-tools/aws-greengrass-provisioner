@@ -201,3 +201,46 @@ Step 3 - monitor the deployment:
 
 - Connect to the host via SSH or mosh
 - Run `screen -r greengrass`
+
+### Bootstrap a Raspberry Pi to use Greengrass HSI with Zymbit and then deploy it
+
+Step 1 - use HSI bootstrapping to install the Zymbit tools:
+
+```bash
+GGP --hsi-bootstrap --vendor Zymbit --target pi@192.168.1.5
+
+... lots of output ...
+
+HSI bootstrap failed for the following reason [ERROR: zk_pkcs11-util not found, running Zymbit installer. Re-run the HSI bootstrap after the device reboots.]
+```
+
+Step 2 - re-run the HSI bootstrapping after the device reboots:
+
+```bash
+GGP --hsi-bootstrap --vendor Zymbit --target pi@192.168.1.5
+
+... lots of output ...
+
+If you are using GGP your HSI options will be:
+
+  --hsi P11Provider=/usr/lib/libzk_pkcs11.so,slotLabel=greengrass,slotUserPin=1234,pkcs11EngineForCurl=zymkey_ssl --certificate-arn arn:aws:iot:REGION:ACCOUNT_ID:cert/FINGERPRINT
+
+SUCCESS: arn:aws:iot:REGION:ACCOUNT_ID:cert/FINGERPRINT
+Finished running HSI bootstrap script
+HSI successfully bootstrapped. ARN for the certificate is: arn:aws:iot:REGION:ACCOUNT_ID:cert/FINGERPRINT
+```
+
+Step 3 - bootstrap Greengrass with the launch command and the HSI options:
+
+```bash
+GGP -d deployments/all-hello-world.conf --launch pi@192.168.1.5 -a ARM32 --hsi P11Provider=/usr/lib/libzk_pkcs11.so,slotLabel=greengrass,slotUserPin=1234,pkcs11EngineForCurl=zymkey_ssl --certificate-arn arn:aws:iot:REGION:ACCOUNT_ID:cert/FINGERPRINT
+
+... lots of output ...
+
+Running bootstrap script on host in screen, connect to the instance [pi@192.168.1.5] and run 'screen -r' to see the progress
+```
+
+Step 4 - monitor the deployment:
+
+- Connect to the host via SSH or mosh
+- Run `screen -r greengrass`
