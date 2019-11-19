@@ -242,17 +242,17 @@ public class BasicIoHelper implements IoHelper {
     }
 
     @Override
-    public String runCommand(Session session, String command) throws JSchException, IOException {
+    public List<String> runCommand(Session session, String command) throws JSchException, IOException {
         return runCommand(session, command, Optional.empty());
     }
 
     @Override
-    public String runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException {
+    public List<String> runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException {
         Channel channel = session.openChannel("exec");
         ((ChannelExec) channel).setCommand(command);
 
-        StringBuilder stringBuilder = new StringBuilder();
         StringBuilder lineStringBuilder = new StringBuilder();
+        List<String> output = new ArrayList<>();
 
         try (InputStream commandOutput = channel.getInputStream()) {
             channel.connect();
@@ -262,13 +262,12 @@ public class BasicIoHelper implements IoHelper {
                 char character = (char) readByte;
                 readByte = commandOutput.read();
 
-                stringBuilder.append(character);
-
                 if (character == '\r') {
                     // Throw away \r
                 } else if (character == '\n') {
                     String line = lineStringBuilder.toString();
                     optionalStringConsumer.ifPresent(consumer -> consumer.accept(line));
+                    output.add(line);
                     lineStringBuilder = new StringBuilder();
                 } else {
                     lineStringBuilder.append(character);
@@ -278,18 +277,18 @@ public class BasicIoHelper implements IoHelper {
             channel.disconnect();
         }
 
-        return stringBuilder.toString();
+        return output;
     }
 
     @Override
-    public Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException {
-        boolean preserveTimestamp = false;
+    public Void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException {
+        byte[] byteArrayFromInputStream = getByteArrayFromInputStream(inputFileStream);
 
         // exec 'scp -t rfile' remotely
         remoteFilename = remoteFilename.replace("'", "'\"'\"'");
         remoteFilename = "'" + remoteFilename + "'";
 
-        String command = "scp " + (preserveTimestamp ? "-p" : "") + " -t " + remoteFilename;
+        String command = "scp " + " -t " + remoteFilename;
 
         Channel channel = session.openChannel("exec");
         ((ChannelExec) channel).setCommand(command);
@@ -303,24 +302,8 @@ public class BasicIoHelper implements IoHelper {
                 throw new RuntimeException("Bad acknowledgement while secure copying file, bailing out");
             }
 
-            File localFile = new File(localFilename);
-
-            if (preserveTimestamp) {
-                command = "T " + (localFile.lastModified() / 1000) + " 0";
-                // The access time should be sent here,
-                // but it is not accessible with JavaAPI ;-<
-                command += (" " + (localFile.lastModified() / 1000) + " 0\n");
-
-                outputStream.write(command.getBytes());
-                outputStream.flush();
-
-                if (checkAck(inputStream) != 0) {
-                    throw new RuntimeException("Failure when calling checkAck in sendFile [1]");
-                }
-            }
-
             // send "C0644 filesize filename", where filename should not include '/'
-            long filesize = localFile.length();
+            long filesize = byteArrayFromInputStream.length;
 
             command = "C0644 " + filesize + " ";
 
@@ -342,9 +325,9 @@ public class BasicIoHelper implements IoHelper {
             byte[] bytes = new byte[1024];
 
             // send a content of localFilename
-            try (FileInputStream fileInputStream = new FileInputStream(localFilename)) {
+            try (ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(byteArrayFromInputStream)) {
                 while (true) {
-                    int length = fileInputStream.read(bytes, 0, bytes.length);
+                    int length = byteArrayInputStream.read(bytes, 0, bytes.length);
                     if (length <= 0) break;
                     outputStream.write(bytes, 0, length); //out.flush();
                 }
@@ -364,6 +347,11 @@ public class BasicIoHelper implements IoHelper {
         channel.disconnect();
 
         return null;
+    }
+
+    @Override
+    public Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException {
+        return sendFile(session, new FileInputStream(localFilename), localFilename, remoteFilename);
     }
 
     private int checkAck(InputStream inputStream) throws IOException {

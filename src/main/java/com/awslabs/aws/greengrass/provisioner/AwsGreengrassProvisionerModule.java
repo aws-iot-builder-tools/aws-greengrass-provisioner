@@ -79,6 +79,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(UpdateArgumentHelper.class).to(BasicUpdateArgumentHelper.class);
         bind(QueryArgumentHelper.class).to(BasicQueryArgumentHelper.class);
         bind(TestArgumentHelper.class).to(BasicTestArgumentHelper.class);
+        bind(HsiBootstrapArgumentHelper.class).to(BasicHsiBootstrapArgumentHelper.class);
 
         // Centralized error handling for SDK errors
         bind(SdkErrorHandler.class).to(BasicSdkErrorHandler.class);
@@ -93,17 +94,21 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         operationMultibinder.addBinding().to(BasicGroupQueryHelper.class);
         operationMultibinder.addBinding().to(BasicGroupUpdateHelper.class);
         operationMultibinder.addBinding().to(BasicGroupTestHelper.class);
+        operationMultibinder.addBinding().to(BasicHsiBootstrapHelper.class);
 
         bind(DeploymentHelper.class).to(BasicDeploymentHelper.class);
         bind(GroupQueryHelper.class).to(BasicGroupQueryHelper.class);
         bind(GroupUpdateHelper.class).to(BasicGroupUpdateHelper.class);
         bind(GroupTestHelper.class).to(BasicGroupTestHelper.class);
+        bind(HsiBootstrapHelper.class).to(BasicHsiBootstrapHelper.class);
 
         bind(DeviceTesterHelper.class).to(BasicDeviceTesterHelper.class);
 
         bind(ExceptionHelper.class).to(BasicExceptionHelper.class);
 
         bind(DiagnosticsHelper.class).to(BasicDiagnosticsHelper.class);
+
+        bind(SshHelper.class).to(BasicSshHelper.class);
 
         // Diagnostic rules used in the diagnostic helper
         Multibinder<DiagnosticRule> diagnosticRuleMultibinder = Multibinder.newSetBinder(binder(), DiagnosticRule.class);

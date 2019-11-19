@@ -4,10 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.S3ClientProvider;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentArgumentHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.beust.jcommander.JCommander;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;
@@ -34,6 +31,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     IoHelper ioHelper;
     @Inject
     S3ClientProvider s3ClientProvider;
+    @Inject
+    SshHelper sshHelper;
 
     @Inject
     public BasicDeploymentArgumentHelper() {
@@ -104,7 +103,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getStringDefault(defaults, "conf.ec2Launch"));
         deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
         deploymentArguments.launch = getValueOrDefault(deploymentArguments.launch, getStringDefault(defaults, "conf.launch"));
-        deploymentArguments.hsiSoftHsm2 = getValueOrDefault(deploymentArguments.hsiSoftHsm2, getBooleanDefault(defaults, "conf.hsiSoftHsm2"));
         deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
         deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
         deploymentArguments.csr = getValueOrDefault(deploymentArguments.csr, getStringDefault(defaults, "conf.csr"));
@@ -137,13 +135,12 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
         }
 
-        if (deploymentArguments.hsiSoftHsm2 && deploymentArguments.dockerLaunch) {
-            throw new RuntimeException("HSI with SoftHSM2 is not supported in Docker yet");
+        if ((deploymentArguments.hsiParameters != null) && deploymentArguments.dockerLaunch) {
+            throw new RuntimeException("HSI is not supported in Docker yet");
         }
 
-        if (deploymentArguments.hsiSoftHsm2) {
-            // Force script output with HSI SoftHSM2
-            deploymentArguments.scriptOutput = true;
+        if ((deploymentArguments.hsiParameters != null) && (deploymentArguments.certificateArn == null)) {
+            throw new RuntimeException("Certificate ARN must be specified when using HSI");
         }
 
         if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
@@ -240,14 +237,10 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         if (deploymentArguments.launch != null) {
-            String[] strings = deploymentArguments.launch.split("@");
+            String[] userAndHost = sshHelper.getUserAndHost("launch destination", deploymentArguments.launch);
 
-            if (strings.length != 2) {
-                throw new RuntimeException("Invalid launch destination format. Specify the launch destination as user@host (e.g. pi@192.168.1.5).");
-            }
-
-            deploymentArguments.launchUser = strings[0];
-            deploymentArguments.launchHost = strings[1];
+            deploymentArguments.launchUser = userAndHost[0];
+            deploymentArguments.launchHost = userAndHost[1];
         }
 
         return deploymentArguments;

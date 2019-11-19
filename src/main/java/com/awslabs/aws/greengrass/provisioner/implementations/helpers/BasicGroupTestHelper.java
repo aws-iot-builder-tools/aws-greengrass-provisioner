@@ -68,6 +68,8 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     ProcessHelper processHelper;
     @Inject
     DeviceTesterHelper deviceTesterHelper;
+    @Inject
+    SshHelper sshHelper;
     private Option<String> optionalCurrentRunningTest = Option.none();
 
     @Inject
@@ -132,7 +134,14 @@ public class BasicGroupTestHelper implements GroupTestHelper {
         Session session = null;
 
         try {
-            session = getSshSession(testArguments, true);
+            session = sshHelper.getSshSession(testArguments.deviceUnderTest,
+                    testArguments.user,
+                    SSH_CONNECTED_MESSAGE,
+                    SSH_TIMED_OUT_MESSAGE,
+                    SSH_CONNECTION_REFUSED_MESSAGE,
+                    SSH_ERROR_MESSAGE,
+                    SSH_TIMEOUT_IN_MINUTES,
+                    TimeUnit.MINUTES);
 
             // Create a final version of this variable so it can be used in lambdas
             final Session finalSession = session;
@@ -346,22 +355,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             session.disconnect();
             return Optional.empty();
         }).getOrElse(Optional.empty());
-    }
-
-    private Session getSshSession(TestArguments testArguments, boolean logConnection) {
-        Optional<Session> optionalSession = threadHelper.timeLimitTask(
-                ioHelper.getSshSessionTask(testArguments.deviceUnderTest,
-                        testArguments.user,
-                        logConnection ? SSH_CONNECTED_MESSAGE : "",
-                        SSH_TIMED_OUT_MESSAGE,
-                        SSH_CONNECTION_REFUSED_MESSAGE,
-                        SSH_ERROR_MESSAGE), SSH_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
-
-        if (!optionalSession.isPresent()) {
-            throw new RuntimeException("Failed to connect and bootstrap the device under test via SSH");
-        }
-
-        return optionalSession.get();
     }
 
     private File extractDeviceTester(File deviceTesterZip) throws IOException {
