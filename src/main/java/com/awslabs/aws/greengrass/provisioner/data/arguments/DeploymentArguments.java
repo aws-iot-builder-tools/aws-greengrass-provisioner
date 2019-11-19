@@ -4,6 +4,8 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.EC2LinuxVersion;
 import com.beust.jcommander.Parameter;
 
+import java.util.Optional;
+
 public class DeploymentArguments extends Arguments {
     public static final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
     public static final String LONG_OEM_OUTPUT_OPTION = "--oem";
@@ -13,6 +15,8 @@ public class DeploymentArguments extends Arguments {
     public static final String LONG_SERVICE_ROLE_EXISTS_OPTION = "--service-role-exists";
     public static final String LONG_CORE_POLICY_NAME_OPTION = "--core-policy-name";
     public static final String LONG_FORCE_CREATE_NEW_KEYS_OPTION = "--force-create-new-keys";
+    public static final String LONG_CSR_OPTION = "--csr";
+    public static final String LONG_CERTIFICATE_ARN_OPTION = "--certificate-arn";
     private final String LONG_BUILD_CONTAINER_OPTION = "--build-container";
     private final String SHORT_BUILD_CONTAINER_OPTION = "-c";
     private final String LONG_PUSH_CONTAINER_OPTION = "--push-container";
@@ -27,11 +31,9 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
     private final String LONG_LAUNCH_OPTION = "--launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
-    private final String LONG_HSI_SOFTHSM2_OPTION = "--hsi-softhsm2";
+    private final String LONG_HSI_OPTION = "--hsi";
     private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
     private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
-    public static final String LONG_CSR_OPTION = "--csr";
-    public static final String LONG_CERTIFICATE_ARN_OPTION = "--certificate-arn";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -67,8 +69,8 @@ public class DeploymentArguments extends Arguments {
     public String launch;
     public String launchUser;
     public String launchHost;
-    @Parameter(names = {LONG_HSI_SOFTHSM2_OPTION}, description = "Use Greengrass Hardware Security Integration (HSI) with SoftHSM2")
-    public boolean hsiSoftHsm2;
+    @Parameter(names = {LONG_HSI_OPTION}, description = "Use Greengrass Hardware Security Integration (HSI)", converter = HsiParametersConverter.class)
+    public HsiParameters hsiParameters;
     //    @Parameter(names = {LONG_DOCKER_SCRIPT_OUTPUT_OPTION}, description = "Generate a script to install Docker and run the Greengrass container [docker.GROUP_NAME.sh] (implies " + LONG_BUILD_CONTAINER_OPTION + ")")
     //    public boolean dockerScriptOutput;
     @Parameter(names = {LONG_S3_BUCKET_OPTION}, description = "S3 bucket to store output files")

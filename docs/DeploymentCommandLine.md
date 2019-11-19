@@ -151,13 +151,27 @@ Generates the Greengrass Device scripts that can be used to test the core's conn
 This is stored in `build/ggd.GROUP_NAME.sh` which will extract the GGD scripts, configuration, and certificates when a
 user runs it.
 
-## Use SoftHSM2 for Greengrass Hardware Security Integration (HSI)
+## Use Greengrass [Hardware Security Integration](https://docs.aws.amazon.com/greengrass/latest/developerguide/hardware-security.html) (HSI)
 
-Long form: `--hsi-softhsm2`
+Long form: `--hsi`
 
-Generates a configuration and bootstrap scripts that use Greengrass Hardware Security Integration (HSI) with SoftHSM2. Only
-works on Ubuntu. This can be used to test out HSI but is not for production use as it only simulates hardware security.
-Works with `--ec2-launch`.
+Generates a configuration and bootstrap scripts that use Greengrass Hardware Security Integration (HSI). This option
+requires that the certificate already be registered in AWS IoT.
+
+This option has multiple sub-options and is specified as key-value pairs in a comma-separated list.
+
+The key-value pairs expected are:
+- `P11Provider` - the path to the shared object (so) to be used as the `P11Provider` value in the `PKCS11` configuration block
+- `slotLabel` - the name of the slot to be used as the `slotLabel` value in the `PKCS11` configuration block
+- `slotUserPin` - the PIN of the slot to be used as the `slotUserPin` value in the `PKCS11` configuration block
+- (Optional) `OpenSSLEngine` - the path to the shared object (so) to be used as the `OpenSSLEngine` value in the `PKCS11` configuration block for OTA support
+- `pkcs11EngineForCurl` - the engine value to use with curl (`--engine VALUE`) to make HTTPS requests with the HSI hardware. This is used in the credentials.sh script when using the AWS CLI on the Greengrass Core with the Greengrass Core's certificate.
+
+A simple example configuration for SoftHSM2 on a Raspberry Pi might look like this:
+
+```
+--hsi P11Provider=/usr/lib/arm-linux-gnueabihf/softhsm/libsofthsm2.so,slotLabel=greengrass,slotUserPin=1234,pkcs11EngineForCurl=pkcs11
+```
 
 ## Do not use systemd
 

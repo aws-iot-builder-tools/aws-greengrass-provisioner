@@ -70,7 +70,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
             stderrStrings.forEach(log::warn);
 
             log.error("To resolve:");
-            log.error("1) GGP must run outside of Docker if the build script requires Docker. Try running GGP outside of Docker.");
+            log.error("1) GGP sometimes must run outside of Docker if the build script requires Docker. Try running GGP outside of Docker.");
             log.error("2) Run " + BUILD_SH + " for the [" + functionConf.getFunctionName() + "] function outside of GGP and determine if it builds properly");
 
             System.exit(1);

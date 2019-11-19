@@ -259,9 +259,11 @@ public interface IoHelper {
                                         String refusedMessage,
                                         String errorMessage);
 
-    String runCommand(Session session, String command) throws JSchException, IOException;
+    List<String> runCommand(Session session, String command) throws JSchException, IOException;
 
-    String runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException;
+    List<String> runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException;
+
+    Void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException;
 
     Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
 }

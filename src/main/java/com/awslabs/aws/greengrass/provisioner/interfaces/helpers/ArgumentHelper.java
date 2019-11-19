@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiVendor;
 import io.vavr.control.Try;
 
 public interface ArgumentHelper<T extends Arguments> {
@@ -21,9 +22,18 @@ public interface ArgumentHelper<T extends Arguments> {
         stringBuilder.append(architectureString);
         stringBuilder.append("] is not a valid architecture.");
         stringBuilder.append("\r\n");
-        stringBuilder.append("Valid options are: ");
-        stringBuilder.append(Architecture.getList());
+        stringBuilder.append(getValidArchitectureOptions());
 
         throw new RuntimeException(stringBuilder.toString());
     }
+
+    default String getValidArchitectureOptions() {
+        StringBuilder stringBuilder = new StringBuilder();
+
+        stringBuilder.append("Valid options are: ");
+        stringBuilder.append(Architecture.getList());
+
+        return stringBuilder.toString();
+    }
 }
+

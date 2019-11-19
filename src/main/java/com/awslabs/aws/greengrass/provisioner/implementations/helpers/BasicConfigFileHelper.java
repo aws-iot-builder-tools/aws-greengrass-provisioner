@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ConfigFileHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
@@ -12,7 +13,6 @@ import java.util.Map;
 
 public class BasicConfigFileHelper implements ConfigFileHelper {
     public static final String CERTS_URI = "file://certs/";
-    public static final String PKCS11_SOFTHSM2_PATH = "pkcs11:object=iotkey;type=private";
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -24,21 +24,15 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
 
     @Override
     public String generateConfigJson(String caPath, String certPath, String keyPath, String coreThingArn, String iotHost, Region region, DeploymentArguments deploymentArguments, boolean functionsRunningAsRoot) {
-        Map coreThingMap = new HashMap();
-        Map runtimeMap = new HashMap();
-        Map cgroupMap = new HashMap();
-        Map cryptoMap = new HashMap();
-        Map principalsMap = new HashMap();
-        Map SecretsManagerMap = new HashMap();
-        Map IoTCertificateMap = new HashMap();
-        Map MQTTServerCertificate = new HashMap();
-        Map PKCS11Map = new HashMap();
-
-        if (!deploymentArguments.hsiSoftHsm2) {
-            coreThingMap.put("caPath", caPath);
-            coreThingMap.put("certPath", certPath);
-            coreThingMap.put("keyPath", keyPath);
-        }
+        Map<String, Object> coreThingMap = new HashMap<>();
+        Map<String, Object> runtimeMap = new HashMap<>();
+        Map<String, Object> cgroupMap = new HashMap<>();
+        Map<String, Object> cryptoMap = new HashMap<>();
+        Map<String, Object> principalsMap = new HashMap<>();
+        Map<String, Object> SecretsManagerMap = new HashMap<>();
+        Map<String, Object> IoTCertificateMap = new HashMap<>();
+        Map<String, Object> MQTTServerCertificate = new HashMap<>();
+        Map<String, Object> PKCS11Map = new HashMap<>();
 
         coreThingMap.put("thingArn", coreThingArn);
         coreThingMap.put("iotHost", iotHost);
@@ -64,14 +58,16 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         principalsMap.put("IoTCertificate", IoTCertificateMap);
         principalsMap.put("MQTTServerCertificate", MQTTServerCertificate);
 
-        if (deploymentArguments.hsiSoftHsm2) {
-            SecretsManagerMap.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
-            IoTCertificateMap.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
-            MQTTServerCertificate.put("privateKeyPath", PKCS11_SOFTHSM2_PATH);
+        if (deploymentArguments.hsiParameters != null) {
+            HsiParameters hsiParameters = deploymentArguments.hsiParameters;
 
-            PKCS11Map.put("P11Provider", "/greengrass/libsofthsm2.so");
-            PKCS11Map.put("slotLabel", "greengrass");
-            PKCS11Map.put("slotUserPin", "1234");
+            SecretsManagerMap.put("privateKeyPath", hsiParameters.getPkcsPath());
+            IoTCertificateMap.put("privateKeyPath", hsiParameters.getPkcsPath());
+            MQTTServerCertificate.put("privateKeyPath", hsiParameters.getPkcsPath());
+
+            PKCS11Map.put("P11Provider", hsiParameters.getP11Provider());
+            PKCS11Map.put("slotLabel", hsiParameters.getSlotLabel());
+            PKCS11Map.put("slotUserPin", hsiParameters.getSlotUserPin());
 
             cryptoMap.put("PKCS11", PKCS11Map);
         } else {
@@ -83,7 +79,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
 
         cryptoMap.put("caPath", CERTS_URI + caPath);
 
-        Map config = new HashMap();
+        Map<String, Object> config = new HashMap<>();
 
         config.put("coreThing", coreThingMap);
         config.put("runtime", runtimeMap);

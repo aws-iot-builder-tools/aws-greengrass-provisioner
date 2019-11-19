@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
@@ -67,10 +68,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String ARM64_UBUNTU_18_04_LTS_AMI_FILTER = "ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-arm64-server-??????????";
     private static final String X86_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-x86_64-gp2";
     private static final String ARM64_AMAZON_LINUX_2_AMI_FILTER = "amzn2-ami-hvm-2.0.????????-arm64-gp2";
-    private static final String SSH_CONNECTED_MESSAGE = "Connected to host via SSH";
-    private static final String SSH_TIMED_OUT_MESSAGE = "SSH connection timed out, instance may still be starting up...";
-    private static final String SSH_CONNECTION_REFUSED_MESSAGE = "SSH connection refused, instance may still be starting up...";
-    private static final String SSH_ERROR_MESSAGE = "There was an SSH error [{}]";
     private static final String DOES_NOT_EXIST = "does not exist";
     private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
     private static final String GREENGRASS_SESSION_NAME = "greengrass";
@@ -133,6 +130,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     S3ClientProvider s3ClientProvider;
     @Inject
     JsonHelper jsonHelper;
+    @Inject
+    SshHelper sshHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -988,19 +987,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private void attemptBootstrap(DeploymentArguments deploymentArguments, String ipAddress, String user) {
-        Optional<Session> optionalSession = threadHelper.timeLimitTask(
-                ioHelper.getSshSessionTask(ipAddress,
-                        user,
-                        SSH_CONNECTED_MESSAGE,
-                        SSH_TIMED_OUT_MESSAGE,
-                        SSH_CONNECTION_REFUSED_MESSAGE,
-                        SSH_ERROR_MESSAGE), 2, TimeUnit.MINUTES);
-
-        if (!optionalSession.isPresent()) {
-            throw new RuntimeException("Failed to connect and bootstrap the instance via SSH");
-        }
-
-        Session session = optionalSession.get();
+        Session session = sshHelper.getSshSession(ipAddress, user);
 
         threadHelper.timeLimitTask(getCopyAndBootstrapCallable(deploymentArguments, ipAddress, user, session), 5, TimeUnit.MINUTES);
     }
@@ -1329,8 +1316,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             return;
         }
 
-        if (!optionalCoreKeysAndCertificate.isPresent() && installScriptVirtualTarEntries.isPresent()) {
-            throw new RuntimeException("Could not find the core keys and certificate, cannot build a complete output file. Specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option if you need to regenerate the output files.");
+        if (!optionalCoreKeysAndCertificate.isPresent() && (deploymentArguments.hsiParameters == null) && installScriptVirtualTarEntries.isPresent()) {
+            // We don't have the keys, HSI parameters weren't set, and the user wants an installation script. This will not work.
+            throw new RuntimeException("Could not find the core keys and certificate and no HSI options were set, cannot build a complete output file. Specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option if you need to regenerate the output files.");
         }
 
         log.info("Adding keys and certificate files to archive");
@@ -1408,8 +1396,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (optionalCreateRoleAliasResponse.isPresent()) {
             CreateRoleAliasResponse createRoleAliasResponse = optionalCreateRoleAliasResponse.get();
 
-            addCredentialProviderFiles(oemVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse);
-            addCredentialProviderFiles(installScriptVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse);
+            addCredentialProviderFiles(oemVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
+            addCredentialProviderFiles(installScriptVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
         }
 
         ///////////////////////
@@ -1510,12 +1498,24 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
     }
 
-    private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, String groupId, String awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse) {
+    private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, String groupId, String awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse, HsiParameters nullableHsiParameters) {
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions);
+
+        Optional<HsiParameters> optionalHsiParameters = Optional.ofNullable(nullableHsiParameters);
+
+        if (!optionalHsiParameters.isPresent()) {
+            return;
+        }
+
+        HsiParameters hsiParameters = optionalHsiParameters.get();
+
+        hsiParameters.getPkcs11EngineForCurl().ifPresent(pkcs11Engine -> archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "pkcs11-engine-for-curl.txt"), pkcs11Engine.getBytes(), normalFilePermissions));
+
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "pkcs11-path-for-curl.txt"), hsiParameters.getCurlPkcsPath().getBytes(), normalFilePermissions);
     }
 
     private void addPrivateAndPublicKeyFiles(Optional<List<VirtualTarEntry>> tarEntries, KeysAndCertificate coreKeysAndCertificate, String privateKeyPath, String publicCertificatePath) {
