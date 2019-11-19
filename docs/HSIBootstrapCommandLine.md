@@ -25,7 +25,7 @@ will need to be executed twice.
 
 Once bootstrapping is complete there should be an output message that looks like this:
 
-```aidl
+```
 --hsi P11Provider=/usr/lib/p11provider.so,slotLabel=greengrass,slotUserPin=1234,pkcs11EngineForCurl=pkcs11 --certificate-arn arn:aws:iot:REGION:ACCOUNT_ID:cert/FINGERPRINT
 ```
 
