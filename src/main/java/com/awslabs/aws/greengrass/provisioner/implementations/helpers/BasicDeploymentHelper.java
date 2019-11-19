@@ -1040,8 +1040,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         ioHelper.runCommand(session, String.join(" ", "screen", "--version"), Optional.of(screenAvailabilityChecker));
 
-        // TODO: This wait could be removed with better response handling
-        waitForFlagToToggle(screenAvailable, SCREEN_NOT_AVAILABLE_ERROR_MESSAGE);
+        if (!screenAvailable.get()) {
+            // Screen is not available, throw an exception
+            session.disconnect();
+            throwRuntimeException(SCREEN_NOT_AVAILABLE_ERROR_MESSAGE);
+        }
 
         String sessionNameOptions = "";
 
