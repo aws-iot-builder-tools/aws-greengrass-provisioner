@@ -139,3 +139,18 @@ functions each of those functions will have two environment variables added to t
 This is useful when functions need to invoke other Lambda functions but they may not know the exact version that is in
 use.  The function ARN contains this explicitly so functions can look up each other by their base name (Lambda function
 name without the group name prefix).
+
+## AWS CLI configuration
+
+When using the `--script` option GGP will create a new profile for the AWS CLI on the Greengrass Core host called `greengrass`.
+It configures the CLI to use the Greengrass Core's certificate to get temporary credentials automatically when using this
+profile. This allows a user to validate that permissions are set properly for the core and can let external processes access
+AWS without having an IAM user on the device.
+
+To enable this functionality GGP utilizes the AWS CLI feature that [sources credentials from an external process](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sourcing-external.html).
+
+Example usage:
+
+```bash
+aws --profile greengrass iot describe-endpoint
+```
