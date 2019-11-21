@@ -5,6 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.ProvisionException;
+import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +47,10 @@ public class AwsGreengrassProvisioner implements Runnable {
         // Print out the stack trace and log the error message as the final line of output
         throwable.printStackTrace();
         log.error(throwable.getMessage());
+
+        if (throwable instanceof ConfigException) {
+            log.error("If configuration values are missing or not resolving properly make sure the deployment.defaults.conf and function.defaults.conf files are up to date. The issue could be to a configuration file layout change. Updating the AWS Greengrass Lambda Functions example repo usually fixes this.");
+        }
 
         // Make sure the JVM actually exits
         System.exit(1);
