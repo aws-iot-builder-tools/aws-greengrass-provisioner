@@ -25,16 +25,6 @@ public class ProvisionerLambdaIT {
             "      \"Resource\": [\n" +
             "        \"*\"\n" +
             "      ]\n" +
-            "    },\n" +
-            "    {\n" +
-            "      \"Action\": [\n" +
-            "        \"iam:GetRole\",\n" +
-            "        \"iam:PassRole\"\n" +
-            "      ],\n" +
-            "      \"Effect\": \"Allow\",\n" +
-            "      \"Resource\": [\n" +
-            "        \"arn:aws:iam::xxxxxxxxxxxx:role/GreengrassCoreRole\"\n" +
-            "      ]\n" +
             "    }\n" +
             "  ],\n" +
             "  \"Version\": \"2012-10-17\"\n" +
