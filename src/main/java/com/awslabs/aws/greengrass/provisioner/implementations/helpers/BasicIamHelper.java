@@ -10,6 +10,7 @@ import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.model.GetCallerIdentityRequest;
 
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Optional;
 
 public class BasicIamHelper implements IamHelper {
@@ -33,30 +34,34 @@ public class BasicIamHelper implements IamHelper {
     }
 
     @Override
-    public Role createRoleIfNecessary(String name, String assumeRolePolicyDocument) {
+    public Role createRoleIfNecessary(String name, Optional<String> optionalAssumeRolePolicyDocument) {
         Optional<Role> optionalExistingRole = getRole(name);
 
         if (optionalExistingRole.isPresent()) {
             log.info("Updating assume role policy for existing role [" + name + "]");
-            UpdateAssumeRolePolicyRequest updateAssumeRolePolicyRequest = UpdateAssumeRolePolicyRequest.builder()
-                    .roleName(name)
-                    .policyDocument(assumeRolePolicyDocument)
-                    .build();
+            UpdateAssumeRolePolicyRequest.Builder updateAssumeRolePolicyRequestBuilder = UpdateAssumeRolePolicyRequest.builder();
+            updateAssumeRolePolicyRequestBuilder.roleName(name);
+            optionalAssumeRolePolicyDocument.ifPresent(updateAssumeRolePolicyRequestBuilder::policyDocument);
 
-            iamClient.updateAssumeRolePolicy(updateAssumeRolePolicyRequest);
+            iamClient.updateAssumeRolePolicy(updateAssumeRolePolicyRequestBuilder.build());
 
             return optionalExistingRole.get();
         }
 
         log.info("Creating new role [" + name + "]");
-        CreateRoleRequest createRoleRequest = CreateRoleRequest.builder()
-                .roleName(name)
-                .assumeRolePolicyDocument(assumeRolePolicyDocument)
-                .build();
+        CreateRoleRequest.Builder createRoleRequestBuilder = CreateRoleRequest.builder();
+        createRoleRequestBuilder.roleName(name);
+        optionalAssumeRolePolicyDocument.ifPresent(createRoleRequestBuilder::assumeRolePolicyDocument);
 
-        CreateRoleResponse createRoleResponse = iamClient.createRole(createRoleRequest);
+        CreateRoleResponse createRoleResponse = iamClient.createRole(createRoleRequestBuilder.build());
 
         return createRoleResponse.role();
+    }
+
+    @Override
+    public void attachRolePolicies(Role role, Optional<List<String>> optionalManagedPolicyArns) {
+        optionalManagedPolicyArns
+                .ifPresent(policies -> policies.forEach(policy -> attachRolePolicy(role, policy)));
     }
 
     @Override
