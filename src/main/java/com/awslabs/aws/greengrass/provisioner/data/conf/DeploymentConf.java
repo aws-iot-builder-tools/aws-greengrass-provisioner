@@ -14,19 +14,11 @@ public abstract class DeploymentConf {
 
     public abstract List<String> getFunctions();
 
-    public abstract String getCoreRoleName();
+    public abstract RoleConf getCoreRoleConf();
 
-    public abstract String getCoreRoleAlias();
+    public abstract Optional<RoleConf> getLambdaRoleConf();
 
-    public abstract Optional<String> getCoreRoleAssumeRolePolicy();
-
-    public abstract List<String> getCoreRolePolicies();
-
-    public abstract String getCorePolicy();
-
-    public abstract Optional<String> getLambdaRoleName();
-
-    public abstract Optional<String> getLambdaRoleAssumeRolePolicy();
+    public abstract Optional<RoleConf> getServiceRoleConf();
 
     public abstract List<String> getGgds();
 
