@@ -3,10 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
-import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableDeploymentConf;
+import com.awslabs.aws.greengrass.provisioner.data.conf.*;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
@@ -151,6 +148,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
                 .withValue("ACCOUNT_ID", ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
+                .withValue("REGION", ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
                 .withFallback(getFallbackConfig())
                 .resolve();
 
@@ -173,14 +171,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             deploymentConfBuilder.isSyncShadow(true);
         }
 
-        deploymentConfBuilder.coreRoleName(config.getString("conf.core.roleName"));
-        deploymentConfBuilder.coreRoleAlias(config.getString("conf.core.roleAlias"));
-        deploymentConfBuilder.coreRoleAssumeRolePolicy(config.getObject("conf.core.roleAssumeRolePolicy").render(ConfigRenderOptions.concise()));
-        deploymentConfBuilder.coreRolePolicies(config.getStringList("conf.core.rolePolicies"));
-        deploymentConfBuilder.corePolicy(config.getObject("conf.core.policy").render(ConfigRenderOptions.concise()));
+        // Core role info
+        deploymentConfBuilder.coreRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.core"));
 
-        deploymentConfBuilder.lambdaRoleName(config.getString("conf.lambda.roleName"));
-        deploymentConfBuilder.lambdaRoleAssumeRolePolicy(config.getObject("conf.lambda.roleAssumeRolePolicy").render(ConfigRenderOptions.concise()));
+        // Lambda role info
+        deploymentConfBuilder.lambdaRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.lambda"));
+
+        // Service role info
+        deploymentConfBuilder.serviceRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.service"));
 
         deploymentConfBuilder.ggds(config.getStringList("conf.ggds"));
 
@@ -224,21 +222,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     /**
      * Create a deployment and wait for its status to change //
      *
-     * @param greengrassServiceRole
-     * @param greengrassRole
+     * @param serviceRole
+     * @param coreRole
      * @param groupId
      * @param groupVersionId
      * @return
      */
     @Override
-    public Void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId) {
+    public Void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
         log.info("Creating a deployment");
         log.info("Group ID [" + groupId + "]");
         log.info("Group version ID [" + groupVersionId + "]");
         String initialDeploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
         log.info("Deployment created [" + initialDeploymentId + "]");
 
-        Optional<DeploymentStatus> optionalDeploymentStatus = threadHelper.timeLimitTask(getDeploymentStatusCallable(greengrassServiceRole, greengrassRole, groupId, groupVersionId, initialDeploymentId), 5, TimeUnit.MINUTES);
+        Optional<DeploymentStatus> optionalDeploymentStatus = threadHelper.timeLimitTask(getDeploymentStatusCallable(serviceRole, coreRole, groupId, groupVersionId, initialDeploymentId), 5, TimeUnit.MINUTES);
 
         if (!optionalDeploymentStatus.isPresent() || !optionalDeploymentStatus.get().equals(DeploymentStatus.SUCCESSFUL)) {
             throw new RuntimeException("Deployment failed");
@@ -348,29 +346,35 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
 
         // Create the role for the core, if necessary
-        Role greengrassRole;
+        Role coreRole;
 
         if (deploymentArguments.coreRoleName != null) {
-            Optional<Role> optionalGreengrassRole = iamHelper.getRole(deploymentArguments.coreRoleName);
+            Optional<Role> optionalCoreRole = iamHelper.getRole(deploymentArguments.coreRoleName);
 
-            if (!optionalGreengrassRole.isPresent()) {
+            if (!optionalCoreRole.isPresent()) {
                 throw new RuntimeException("Greengrass core role is not present or GetRole failed due to insufficient permissions on [" + deploymentArguments.coreRoleName + "]");
             }
 
-            greengrassRole = optionalGreengrassRole.get();
+            coreRole = optionalCoreRole.get();
         } else {
-            greengrassRole = createGreengrassRole(deploymentConf);
+            coreRole = createCoreRole(deploymentConf.getCoreRoleConf());
         }
 
         if (!deploymentArguments.serviceRoleExists) {
             // If the service role does not exist we should create it
-            Role greengrassServiceRole = createServiceRole(deploymentConf);
-            optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(greengrassRole, deploymentConf.getCoreRoleAlias()));
-            optionalGreengrassServiceRole = Optional.of(greengrassServiceRole);
+            Role serviceRole = createServiceRole(deploymentConf.getServiceRoleConf().get());
+            optionalGreengrassServiceRole = Optional.of(serviceRole);
         } else {
             // The service role exists already, do not try to create or modify it
             optionalGreengrassServiceRole = Optional.empty();
         }
+
+        // Create the role alias so we can use IoT as a credentials provider with certificate based authentication
+        if (!deploymentConf.getCoreRoleConf().getAlias().isPresent()) {
+            throw new RuntimeException("No role alias specified for the Greengrass core role [" + deploymentConf.getCoreRoleConf().getName());
+        }
+
+        optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(coreRole, deploymentConf.getCoreRoleConf().getAlias().get()));
 
         ///////////////////////////////////////////////////
         // Create an AWS Greengrass Group and get its ID //
@@ -454,8 +458,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String corePolicyName;
 
         if (deploymentArguments.corePolicyName == null) {
+            if (!deploymentConf.getCoreRoleConf().getIotPolicy().isPresent()) {
+                throw new RuntimeException("No IoT policy specified for core role [" + deploymentConf.getCoreRoleConf().getName() + "]");
+            }
+
             log.info("Creating policy for core");
-            iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCorePolicy());
+            iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCoreRoleConf().getIotPolicy().get());
             corePolicyName = ggVariables.getCorePolicyName(deploymentArguments.groupName);
         } else {
             corePolicyName = deploymentArguments.corePolicyName;
@@ -477,7 +485,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Associate the Greengrass role to the group //
         ////////////////////////////////////////////////
 
-        associateRoleToGroup(greengrassRole, groupId);
+        associateRoleToGroup(coreRole, groupId);
 
         ////////////////////////////////////////////
         // Create a core definition and a version //
@@ -502,15 +510,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (!deploymentConf.getFunctions().isEmpty()) {
             log.info("Creating Lambda role");
 
-            if (!deploymentConf.getLambdaRoleName().isPresent()) {
-                throw new RuntimeException("Lambda role name not specified");
-            }
+            RoleConf lambdaRoleConf = deploymentConf.getLambdaRoleConf().get();
 
-            if (!deploymentConf.getLambdaRoleAssumeRolePolicy().isPresent()) {
-                throw new RuntimeException("Lambda assume role policy not specified");
-            }
+            requireAssumeRolePolicy(lambdaRoleConf, "Lambda");
 
-            optionalLambdaRole = Optional.of(iamHelper.createRoleIfNecessary(deploymentConf.getLambdaRoleName().get(), deploymentConf.getLambdaRoleAssumeRolePolicy().get()));
+            optionalLambdaRole = Optional.of(iamHelper.createRoleIfNecessary(lambdaRoleConf.getName(), lambdaRoleConf.getAssumeRolePolicy()));
         }
 
         ////////////////////////////////////////////////////////
@@ -874,7 +878,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
-        Try.of(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(greengrassRole), groupId, groupVersionId))
+        Try.of(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(coreRole), groupId, groupVersionId))
                 .get();
 
         //////////////////////////////////////////////
@@ -968,6 +972,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
+    private void requireAssumeRolePolicy(RoleConf roleConf, String type) {
+        if (roleConf.getAssumeRolePolicy().isPresent()) {
+            return;
+        }
+
+        throw new RuntimeException("Assume role policy not specified when creating Greengrass " + type + " role");
+    }
+
     public boolean isEmptyDeployment(DeploymentArguments deploymentArguments) {
         return deploymentArguments.deploymentConfigFilename.equals(EMPTY);
     }
@@ -975,13 +987,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
         String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
 
+        RoleConf coreRoleConf = ImmutableRoleConf.builder()
+                .name(deploymentArguments.coreRoleName)
+                .alias(coreRoleAlias)
+                .iotPolicy(deploymentArguments.corePolicyName)
+                .build();
+
         return ImmutableDeploymentConf.builder()
                 .isSyncShadow(true)
                 .name(EMPTY)
                 .groupName(deploymentArguments.groupName)
-                .coreRoleName(deploymentArguments.coreRoleName)
-                .coreRoleAlias(coreRoleAlias)
-                .corePolicy(deploymentArguments.corePolicyName)
+                .coreRoleConf(coreRoleConf)
                 .functions(new ArrayList<>())
                 .build();
     }
@@ -1275,25 +1291,29 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     /**
      * Create service role required for Greengrass
      *
-     * @param deploymentConf
+     * @param serviceRoleConf
      * @return
      */
-    private Role createServiceRole(DeploymentConf deploymentConf) {
-        List<String> serviceRolePolicies = Arrays.asList("arn:aws:iam::aws:policy/service-role/AWSGreengrassResourceAccessRolePolicy",
-                "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess");
-        log.info("Creating Greengrass service role [" + GREENGRASS_SERVICE_ROLE_NAME + "]");
+    private Role createServiceRole(RoleConf serviceRoleConf) {
+        Role serviceRole = createRoleFromRoleConf("service", serviceRoleConf);
 
-        if (!deploymentConf.getCoreRoleAssumeRolePolicy().isPresent()) {
-            throw new RuntimeException("Core assume role policy not specified when creating service role");
-        }
+        associateServiceRoleToAccount(serviceRole);
 
-        Role greengrassServiceRole = iamHelper.createRoleIfNecessary(GREENGRASS_SERVICE_ROLE_NAME, deploymentConf.getCoreRoleAssumeRolePolicy().get());
+        return serviceRole;
+    }
 
-        serviceRolePolicies
-                .forEach(policy -> iamHelper.attachRolePolicy(greengrassServiceRole, policy));
+    private Role createRoleFromRoleConf(String type, RoleConf roleConf) {
+        String name = roleConf.getName();
 
-        associateServiceRoleToAccount(greengrassServiceRole);
-        return greengrassServiceRole;
+        log.info("Creating Greengrass " + type + " role [" + name + "]");
+
+        Role role = iamHelper.createRoleIfNecessary(name, roleConf.getAssumeRolePolicy());
+
+        log.info("Attaching role policies to Greengrass " + type + " role [" + name + "]");
+
+        iamHelper.attachRolePolicies(role, roleConf.getIamManagedPolicies());
+
+        return role;
     }
 
     private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, String coreCertificateArn, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
@@ -1660,26 +1680,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     /**
      * Create IAM resources and configuration required for Greengrass
      *
-     * @param deploymentConf
+     * @param coreRoleConf
      * @return
      */
-    private Role createGreengrassRole(DeploymentConf deploymentConf) {
-        log.info("Creating Greengrass role [" + deploymentConf.getCoreRoleName() + "]");
+    private Role createCoreRole(RoleConf coreRoleConf) {
+        requireAssumeRolePolicy(coreRoleConf, "core");
 
-        if (!deploymentConf.getCoreRoleAssumeRolePolicy().isPresent()) {
-            throw new RuntimeException("Core assume role policy not specified when creating Greengrass role");
-        }
-
-        Role greengrassRole = iamHelper.createRoleIfNecessary(deploymentConf.getCoreRoleName(), deploymentConf.getCoreRoleAssumeRolePolicy().get());
-
-        log.info("Attaching role policies to Greengrass role [" + deploymentConf.getCoreRoleName() + "]");
-
-        log.info("Attaching role policies to Greengrass service role");
-        for (String coreRolePolicy : deploymentConf.getCoreRolePolicies()) {
-            log.info("- " + coreRolePolicy);
-            iamHelper.attachRolePolicy(greengrassRole, coreRolePolicy);
-        }
-        return greengrassRole;
+        return createRoleFromRoleConf("core", coreRoleConf);
     }
 
     private String getGgdThingName(String thingName) {

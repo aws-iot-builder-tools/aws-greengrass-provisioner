@@ -4,8 +4,6 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.EC2LinuxVersion;
 import com.beust.jcommander.Parameter;
 
-import java.util.Optional;
-
 public class DeploymentArguments extends Arguments {
     public static final String SHORT_DEPLOYMENT_CONFIG_OPTION = "-d";
     public static final String LONG_OEM_OUTPUT_OPTION = "--oem";
