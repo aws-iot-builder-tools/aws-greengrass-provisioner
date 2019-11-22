@@ -1313,6 +1313,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         iamHelper.attachRolePolicies(role, roleConf.getIamManagedPolicies());
 
+        iamHelper.putInlinePolicy(role, roleConf.getIamPolicy());
+
         return role;
     }
 

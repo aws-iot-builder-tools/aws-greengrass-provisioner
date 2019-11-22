@@ -19,6 +19,8 @@ public interface IamHelper {
 
     void attachRolePolicies(Role role, Optional<List<String>> optionalManagedPolicyArns);
 
+    void putInlinePolicy(Role role, Optional<String> optionalInlinePolicy);
+
     void attachRolePolicy(Role role, String policyArn);
 
     String getAccountId();
