@@ -65,6 +65,23 @@ public class BasicIamHelper implements IamHelper {
     }
 
     @Override
+    public void putInlinePolicy(Role role, Optional<String> optionalInlinePolicy) {
+        if (!optionalInlinePolicy.isPresent()) {
+            return;
+        }
+
+        String inlinePolicy = optionalInlinePolicy.get();
+
+        PutRolePolicyRequest putRolePolicyRequest = PutRolePolicyRequest.builder()
+                .policyDocument(inlinePolicy)
+                .policyName("inline-by-ggp")
+                .roleName(role.roleName())
+                .build();
+
+        iamClient.putRolePolicy(putRolePolicyRequest);
+    }
+
+    @Override
     public void attachRolePolicy(Role role, String policyArn) {
         AttachRolePolicyRequest attachRolePolicyRequest = AttachRolePolicyRequest.builder()
                 .roleName(role.roleName())
