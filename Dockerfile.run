@@ -14,8 +14,8 @@ RUN cd / && \
     wget --referer=https://aws.amazon.com/greengrass/device-tester/ https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.2.zip && \
     shasum -c /devicetester_greengrass_linux_1.3.2.zip.sha
 
-# Install JDK so Java functions can be built
-RUN apt-get install -y openjdk-8-jdk-headless && \
+# Install JDK 8 so Java functions can be built, JRE 11 to run GGP
+RUN apt-get install -y openjdk-8-jdk-headless openjdk-11-jre-headless && \
     apt-get -y clean
 
 # Install pip so Python 2 functions can be built
