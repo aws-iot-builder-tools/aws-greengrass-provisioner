@@ -215,6 +215,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
   OS_RELEASE=$(grep ^ID= /etc/os-release)
 
   if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+    # Raspbian detected
     if [ -f /tmp/REBOOT_REQUIRED ]; then
       cat /tmp/REBOOT_REQUIRED
       exit 1
@@ -323,6 +324,11 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
   $PIP3 install mxnet
   $PIP3 install opencv-python
   $PIP3 install awscli
+
+  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+    # Raspbian detected, install the GPIO library
+    $PIP3 install RPi.GPIO
+  fi
 fi
 
 EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
