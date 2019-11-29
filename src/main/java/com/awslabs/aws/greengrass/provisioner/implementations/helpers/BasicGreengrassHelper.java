@@ -855,7 +855,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateLocalDeviceSourcePaths(List<LocalDeviceResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.sourcePath())
+                .map(LocalDeviceResourceData::sourcePath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -872,7 +872,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateLocalVolumeSourcePaths(List<LocalVolumeResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.sourcePath())
+                .map(LocalVolumeResourceData::sourcePath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -889,7 +889,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateSageMakerDestinationPaths(List<SageMakerMachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.destinationPath())
+                .map(SageMakerMachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -906,7 +906,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateS3DestinationPaths(List<S3MachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.destinationPath())
+                .map(S3MachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -926,10 +926,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         Set<String> deduplicatedList = new HashSet<>(inputList);
 
         if (outputList.size() != deduplicatedList.size()) {
-            deduplicatedList.stream()
+            deduplicatedList
                     .forEach(outputList::remove);
 
-            return Optional.ofNullable(outputList);
+            return Optional.of(outputList);
         }
 
         return Optional.empty();
