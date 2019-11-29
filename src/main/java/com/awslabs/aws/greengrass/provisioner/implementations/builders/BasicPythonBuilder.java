@@ -131,6 +131,15 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         if (!exitVal.isPresent() || exitVal.get() != 0) {
             log.error("Something went wrong with pip");
 
+            if (stderrStrings.stream().anyMatch(string -> string.contains("'clang' failed"))) {
+                stdoutStrings.forEach(log::warn);
+                stderrStrings.forEach(log::error);
+
+                log.error("Building this function failed because a dependency failed to compile. This can happen when a dependency needs to build a native library. Error messages are above.");
+
+                System.exit(1);
+            }
+
             if (isCorrectPipVersion()) {
                 log.error("pip version is correct but the Python dependency failed to install");
             } else {
