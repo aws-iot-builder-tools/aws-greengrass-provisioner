@@ -23,6 +23,7 @@ import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 import software.amazon.awssdk.services.sts.StsClient;
 
 public class AwsGreengrassProvisionerModule extends AbstractModule {
@@ -39,6 +40,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(LambdaClient.class).toProvider(LambdaClientProvider.class);
         bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
         bind(EcrClient.class).toProvider(EcrClientProvider.class);
+        bind(SecretsManagerClient.class).toProvider(SecretsManagerClientProvider.class);
         bind(AwsRegionProviderChain.class).toProvider(DefaultAwsRegionProviderChain::new);
         bind(DefaultCredentialsProvider.class).toProvider(DefaultCredentialsProvider::create);
 
@@ -72,6 +74,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(LoggingHelper.class).to(BasicLoggingHelper.class);
         bind(EnvironmentHelper.class).to(BasicEnvironmentHelper.class);
         bind(ExecutorHelper.class).to(SingleThreadedExecutorHelper.class);
+        bind(SecretsManagerHelper.class).to(BasicSecretsManagerHelper.class);
         //bind(ExecutorHelper.class).to(ParallelExecutorHelper.class);
 
         // Argument helpers

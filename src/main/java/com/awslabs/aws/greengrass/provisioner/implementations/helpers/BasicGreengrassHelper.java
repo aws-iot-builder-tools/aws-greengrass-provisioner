@@ -2,10 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
@@ -27,6 +24,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     private static final String IN_PROGRESS = "InProgress";
     private static final String SUCCESS = "Success";
     private static final String BUILDING = "Building";
+
     private final org.slf4j.Logger log = LoggerFactory.getLogger(BasicGreengrassHelper.class);
     @Inject
     GreengrassClient greengrassClient;
@@ -234,6 +232,15 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
                     .resourceId(localSageMakerResource.getName())
                     .permission(Permission.RW)
+                    .build();
+
+            resourceAccessPolicies.add(resourceAccessPolicy);
+        }
+
+        for (LocalSecretsManagerResource localSecretsManagerResource : functionConf.getLocalSecretsManagerResources()) {
+            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
+                    .resourceId(localSecretsManagerResource.getResourceName())
+                    .permission(Permission.RO)
                     .build();
 
             resourceAccessPolicies.add(resourceAccessPolicy);
@@ -693,6 +700,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             resources.addAll(processLocalVolumeResources(functionConf));
             resources.addAll(processLocalS3Resources(functionConf));
             resources.addAll(processLocalSageMakerResources(functionConf));
+            resources.addAll(processLocalSecretsManagerResources(functionConf));
         });
 
         ResourceDefinitionVersion resourceDefinitionVersion = ResourceDefinitionVersion.builder()
@@ -716,15 +724,19 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             return true;
         }
 
-        if (functionConf.getLocalVolumeResources().size() > 0) {
-            return true;
-        }
-
         if (functionConf.getLocalS3Resources().size() > 0) {
             return true;
         }
 
         if (functionConf.getLocalSageMakerResources().size() > 0) {
+            return true;
+        }
+
+        if (functionConf.getLocalSecretsManagerResources().size() > 0) {
+            return true;
+        }
+
+        if (functionConf.getLocalVolumeResources().size() > 0) {
             return true;
         }
 
@@ -751,9 +763,27 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localSageMakerResource.getName(), localSageMakerResource.getName());
     }
 
+    private List<Resource> processLocalSecretsManagerResources(FunctionConf functionConf) {
+        return functionConf.getLocalSecretsManagerResources().stream()
+                .map(this::processLocalSecretsManagerResource)
+                .collect(Collectors.toList());
+    }
+
+    private Resource processLocalSecretsManagerResource(LocalSecretsManagerResource localSecretsManagerResource) {
+        SecretsManagerSecretResourceData secretsManagerSecretResourceData = SecretsManagerSecretResourceData.builder()
+                .arn(localSecretsManagerResource.getArn())
+                .build();
+
+        ResourceDataContainer resourceDataContainer = ResourceDataContainer.builder()
+                .secretsManagerSecretResourceData(secretsManagerSecretResourceData)
+                .build();
+
+        return createResource(resourceDataContainer, localSecretsManagerResource.getResourceName(), localSecretsManagerResource.getResourceName());
+    }
+
     private List<Resource> processLocalS3Resources(FunctionConf functionConf) {
         return functionConf.getLocalS3Resources().stream()
-                .map(localS3Resource -> processLocalS3Resource(localS3Resource))
+                .map(this::processLocalS3Resource)
                 .collect(Collectors.toList());
     }
 
@@ -851,11 +881,35 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .collect(Collectors.toList());
 
         disallowDuplicateSageMakerDestinationPaths(localSageMakerResources);
+
+        List<SecretsManagerSecretResourceData> localSecretsManagerResources = resource.stream()
+                .map(res -> res.resourceDataContainer().secretsManagerSecretResourceData())
+                .filter(Objects::nonNull)
+                .collect(Collectors.toList());
+
+        disallowDuplicateSecretsManagerSecrets(localSecretsManagerResources);
+    }
+
+    private void disallowDuplicateSecretsManagerSecrets(List<SecretsManagerSecretResourceData> resources) {
+        List<String> secretArns = resources.stream()
+                .map(SecretsManagerSecretResourceData::arn)
+                .collect(Collectors.toList());
+
+        Optional<List<String>> duplicates = findDuplicates(secretArns);
+
+        if (duplicates.isPresent()) {
+            String duplicatesString = duplicates.get().stream()
+                    .map(string -> "\"" + string + "\"")
+                    .collect(Collectors.joining(", "));
+
+            log.error("Duplicate local secrets manager secrets defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            throw new RuntimeException("Invalid resource configuration");
+        }
     }
 
     private void disallowDuplicateLocalDeviceSourcePaths(List<LocalDeviceResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.sourcePath())
+                .map(LocalDeviceResourceData::sourcePath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -872,7 +926,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateLocalVolumeSourcePaths(List<LocalVolumeResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.sourcePath())
+                .map(LocalVolumeResourceData::sourcePath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -889,7 +943,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateSageMakerDestinationPaths(List<SageMakerMachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.destinationPath())
+                .map(SageMakerMachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -906,7 +960,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     private void disallowDuplicateS3DestinationPaths(List<S3MachineLearningModelResourceData> resources) {
         List<String> sourcePaths = resources.stream()
-                .map(res -> res.destinationPath())
+                .map(S3MachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
         Optional<List<String>> duplicates = findDuplicates(sourcePaths);
@@ -926,10 +980,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         Set<String> deduplicatedList = new HashSet<>(inputList);
 
         if (outputList.size() != deduplicatedList.size()) {
-            deduplicatedList.stream()
+            deduplicatedList
                     .forEach(outputList::remove);
 
-            return Optional.ofNullable(outputList);
+            return Optional.of(outputList);
         }
 
         return Optional.empty();

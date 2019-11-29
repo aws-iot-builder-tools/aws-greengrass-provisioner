@@ -606,6 +606,18 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.warn("At least one function was detected that is configured to run outside of the Greengrass container as root");
         }
 
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Determine if any functions are specified to run as root but are still set to run in the container //
+        ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        boolean functionsWithRootUidOrGidInGreengrassContainer = functionConfs.stream()
+                .filter(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0))
+                .anyMatch(FunctionConf::isGreengrassContainer);
+
+        if (functionsWithRootUidOrGidInGreengrassContainer) {
+            log.warn("At least one function was detected that is configured to run as root but will run as the Greengrass user because it is set to run inside of the Greengrass container. If you need a function to run as root it must run outside of the Greengrass container.");
+        }
+
         ////////////////////////////////////////////////////////////////////////////
         // Determine if any functions are running inside the Greengrass container //
         ////////////////////////////////////////////////////////////////////////////
