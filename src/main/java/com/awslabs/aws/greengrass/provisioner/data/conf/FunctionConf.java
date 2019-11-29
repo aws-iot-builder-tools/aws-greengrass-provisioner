@@ -1,10 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import com.awslabs.aws.greengrass.provisioner.data.Language;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalDeviceResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalS3Resource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalSageMakerResource;
-import com.awslabs.aws.greengrass.provisioner.data.resources.LocalVolumeResource;
+import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import org.immutables.value.Value;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 
@@ -57,6 +54,8 @@ public abstract class FunctionConf {
     public abstract List<LocalS3Resource> getLocalS3Resources();
 
     public abstract List<LocalSageMakerResource> getLocalSageMakerResources();
+
+    public abstract List<LocalSecretsManagerResource> getLocalSecretsManagerResources();
 
     public abstract boolean isAccessSysFs();
 

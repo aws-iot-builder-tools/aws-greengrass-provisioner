@@ -34,6 +34,7 @@ import java.util.Optional;
 import java.util.*;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class BasicFunctionHelper implements FunctionHelper {
     public static final String NO_COLONS_REGEX = "[^:]*";
@@ -58,6 +59,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     GGVariables ggVariables;
     @Inject
     IoHelper ioHelper;
+    @Inject
+    SecretsManagerHelper secretsManagerHelper;
 
     @Inject
     public BasicFunctionHelper() {
@@ -335,6 +338,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         setLocalVolumeResourcesConfig(functionConfBuilder, config);
         setLocalSageMakerResourcesConfig(functionConfBuilder, config);
         setLocalS3ResourcesConfig(functionConfBuilder, config);
+        List<String> secretNames = setLocalSecretsManagerResources(functionConfBuilder, config);
 
         List<String> connectedShadows = getConnectedShadows(functionConfBuilder, config);
         functionConfBuilder.connectedShadows(connectedShadows);
@@ -343,6 +347,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         functionConfBuilder.putAllEnvironmentVariables(deploymentConf.getEnvironmentVariables());
         setEnvironmentVariablesFromConf(functionConfBuilder, config);
         addConnectedShadowsToEnvironment(functionConfBuilder, connectedShadows);
+        addSecretNamesToEnvironment(functionConfBuilder, secretNames);
 
         if (optionalFunctionPath.isPresent()) {
             File cfTemplate = getFunctionCfTemplatePath(optionalFunctionPath.get()).toFile();
@@ -356,12 +361,13 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private void addConnectedShadowsToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> connectedShadows) {
-        int index = 0;
+        IntStream.range(0, connectedShadows.size())
+                .forEach(index -> functionConfBuilder.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadows.get(index)));
+    }
 
-        for (String connectedShadow : connectedShadows) {
-            functionConfBuilder.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadow);
-            index++;
-        }
+    private void addSecretNamesToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> secretNames) {
+        IntStream.range(0, secretNames.size())
+                .forEach(index -> functionConfBuilder.putEnvironmentVariables("SECRET_" + index, secretNames.get(index)));
     }
 
     private void detectMissingConfigFiles(List<Either<String, File>> enabledFunctionConfigFiles) {
@@ -414,7 +420,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             Optional<String> optionalName = getName(temp);
             String name = makeNameSafe(path, optionalName);
 
-            LocalDeviceResource localDeviceResource = com.awslabs.aws.greengrass.provisioner.data.resources.ImmutableLocalDeviceResource.builder()
+            LocalDeviceResource localDeviceResource = ImmutableLocalDeviceResource.builder()
                     .name(name)
                     .path(path)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
@@ -494,6 +500,9 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             String[] arnComponents = arn.split(":");
 
+            // Validate the ARN. Regex for the ARN is: arn:aws[a-z\-]*:sagemaker:[a-z0-9\-]*:[0-9]{12}:training-job/.*
+            // Regex from https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTrainingJob.html
+
             if (arnComponents.length != 6) {
                 throw new RuntimeException("SageMaker ARN looks malformed [" + arn + "]");
             }
@@ -525,9 +534,67 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private Optional<String> getName(Config temp) {
+    private List<String> setLocalSecretsManagerResources(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
+        List<String> secretNames = new ArrayList<>();
+
+        List<String> idList = config.getStringList("conf.localSecretsManagerResources");
+
+        String functionName = functionConfBuilder.build().getFunctionName();
+
+        if (idList.size() == 0) {
+            log.debug("No local secrets manager resources specified for [" + functionName + "] function");
+
+            return secretNames;
+        }
+
+        for (String id : idList) {
+            String arn = id;
+
+            if (!id.contains(":")) {
+                // No colons specified, check to see if this is reference to the name
+                arn = secretsManagerHelper.getSecretArnFromName(id);
+            }
+
+            String[] arnComponents = arn.split(":");
+
+            // Validate the ARN. Example ARN: arn:aws:secretsmanager:us-west-2:123456789012:secret:MyTestDatabaseSecret-a1b2c3
+            // Example ARN from https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_CreateSecret.html
+
+            if (arnComponents.length != 7) {
+                throw new RuntimeException("Secrets manager ARN looks malformed [" + arn + "]");
+            }
+
+            if (!arnComponents[2].equals("secretsmanager")) {
+                throw new RuntimeException("Secrets manager ARN does not look like a secrets manager ARN [" + arn + "], third component is not 'secretsmanager'");
+            }
+
+            if (!arnComponents[5].equals("secret")) {
+                throw new RuntimeException("Secrets manager ARN does not look like a secrets manager ARN [" + arn + "], second to last component is not 'secret'");
+            }
+
+            String resourceName = arnComponents[6];
+
+            String secretName = secretsManagerHelper.getSecretNameFromArn(arn);
+
+            secretNames.add(secretName);
+
+            LocalSecretsManagerResource localSecretsManagerResource = ImmutableLocalSecretsManagerResource.builder()
+                    .arn(arn)
+                    .secretName(secretName)
+                    .resourceName(resourceName)
+                    .build();
+
+            log.info("Adding secret resource [" + resourceName + "] with name [" + secretName + "] to function [" + functionName + "]");
+
+            functionConfBuilder.addLocalSecretsManagerResources(localSecretsManagerResource);
+        }
+
+        return secretNames;
+    }
+
+    private Optional<String> getName(Config config) {
         // Get the config value or simply return empty if it isn't specified
-        return Try.of(() -> Optional.of(temp.getString("name")))
+        return Try.of(() -> Optional.of(config.getString("name")))
                 .recover(ConfigException.Missing.class, throwable -> Optional.empty())
                 .get();
     }
