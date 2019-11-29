@@ -227,6 +227,7 @@ dependencies {
     compile "software.amazon.awssdk:ec2:$awsSdk2Version"
     compile "software.amazon.awssdk:s3:$awsSdk2Version"
     compile "software.amazon.awssdk:cloudwatchlogs:$awsSdk2Version"
+    compile "software.amazon.awssdk:secretsmanager:$awsSdk2Version"
     compile "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
     compile "org.apache.commons:commons-text:$commonsTextVersion"
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
