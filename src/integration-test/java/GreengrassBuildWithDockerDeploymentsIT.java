@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit;
 
 import static org.hamcrest.CoreMatchers.*;
 
-@Ignore
 public class GreengrassBuildWithDockerDeploymentsIT {
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
