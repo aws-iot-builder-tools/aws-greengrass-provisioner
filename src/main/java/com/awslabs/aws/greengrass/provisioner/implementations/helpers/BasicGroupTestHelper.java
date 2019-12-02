@@ -506,16 +506,22 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private String architectureToValue(Architecture architecture) {
-        if (Architecture.ARM32.equals(architecture)) {
+        if (Architecture.ARMV7L_OPENWRT.equals(architecture) ||
+                Architecture.ARMV7L_RASPBIAN.equals(architecture)) {
             return "armv7l";
+        }
+
+        if (Architecture.ARMV6L_RASPBIAN.equals(architecture)) {
+            return "armv6l";
+        }
+
+        if (Architecture.ARMV8.equals(architecture) ||
+                Architecture.ARMV8_OPENWRT.equals(architecture)) {
+            return "aarch64";
         }
 
         if (Architecture.X86_64.equals(architecture)) {
             return "x86_64";
-        }
-
-        if (Architecture.ARM64.equals(architecture)) {
-            return "aarch64";
         }
 
         throw new RuntimeException("Unsupported architecture");

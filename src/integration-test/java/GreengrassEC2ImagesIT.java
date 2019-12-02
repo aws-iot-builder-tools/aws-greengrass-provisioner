@@ -56,8 +56,21 @@ public class GreengrassEC2ImagesIT {
     private List<Architecture> getValidArchitectures() {
         List<Architecture> architectures = new ArrayList<>(Arrays.asList(Architecture.values()));
 
-        // NOTE: There is no ARM32 support on EC2
+        // There is no ARM32 support on EC2
         architectures.remove(Architecture.ARM32);
+        architectures.remove(Architecture.ARMV6L_RASPBIAN);
+
+        // Do not use ARM64 legacy value
+        architectures.remove(Architecture.ARM64);
+
+        // Remove the OpenWRT values
+        architectures.remove(Architecture.ARMV8_OPENWRT);
+        architectures.remove(Architecture.ARMV7L_OPENWRT);
+
+        // Remove the Raspbian values
+        architectures.remove(Architecture.ARMV6L_RASPBIAN);
+        architectures.remove(Architecture.ARMV7L_RASPBIAN);
+
         return architectures;
     }
 
