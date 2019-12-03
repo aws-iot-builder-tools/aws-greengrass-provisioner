@@ -46,7 +46,6 @@ public class GreengrassEndToEndIT {
      * Makes regex DOT character match newlines
      */
     private static final String REGEX_DOT_ALL = "(?s)";
-    // private static final String GREENGRASS_DIED_ERROR_MESSAGE = String.join("", REGEX_DOT_ALL, ".*The Greengrass daemon process .* died.*");
     private static final String GREENGRASS_STARTED_MESSAGE = String.join("", REGEX_DOT_ALL, ".*Greengrass successfully started with PID:.*");
     private static Logger log = LoggerFactory.getLogger(GreengrassEndToEndIT.class);
     @Rule
