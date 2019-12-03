@@ -237,7 +237,7 @@ public class GreengrassEndToEndIT {
         waitForContainerToStartSuccessfully(Optional.of(waitDuration), Optional.empty());
     }
 
-    private void waitForContainerToStartSuccessfully(Optional<Duration> optionalWaitDuration, Optional<Callable<Boolean>> optionalBooleanCallable) throws IOException, InterruptedException {
+    private void waitForContainerToStartSuccessfully(Optional<Duration> optionalWaitDuration, Optional<Callable<Boolean>> optionalBooleanCallable) throws IOException {
         String script = String.join("\n",
                 "#!/usr/bin/env bash",
                 "tar xvf " + GREENGRASS_OEM_TAR + " -C " + GREENGRASS_DIRECTORY,
