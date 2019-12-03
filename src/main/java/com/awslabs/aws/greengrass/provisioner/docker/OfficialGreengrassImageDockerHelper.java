@@ -92,7 +92,7 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
         String absoluteConfigPath = String.join("/", "", "greengrass", ggConstants.getConfigDirectoryPrefix());
 
         Path tempDirectory = Try.of(() -> getAndPopulateTempDirectory(groupName))
-                .onFailure(throwable -> printCouldNotCreateTemporaryCredentialsAndThrow(throwable))
+                .onFailure(this::printCouldNotCreateTemporaryCredentialsAndThrow)
                 .get();
 
         return Try.withResources(this::getDockerClient)
