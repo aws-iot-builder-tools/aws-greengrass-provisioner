@@ -63,7 +63,6 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(NodeBuilder.class).to(BasicNodeBuilder.class);
         bind(ExecutableBuilder.class).to(BasicExecutableBuilder.class);
         bind(ProcessHelper.class).to(BasicProcessHelper.class);
-        bind(MavenBuilder.class).to(BasicMavenBuilder.class);
         bind(GradleBuilder.class).to(BasicGradleBuilder.class);
         bind(FunctionHelper.class).to(BasicFunctionHelper.class);
         bind(ArchiveHelper.class).to(BasicArchiveHelper.class);
