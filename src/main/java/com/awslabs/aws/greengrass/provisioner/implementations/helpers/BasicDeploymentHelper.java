@@ -1262,13 +1262,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (ec2LinuxVersion.equals(EC2LinuxVersion.Ubuntu1804)) {
             if (architecture.equals(Architecture.X86_64)) {
                 nameFilter = Optional.of(X86_UBUNTU_18_04_LTS_AMI_FILTER);
-            } else if (architecture.equals(Architecture.ARM64)) {
+            } else if (architecture.equals(Architecture.ARMV8)) {
                 nameFilter = Optional.of(ARM64_UBUNTU_18_04_LTS_AMI_FILTER);
             }
         } else if (ec2LinuxVersion.equals(EC2LinuxVersion.AmazonLinux2)) {
             if (architecture.equals(Architecture.X86_64)) {
                 nameFilter = Optional.of(X86_AMAZON_LINUX_2_AMI_FILTER);
-            } else if (architecture.equals(Architecture.ARM64)) {
+            } else if (architecture.equals(Architecture.ARMV8)) {
                 nameFilter = Optional.of(ARM64_AMAZON_LINUX_2_AMI_FILTER);
             }
         }
@@ -1281,7 +1281,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (architecture.equals(Architecture.X86_64)) {
             instanceType = Optional.of(InstanceType.T2_MICRO);
-        } else if (architecture.equals(Architecture.ARM64)) {
+        } else if (architecture.equals(Architecture.ARMV8)) {
             instanceType = Optional.of(InstanceType.A1_MEDIUM);
         }
 

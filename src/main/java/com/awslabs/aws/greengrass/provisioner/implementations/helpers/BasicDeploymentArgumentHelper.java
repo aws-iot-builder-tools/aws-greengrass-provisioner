@@ -176,10 +176,19 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.architectureString != null) {
             deploymentArguments.architecture = getArchitecture(deploymentArguments.architectureString);
+
+            if (deploymentArguments.architecture.equals(Architecture.ARM32)) {
+                log.warn("Legacy ARM32 architecture value detected, switching to ARMV7L_RASPBIAN");
+                deploymentArguments.architecture = Architecture.ARMV7L_RASPBIAN;
+            } else if (deploymentArguments.architecture.equals(Architecture.ARM64)) {
+                log.warn("Legacy ARM64 architecture value detected, switching to ARMV8");
+                deploymentArguments.architecture = Architecture.ARMV8;
+            }
         }
 
-        if ((deploymentArguments.ec2LinuxVersion != null) && deploymentArguments.architecture.equals(Architecture.ARM32)) {
-            throw new RuntimeException("EC2 launch supports X86 and ARM64 only");
+        if ((deploymentArguments.ec2LinuxVersion != null) &&
+                (!deploymentArguments.architecture.equals(Architecture.ARMV8) && (!deploymentArguments.architecture.equals(Architecture.X86_64)))) {
+            throw new RuntimeException("EC2 launch supports X86_64 and ARMV8 architectures only");
         }
 
         /*

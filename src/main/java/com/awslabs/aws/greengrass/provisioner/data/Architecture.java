@@ -11,20 +11,32 @@ import java.util.stream.Collectors;
 import static com.google.common.io.Resources.getResource;
 
 public enum Architecture {
-    ARM32("greengrass-linux-armv7l-1.9.4.tar.gz"),
-    X86_64("greengrass-linux-x86-64-1.9.4.tar.gz"),
-    ARM64("greengrass-linux-aarch64-1.9.4.tar.gz");
+    ARM32(null), // Legacy
+    ARM64(null), // Legacy
+    ARMV8("greengrass-linux-aarch64-VERSION.tar.gz"),
+    ARMV8_OPENWRT("greengrass-openwrt-aarch64-VERSION.tar.gz"),
+    ARMV7L_RASPBIAN("greengrass-linux-armv7l-VERSION.tar.gz"),
+    ARMV7L_OPENWRT("greengrass-openwrt-armv7l-VERSION.tar.gz"),
+    ARMV6L_RASPBIAN("greengrass-linux-armv6l-VERSION.tar.gz"),
+    X86_64("greengrass-linux-x86-64-VERSION.tar.gz");
 
+    private final String currentVersion = "1.10.0";
     private final String filename;
 
     Architecture(String filename) {
-        this.filename = filename;
+        this.filename = Optional.ofNullable(filename)
+                .map(value -> value.replace("VERSION", currentVersion))
+                .orElse(null);
     }
 
     public static String getList() {
         return Arrays.stream(Architecture.values())
                 .map(Architecture::name)
                 .collect(Collectors.joining(", "));
+    }
+
+    public String getWebUrl() {
+        return String.join("/", "https://d1onfpft10uf5o.cloudfront.net/greengrass-core/downloads", currentVersion, filename);
     }
 
     public String getFilename() {
