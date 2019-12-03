@@ -58,6 +58,9 @@ import static io.vavr.Predicates.instanceOf;
 
 public class BasicDeploymentHelper implements DeploymentHelper {
     public static final IpRange ALL_IPS = IpRange.builder().cidrIp("0.0.0.0/0").build();
+    public static final int SSH_PORT = 22;
+    public static final int MOSH_START_PORT = 60000;
+    public static final int MOSH_END_PORT = 61000;
     private static final String USER_DIR = "user.dir";
     private static final String UBUNTU_AMI_ACCOUNT_ID = "099720109477";
     private static final String AWS_AMI_ACCOUNT_ID = "137112412989";
@@ -840,7 +843,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.ec2LinuxVersion != null) {
             log.info("Launching EC2 instance");
-            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion);
+            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort);
 
             if (!optionalInstanceId.isPresent()) {
                 // Something went wrong, bail out
@@ -1116,7 +1119,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         throw new RuntimeException(errorMessage);
     }
 
-    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion) {
+    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion, int mqttPort) {
         String instanceTagName = String.join("-", GREENGRASS_EC2_INSTANCE_TAG_PREFIX, groupName);
 
         Optional<String> optionalAccountId = getAccountId(ec2LinuxVersion);
@@ -1157,15 +1160,24 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Image image = optionalImage.get();
 
         IpPermission sshPermission = IpPermission.builder()
-                .fromPort(22)
-                .toPort(22)
+                .fromPort(SSH_PORT)
+                .toPort(SSH_PORT)
+                .ipProtocol("tcp")
+                .ipRanges(ALL_IPS)
+                .build();
+
+        log.warn("Opening security group for inbound traffic on all IPs on port [" + mqttPort + "] for MQTT");
+
+        IpPermission mqttPermission = IpPermission.builder()
+                .fromPort(mqttPort)
+                .toPort(mqttPort)
                 .ipProtocol("tcp")
                 .ipRanges(ALL_IPS)
                 .build();
 
         IpPermission moshPermission = IpPermission.builder()
-                .fromPort(60000)
-                .toPort(61000)
+                .fromPort(MOSH_START_PORT)
+                .toPort(MOSH_END_PORT)
                 .ipProtocol("udp")
                 .ipRanges(ALL_IPS)
                 .build();
@@ -1189,7 +1201,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
-                .ipPermissions(sshPermission, moshPermission)
+                .ipPermissions(sshPermission, moshPermission, mqttPermission)
                 .build();
 
         Failsafe.with(securityGroupRetryPolicy).get(() ->
