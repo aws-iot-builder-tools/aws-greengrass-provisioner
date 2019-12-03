@@ -35,7 +35,7 @@ public abstract class RoleConf {
         roleConfBuilder.alias(getStringOrReturnEmpty(config, String.join(".", rolePrefix, "alias")));
 
         // Optional string lists
-        roleConfBuilder.iamManagedPolicies(getStringListOrReturnEmpty(config, String.join(".",rolePrefix, "iamManagedPolicies")));
+        roleConfBuilder.iamManagedPolicies(getStringListOrReturnEmpty(config, String.join(".", rolePrefix, "iamManagedPolicies")));
 
         // Optional JSON strings
         roleConfBuilder.assumeRolePolicy(getObjectAndRenderOrReturnEmpty(config, String.join(".", rolePrefix, "assumeRolePolicy")));

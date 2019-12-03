@@ -68,7 +68,7 @@ public abstract class FunctionConf {
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract Optional<File> getCfTemplate();
-   
+
     public String getGroupFunctionName() {
         return String.join("-", getGroupName(), getFunctionName());
     }

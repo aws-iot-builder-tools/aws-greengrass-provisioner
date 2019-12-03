@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
-import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiVendor;
 import io.vavr.control.Try;
 
 public interface ArgumentHelper<T extends Arguments> {
