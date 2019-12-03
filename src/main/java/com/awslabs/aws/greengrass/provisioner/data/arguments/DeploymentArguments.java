@@ -32,6 +32,7 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_HSI_OPTION = "--hsi";
     private final String LONG_S3_BUCKET_OPTION = "--s3-bucket";
     private final String LONG_S3_DIRECTORY_OPTION = "--s3-directory";
+    private final String LONG_MQTT_PORT_OPTION = "--mqtt-port";
     @Parameter(names = {LONG_ARCHITECTURE_OPTION, SHORT_ARCHITECTURE_OPTION}, description = "Architecture (X86_64, ARM32, ARM64)")
     public String architectureString;
     //    private static final String LONG_DOCKER_SCRIPT_OUTPUT_OPTION = "--docker-script";
@@ -87,6 +88,8 @@ public class DeploymentArguments extends Arguments {
     public String csr;
     @Parameter(names = {LONG_CERTIFICATE_ARN_OPTION}, description = "The full ARN of an existing certificate to use for the core")
     public String certificateArn;
+    @Parameter(names = {LONG_MQTT_PORT_OPTION}, description = "The MQTT port that the Greengrass core should listen on")
+    public int mqttPort;
     @Parameter(names = "--help", help = true)
     private boolean help;
 

@@ -20,6 +20,7 @@ import javax.inject.Inject;
 import java.util.Optional;
 
 public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
+    public static final int DEFAULT_MQTT_PORT = 8883;
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentArgumentHelper.class);
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
@@ -39,6 +40,10 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     }
 
     private String getValueOrDefault(String value, Optional<String> defaultValue) {
+        return value == null ? defaultValue.orElse(null) : value;
+    }
+
+    private Integer getValueOrDefault(Integer value, Optional<Integer> defaultValue) {
         return value == null ? defaultValue.orElse(null) : value;
     }
 
@@ -64,6 +69,17 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         return Try.of(() -> Optional.of(defaults.get().getBoolean(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
+    }
+
+    private Optional<Integer> getIntegerDefault(Optional<Config> defaults, String name) {
+        // Get the defaults from a config file
+        if (!defaults.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Try.of(() -> Optional.of(defaults.get().getInt(name)))
                 .recover(ConfigException.Missing.class, throwable -> Optional.empty())
                 .get();
     }
@@ -107,6 +123,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
         deploymentArguments.csr = getValueOrDefault(deploymentArguments.csr, getStringDefault(defaults, "conf.csr"));
         deploymentArguments.certificateArn = getValueOrDefault(deploymentArguments.certificateArn, getStringDefault(defaults, "conf.certificateArn"));
+        deploymentArguments.mqttPort = getValueOrDefault(deploymentArguments.mqttPort, getIntegerDefault(defaults, "conf.mqttPort"));
 
         if (deploymentArguments.pushContainer) {
             // If they want to push a container then we have to build it
@@ -250,6 +267,18 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
             deploymentArguments.launchUser = userAndHost[0];
             deploymentArguments.launchHost = userAndHost[1];
+        }
+
+        if (deploymentArguments.mqttPort == 0) {
+            // No value was set, use the default
+            log.warn("No MQTT port value was set, using default [" + DEFAULT_MQTT_PORT + "]");
+            deploymentArguments.mqttPort = DEFAULT_MQTT_PORT;
+        }
+
+        if (((!deploymentArguments.scriptOutput) && (!deploymentArguments.oemOutput))
+                && (deploymentArguments.mqttPort != DEFAULT_MQTT_PORT)) {
+            // No script and OEM files are being generated but a non-default MQTT port was specified
+            throw new RuntimeException("A non-default MQTT port was specified [" + deploymentArguments.mqttPort + "] but no output files are being generated. Can not continue. The MQTT port can only be set in the config.json. It cannot be changed from the cloud.");
         }
 
         return deploymentArguments;
