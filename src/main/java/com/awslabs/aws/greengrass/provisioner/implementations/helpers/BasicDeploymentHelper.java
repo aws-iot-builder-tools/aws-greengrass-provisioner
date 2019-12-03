@@ -1280,7 +1280,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<InstanceType> instanceType = Optional.empty();
 
         if (architecture.equals(Architecture.X86_64)) {
-            instanceType = Optional.of(InstanceType.T2_MICRO);
+            instanceType = Optional.of(InstanceType.T3_MICRO);
         } else if (architecture.equals(Architecture.ARMV8)) {
             instanceType = Optional.of(InstanceType.A1_MEDIUM);
         }
