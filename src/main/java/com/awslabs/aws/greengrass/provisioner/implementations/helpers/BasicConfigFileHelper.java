@@ -37,6 +37,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         coreThingMap.put("thingArn", coreThingArn);
         coreThingMap.put("iotHost", iotHost);
         coreThingMap.put("ggHost", ggVariables.getGgHost(region));
+        coreThingMap.put("ggMqttPort", deploymentArguments.mqttPort);
 
         if (deploymentArguments.noSystemD) {
             cgroupMap.put("useSystemd", "no");
