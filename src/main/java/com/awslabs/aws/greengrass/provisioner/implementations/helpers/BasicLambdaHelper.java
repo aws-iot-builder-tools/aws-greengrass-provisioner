@@ -43,8 +43,6 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    MavenBuilder mavenBuilder;
-    @Inject
     GradleBuilder gradleBuilder;
     @Inject
     Python2Builder python2Builder;
@@ -98,13 +96,11 @@ public class BasicLambdaHelper implements LambdaHelper {
     public ImmutableZipFilePathAndFunctionConf buildJavaFunction(FunctionConf functionConf) {
         log.info("Creating Java function [" + functionConf.getFunctionName() + "]");
 
-        if (mavenBuilder.isMavenFunction(functionConf)) {
-            return buildMavenFunction(functionConf);
-        } else if (gradleBuilder.isGradleFunction(functionConf)) {
+        if (gradleBuilder.isGradleFunction(functionConf)) {
             return buildGradleFunction(functionConf);
 
         } else {
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is neither a Maven project nor a Gradle project.  It cannot be built automatically.");
+            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is not a Gradle project.  It cannot be built automatically.");
         }
     }
 
@@ -124,15 +120,6 @@ public class BasicLambdaHelper implements LambdaHelper {
                     .functionConf(functionConf)
                     .build();
         }
-    }
-
-    private ImmutableZipFilePathAndFunctionConf buildMavenFunction(FunctionConf functionConf) {
-                    /*
-            mavenBuilder.buildJavaFunctionIfNecessary(functionConf);
-
-            zipFilePath = mavenBuilder.getArchivePath(functionConf);
-            */
-        throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is a Maven project but Maven support is currently disabled.  If you need this feature please file a Github issue.");
     }
 
     @Override

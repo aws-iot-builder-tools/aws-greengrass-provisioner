@@ -9,7 +9,6 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.builders.MavenBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.typesafe.config.*;
 import io.vavr.control.Either;
@@ -47,8 +46,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     GreengrassHelper greengrassHelper;
     @Inject
     LambdaHelper lambdaHelper;
-    @Inject
-    MavenBuilder mavenBuilder;
     @Inject
     GradleBuilder gradleBuilder;
     @Inject
@@ -628,11 +625,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Only check the function confs that aren't already in Lambda
         List<FunctionConf> functionConfsToCheck = getBuildableFunctions(functionConfs);
 
-        List<FunctionConf> javaMavenFunctions = functionConfsToCheck.stream()
-                .filter(getJavaPredicate())
-                .filter(functionConf -> mavenBuilder.isMavenFunction(functionConf))
-                .collect(Collectors.toList());
-
         List<FunctionConf> javaGradleFunctions = functionConfsToCheck.stream()
                 .filter(getJavaPredicate())
                 .filter(functionConf -> gradleBuilder.isGradleFunction(functionConf))
@@ -655,7 +647,6 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .collect(Collectors.toList());
 
         List<FunctionConf> allBuildableFunctions = new ArrayList<>();
-        allBuildableFunctions.addAll(javaMavenFunctions);
         allBuildableFunctions.addAll(javaGradleFunctions);
         allBuildableFunctions.addAll(python2Functions);
         allBuildableFunctions.addAll(python3Functions);
@@ -938,12 +929,6 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .map(lambdaHelper::buildExecutableFunction)
                 .collect(Collectors.toList());
 
-        List<ZipFilePathAndFunctionConf> mavenFunctions = functionConfList.stream()
-                .filter(getJavaPredicate())
-                .filter(mavenBuilder::isMavenFunction)
-                .map(lambdaHelper::buildJavaFunction)
-                .collect(Collectors.toList());
-
         List<ZipFilePathAndFunctionConf> gradleFunctions = functionConfList.stream()
                 .filter(getJavaPredicate())
                 .filter(gradleBuilder::isGradleFunction)
@@ -968,7 +953,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<ZipFilePathAndFunctionConf> allFunctions = new ArrayList<>();
 
         allFunctions.addAll(executableFunctions);
-        allFunctions.addAll(mavenFunctions);
         allFunctions.addAll(gradleFunctions);
         allFunctions.addAll(python2Functions);
         allFunctions.addAll(python3Functions);

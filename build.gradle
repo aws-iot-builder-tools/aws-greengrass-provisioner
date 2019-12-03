@@ -112,30 +112,9 @@ task downloadNodeSdk(type: Copy, dependsOn: extractNodeSdk) {
     into "$buildDirFoundation"
 }
 
-def javaSdkTarGz = 'aws-greengrass-core-sdk-java-1.3.1.tar.gz'
-def javaSdkJar = 'GreengrassJavaSDK-1.3.1.jar'
-
-task fetchGreengrassJavaSdk(type: Download) {
-    src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/java/8/$javaSdkTarGz"
-    dest new File(buildDir, javaSdkTarGz)
-    overwrite false
-}
-
-task extractJavaSdk(type: Copy, dependsOn: fetchGreengrassJavaSdk) {
-    from tarTree(fetchGreengrassJavaSdk.dest)
-    into buildDirTemp
-}
-
-task downloadJavaSdk(type: Copy, dependsOn: extractJavaSdk) {
-    from "$buildDirTemp/aws-greengrass-core-sdk-java/sdk/$javaSdkJar"
-    into "$buildDirFoundation"
-    rename { String filename -> return filename + ".zip" }
-}
-
 task downloadAll {
     dependsOn downloadGreengrassBinaries
     dependsOn downloadNodeSdk
-    dependsOn downloadJavaSdk
 }
 
 // This task will be enabled when Greengrass Core and the SDKs are available directly via S3
