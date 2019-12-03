@@ -4,7 +4,7 @@
 [![Open Issues](https://img.shields.io/github/issues-raw/awslabs/aws-greengrass-provisioner.svg)](https://github.com/awslabs/aws-greengrass-provisioner/issues)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/awslabs/aws-greengrass-provisioner/blob/master/LICENSE)
 
-**Note: GGP expects to be used with Greengrass Core 1.9.4 only!**
+**Note: GGP expects to be used with Greengrass Core 1.10.0 only!**
 
 Simplifies provisioning Greengrass Cores and building Greengrass Lambda functions.  GGP configures Greengrass so you don't have to.
 
