@@ -26,6 +26,7 @@ public class BasicJsonHelper implements JsonHelper {
     private GsonBuilder getGsonBuilder() {
         GsonBuilder gsonBuilder = new GsonBuilder();
 
+        // This allows us to use GSON with Immutables - https://immutables.github.io/json.html#type-adapter-registration
         for (TypeAdapterFactory factory : ServiceLoader.load(TypeAdapterFactory.class)) {
             gsonBuilder.registerTypeAdapterFactory(factory);
         }
