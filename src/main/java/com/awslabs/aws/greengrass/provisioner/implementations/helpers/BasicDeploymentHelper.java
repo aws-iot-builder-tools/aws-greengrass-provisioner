@@ -9,7 +9,6 @@ import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.S3ClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.common.collect.ImmutableSet;
@@ -127,7 +126,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     ExceptionHelper exceptionHelper;
     @Inject
-    S3ClientProvider s3ClientProvider;
+    S3Client s3Client;
     @Inject
     JsonHelper jsonHelper;
     @Inject
@@ -1581,8 +1580,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (s3Bucket == null) {
             return;
         }
-
-        S3Client s3Client = s3ClientProvider.get();
 
         if (s3Directory.equals("/")) {
             // Clear out the S3 directory if it is just the root

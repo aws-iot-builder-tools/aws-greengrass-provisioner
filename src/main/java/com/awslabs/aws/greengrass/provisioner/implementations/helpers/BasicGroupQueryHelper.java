@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.CloudWatchLogsClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -43,7 +42,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     @Inject
     QueryArgumentHelper queryArgumentHelper;
     @Inject
-    CloudWatchLogsClientProvider cloudWatchLogsClientProvider;
+    CloudWatchLogsClient cloudWatchLogsClient;
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -395,8 +394,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     private Optional<LogGroup> findLogGroupByName(String logGroupName) {
         String nextToken = null;
 
-        CloudWatchLogsClient cloudWatchLogsClient = cloudWatchLogsClientProvider.get();
-
         do {
             DescribeLogGroupsResponse result = cloudWatchLogsClient
                     .describeLogGroups(DescribeLogGroupsRequest.builder().nextToken(nextToken).build());
@@ -418,8 +415,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     private Optional<LogStream> findLatestLogStream(final String logGroupName,
                                                     final String logStreamRegex) {
         String nextToken = null;
-
-        CloudWatchLogsClient cloudWatchLogsClient = cloudWatchLogsClientProvider.get();
 
         List<LogStream> logStreams = new ArrayList<>();
 
@@ -446,8 +441,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     }
 
     private Tuple3<LogGroup, LogStream, GetLogEventsResponse> getLogEvents(LogGroup logGroup, LogStream logStream) {
-        CloudWatchLogsClient cloudWatchLogsClient = cloudWatchLogsClientProvider.get();
-
         GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
                 .logGroupName(logGroup.logGroupName())
                 .logStreamName(logStream.logStreamName())
@@ -461,8 +454,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     }
 
     private Tuple3<LogGroup, LogStream, GetLogEventsResponse> getLogEvents(LogGroup logGroup, LogStream logStream, String forwardToken) {
-        CloudWatchLogsClient cloudWatchLogsClient = cloudWatchLogsClientProvider.get();
-
         GetLogEventsRequest getLogEventsRequest = GetLogEventsRequest.builder()
                 .logGroupName(logGroup.logGroupName())
                 .logStreamName(logStream.logStreamName())

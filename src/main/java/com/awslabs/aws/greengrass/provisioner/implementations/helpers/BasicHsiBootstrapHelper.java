@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiBootstrapArguments;
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.StsClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.jcraft.jsch.Session;
 import io.vavr.control.Try;
@@ -39,7 +38,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
     @Inject
     ResourceHelper resourceHelper;
     @Inject
-    StsClientProvider stsClientProvider;
+    StsClient stsClient;
     @Inject
     AwsHelper awsHelper;
 
@@ -116,7 +115,6 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
 
     @NotNull
     public String getTemporaryConfiguration() {
-        StsClient stsClient = stsClientProvider.get();
         GetSessionTokenResponse getSessionTokenResponse = stsClient.getSessionToken();
         Credentials credentials = getSessionTokenResponse.credentials();
 
