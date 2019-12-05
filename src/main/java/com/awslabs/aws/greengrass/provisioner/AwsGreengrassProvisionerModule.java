@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner;
 import com.awslabs.aws.greengrass.provisioner.data.diagnostics.*;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.implementations.builders.*;
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.*;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
@@ -11,7 +10,9 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.spotify.docker.client.ProgressHandler;
+import software.amazon.awssdk.auth.credentials.AwsCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
 import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
@@ -29,20 +30,24 @@ import software.amazon.awssdk.services.sts.StsClient;
 public class AwsGreengrassProvisionerModule extends AbstractModule {
     @Override
     public void configure() {
-        // Create a bunch of providers for default clients that check for errors
-        bind(IotClient.class).toProvider(IotClientProvider.class);
-        bind(Ec2Client.class).toProvider(Ec2ClientProvider.class);
-        bind(IamClient.class).toProvider(IamClientProvider.class);
-        bind(StsClient.class).toProvider(StsClientProvider.class);
-        bind(S3Client.class).toProvider(S3ClientProvider.class);
-        bind(CloudWatchLogsClient.class).toProvider(CloudWatchLogsClientProvider.class);
-        bind(GreengrassClient.class).toProvider(GreengrassClientProvider.class);
-        bind(LambdaClient.class).toProvider(LambdaClientProvider.class);
-        bind(CloudFormationClient.class).toProvider(CloudFormationClientProvider.class);
-        bind(EcrClient.class).toProvider(EcrClientProvider.class);
-        bind(SecretsManagerClient.class).toProvider(SecretsManagerClientProvider.class);
-        bind(AwsRegionProviderChain.class).toProvider(DefaultAwsRegionProviderChain::new);
-        bind(DefaultCredentialsProvider.class).toProvider(DefaultCredentialsProvider::create);
+        // Normal clients that need no special configuration
+        // NOTE: Using this pattern allows us to wrap the creation of these clients in some error checking code that can give the user information on what to do in the case of a failure
+        bind(IotClient.class).toProvider(new SafeProvider<>(IotClient::create));
+        bind(Ec2Client.class).toProvider(new SafeProvider<>(Ec2Client::create));
+        bind(StsClient.class).toProvider(new SafeProvider<>(StsClient::create));
+        bind(S3Client.class).toProvider(new SafeProvider<>(S3Client::create));
+        bind(CloudWatchLogsClient.class).toProvider(new SafeProvider<>(CloudWatchLogsClient::create));
+        bind(GreengrassClient.class).toProvider(new SafeProvider<>(GreengrassClient::create));
+        bind(LambdaClient.class).toProvider(new SafeProvider<>(LambdaClient::create));
+        bind(CloudFormationClient.class).toProvider(new SafeProvider<>(CloudFormationClient::create));
+        bind(EcrClient.class).toProvider(new SafeProvider<>(EcrClient::create));
+        bind(SecretsManagerClient.class).toProvider(new SafeProvider<>(SecretsManagerClient::create));
+        bind(AwsRegionProviderChain.class).toProvider(new SafeProvider<>(DefaultAwsRegionProviderChain::new));
+
+        // Clients that need special configuration
+        // NOTE: Using this pattern allows us to wrap the creation of these clients in some error checking code that can give the user information on what to do in the case of a failure
+        bind(IamClient.class).toProvider(new SafeProvider<>(() -> IamClient.builder().region(Region.AWS_GLOBAL).build()));
+        bind(AwsCredentials.class).toProvider(new SafeProvider<>(() -> DefaultCredentialsProvider.create().resolveCredentials()));
 
         bind(GGConstants.class).to(BasicGGConstants.class);
         bind(PolicyHelper.class).to(BasicPolicyHelper.class);

@@ -33,10 +33,6 @@ public class BasicSdkErrorHandler implements SdkErrorHandler {
     private String HTTP_REQUEST_EXCEPTION = "Unable to execute HTTP request";
     private String HTTP_REQUEST_SOLUTION = "Couldn't contact one of the AWS services, is your Internet connection down?";
 
-    @Inject
-    public BasicSdkErrorHandler() {
-    }
-
     @Override
     public Void handleSdkError(SdkClientException e) {
         String message = e.getMessage();

@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.AwsCredentialsProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import io.vavr.control.Try;
 import org.apache.commons.lang3.SystemUtils;
@@ -8,6 +7,7 @@ import org.slf4j.Logger;
 import software.amazon.awssdk.auth.credentials.AwsCredentials;
 
 import javax.inject.Inject;
+import javax.inject.Provider;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -27,7 +27,7 @@ public class BasicProcessHelper implements ProcessHelper {
 
     @Inject
     // Minor hack for integration tests
-    public AwsCredentialsProvider awsCredentialsProvider;
+    public Provider<AwsCredentials> awsCredentialsProvider;
 
     @Inject
     public BasicProcessHelper() {

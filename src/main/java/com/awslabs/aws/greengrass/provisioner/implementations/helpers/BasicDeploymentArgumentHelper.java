@@ -3,7 +3,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
-import com.awslabs.aws.greengrass.provisioner.implementations.clientproviders.S3ClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.beust.jcommander.JCommander;
 import com.typesafe.config.Config;
@@ -31,7 +30,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    S3ClientProvider s3ClientProvider;
+    S3Client s3Client;
     @Inject
     SshHelper sshHelper;
 
@@ -247,8 +246,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             if ((!deploymentArguments.oemOutput) && (!deploymentArguments.scriptOutput) && (!deploymentArguments.ggdOutput)) {
                 throw new RuntimeException("S3 destination specified but not output files will be generated. You must specify at least one of OEM, script, and GGD output to use S3.");
             }
-
-            S3Client s3Client = s3ClientProvider.get();
 
             // At this point the S3 options look good, make sure that the bucket exists
             GetBucketLocationRequest getBucketLocationRequest = GetBucketLocationRequest.builder()
