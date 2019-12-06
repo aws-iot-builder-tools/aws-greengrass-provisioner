@@ -10,6 +10,13 @@ rootcheck() {
 
 rootcheck "${@}"
 
+ETC_ISSUE=$(cat /etc/issue)
+
+if [[ "$ETC_ISSUE" =~ "Ubuntu 16.04" ]]; then
+  echo "Ubuntu 16.04 is no longer supported by this installer because too many dependencies are missing from the repos."
+  exit 1
+fi
+
 if ls /var/lib/cloud/instances/*/* 1>/dev/null 2>&1; then
   echo "Looks like we are running on EC2, waiting for cloud-init to finish"
 
