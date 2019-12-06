@@ -1453,17 +1453,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String ggShScriptName = ggVariables.getGgShScriptName(deploymentArguments.groupName);
 
         log.info("Adding scripts to archive");
-        Optional<Architecture> architecture = getArchitecture(deploymentArguments);
+        Optional<Architecture> optionalArchitecture = getArchitecture(deploymentArguments);
 
         // Skip this block if we're not generating the install script so we don't generate all of the other inner scripts
         if (installScriptVirtualTarEntries.isPresent()) {
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getInstallScriptName(), scriptHelper.generateInstallScript(architecture.get()).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStartScriptName(), scriptHelper.generateStartScript(architecture.get()).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStopScriptName(), scriptHelper.generateStopScript(architecture.get()).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCleanScriptName(), scriptHelper.generateCleanScript(architecture.get(), baseGgShScriptName).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getMonitorScriptName(), scriptHelper.generateMonitorScript(architecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStartScriptName(), scriptHelper.generateStartScript(optionalArchitecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getStopScriptName(), scriptHelper.generateStopScript(optionalArchitecture.get()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCleanScriptName(), scriptHelper.generateCleanScript(optionalArchitecture.get(), baseGgShScriptName).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getMonitorScriptName(), scriptHelper.generateMonitorScript(optionalArchitecture.get()).getBytes(), scriptPermissions);
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getSystemdScriptName(), scriptHelper.generateSystemdScript().getBytes(), scriptPermissions);
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getCredentialsScriptName(), scriptHelper.generateCredentialsScript().getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, scriptHelper.getUpdateDependenciesScriptName(), scriptHelper.generateUpdateDependenciesScript().getBytes(), scriptPermissions);
         }
 
         for (GGDConf ggdConf : ggdConfs) {
@@ -1490,8 +1490,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             File finalMainScript = mainScript;
 
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(architecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
         }
 
         ///////////////////////////
@@ -1500,15 +1500,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (installScriptVirtualTarEntries.isPresent()) {
             log.info("Adding Greengrass binary to archive");
+            Architecture architecture = optionalArchitecture.get();
             URL architectureUrl = getArchitectureUrl(deploymentArguments);
 
             // Use ifPresent here to avoid reading the file if it isn't necessary
-            installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, architecture.get().getFilename(), ioHelper.readFile(architectureUrl), normalFilePermissions));
+            installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, architecture.getFilename(), ioHelper.readFile(architectureUrl), normalFilePermissions));
 
             log.info("Building script [" + ggShScriptName + "]");
             ByteArrayOutputStream ggScriptTemplate = new ByteArrayOutputStream();
 
-            Try.of(() -> writePayload(ggdPipDependencies, ggScriptTemplate)).get();
+            Try.of(() -> writePayload(architecture, ggdPipDependencies, ggScriptTemplate)).get();
 
             log.info("Writing script [" + ggShScriptName + "]");
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
@@ -1608,8 +1609,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         s3Client.putObject(putObjectRequest, RequestBody.fromFile(inputFile));
     }
 
-    private Void writePayload(Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
-        ggScriptTemplate.write(scriptHelper.generateGgScript(ggdPipDependencies).getBytes());
+    private Void writePayload(Architecture architecture, Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
+        ggScriptTemplate.write(scriptHelper.generateGgScript(architecture, ggdPipDependencies).getBytes());
         ggScriptTemplate.write("PAYLOAD:\n".getBytes());
         ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
 

@@ -44,9 +44,9 @@ rm -rf /greengrass \
   ./${STOP_SCRIPT} \
   ./${MONITOR_SCRIPT} \
   ./${CLEAN_SCRIPT} \
-  ./${INSTALL_SCRIPT} \
   ./${SYSTEMD_SCRIPT} \
   ./${CREDENTIALS_SCRIPT} \
+  ./${UPDATE_DEPENDENCIES_SCRIPT} \
   ./${GG_SH} \
   ./${GG_SH}.DEPLOYED \
   ./${GG_BITS} \
