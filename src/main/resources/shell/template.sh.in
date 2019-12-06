@@ -104,7 +104,7 @@ else
   fi
 fi
 
-if [ "$OPTION_SPECIFIED" = false ]; then
+if [ "$OPTION_SPECIFIED" == false ]; then
   echo "No options specified, will prompt user"
   unset INSTALL
   unset START
@@ -208,13 +208,13 @@ else
   INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre-headless libsm6 iproute2"
 fi
 
-if [ "$UPDATE_DEPENDENCIES" = true ]; then
+if [ "$UPDATE_DEPENDENCIES" == true ]; then
   UNAME=$(uname -a)
 
   # Raspbian specific setup
   OS_RELEASE=$(grep ^ID= /etc/os-release)
 
-  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+  if [ "$OS_RELEASE" == "ID=raspbian" ]; then
     # Raspbian detected
     if [ -f /tmp/REBOOT_REQUIRED ]; then
       cat /tmp/REBOOT_REQUIRED
@@ -325,7 +325,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
   $PIP3 install opencv-python
   $PIP3 install awscli
 
-  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+  if [ "$OS_RELEASE" == "ID=raspbian" ]; then
     # Raspbian detected, install the GPIO library
     $PIP3 install RPi.GPIO
   fi
