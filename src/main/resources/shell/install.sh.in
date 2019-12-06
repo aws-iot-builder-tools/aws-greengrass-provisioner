@@ -15,6 +15,14 @@ install_aws_credential_process() {
   # Get the user from the first parameter
   INPUT_USER=$1
 
+  AWS_CLI=$(which aws)
+  AWS_CLI_MISSING=$?
+
+  if [ $AWS_CLI_MISSING -eq 1 ]; then
+    echo "Not configuring credential provider for [$INPUT_USER] since the AWS CLI is not installed"
+    return
+  fi
+
   # Make sure the .aws directory and config file exist and are owned by the current user
   DIR=$(eval echo "~$INPUT_USER")
   mkdir -p $DIR/.aws

@@ -29,13 +29,13 @@ function untar_payload() {
 
 SCRIPT_NAME=$(basename "$0")
 
-if [[ $SCRIPT_NAME =~ "DEPLOYED" ]]; then
+if [[ $SCRIPT_NAME =~ DEPLOYED ]]; then
   echo "This script has already been used to deploy your core.  Start the core with the start.sh script instead of running the deployer again."
   echo "   "
   echo "If you re-run this script you will need to do a new deployment on your group from the AWS Greengrass console or your functions will not be downloaded automatically."
   echo "   "
   echo "To re-run this script rename it and remove the .DEPLOYED suffix"
-  exit 998
+  exit 1
 fi
 
 GETOPT=$(which getopt)
@@ -104,7 +104,7 @@ else
   fi
 fi
 
-if [ "$OPTION_SPECIFIED" = false ]; then
+if [ "$OPTION_SPECIFIED" == false ]; then
   echo "No options specified, will prompt user"
   unset INSTALL
   unset START
@@ -117,7 +117,7 @@ if [ -z "$INSTALL" ]; then
 
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Not installing Greengrass"
-    exit 999
+    exit 1
   fi
 fi
 
@@ -208,13 +208,13 @@ else
   INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre-headless libsm6 iproute2"
 fi
 
-if [ "$UPDATE_DEPENDENCIES" = true ]; then
+if [ "$UPDATE_DEPENDENCIES" == true ]; then
   UNAME=$(uname -a)
 
   # Raspbian specific setup
   OS_RELEASE=$(grep ^ID= /etc/os-release)
 
-  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
+  if [ "$OS_RELEASE" == "ID=raspbian" ]; then
     # Raspbian detected
     if [ -f /tmp/REBOOT_REQUIRED ]; then
       cat /tmp/REBOOT_REQUIRED
@@ -289,7 +289,7 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
 
   COUNTER=0
 
-  until $INSTALLER_UPDATE update -y || ((COUNTER++ >= 3)); do
+  until $INSTALLER_UPDATE -y update || ((COUNTER++ >= 3)); do
     echo "Package manager update failed, trying again"
     sleep 2
   done
@@ -299,9 +299,9 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
     exit 1
   fi
 
-  $INSTALLER install -y sqlite3 bzip2 $PIP_PACKAGES $PYTHON2_7_PACKAGES $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
-  $INSTALLER install -y $INSTALLER_SPECIFIC_PACKAGES
-  $INSTALLER install -y mosh
+  $INSTALLER -y install sqlite3 bzip2 $PIP_PACKAGES $PYTHON2_7_PACKAGES $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
+  $INSTALLER -y install $INSTALLER_SPECIFIC_PACKAGES
+  $INSTALLER -y install mosh
 
   if [[ $(uname -a) =~ .*hypriotos.* ]]; then
     easy_install pip
@@ -314,45 +314,143 @@ if [ "$UPDATE_DEPENDENCIES" = true ]; then
 
   # Just in case the upgrade moves it
   PIP3=$(which pip3)
+  PIP3_MISSING=$?
 
-  $PIP3 install AWSIoTPythonSDK
-
-  if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
-    $PIP3 install ${GGD_PIP_DEPENDENCIES}
+  if [ $PIP3_MISSING -eq 1 ]; then
+    # pip3 was moved and now it is not in a path that is searched by which (or it is gone completely)
+    if [ -f "/usr/local/bin/pip3" ]; then
+      # pip3 was found in a standard location, we can continue
+      PIP3="/usr/local/bin/pip3"
+      PIP3_MISSING=0
+    fi
   fi
 
-  $PIP3 install mxnet
-  $PIP3 install opencv-python
-  $PIP3 install awscli
-
-  if [ "$OS_RELEASE" = "ID=raspbian" ]; then
-    # Raspbian detected, install the GPIO library
-    $PIP3 install RPi.GPIO
-  fi
-fi
-
-EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
-NODEJS_8_10=$(which nodejs8.10)
-NODEJS_8_10_MISSING=$?
-
-if [ $NODEJS_8_10_MISSING -eq 1 ]; then
-  # Install NodeJS
-  echo "Node is missing"
-  GIT=$(which git)
-  GIT_MISSING=$?
-
-  if [ $GIT_MISSING -eq 1 ]; then
-    echo "git is missing, not installing node"
+  if [ $PIP3_MISSING -eq 1 ]; then
+    echo "After upgrading pip3 it can no longer be found. Can not install pip3 dependencies."
   else
-    git clone https://github.com/tj/n.git
-    pushd .
-    cd n
-    export PATH="$PATH:/usr/local/bin"
-    make install
-    n 8.10.0
-    NODEJS=$(which node)
-    ln -s $NODEJS $(dirname $NODEJS)/nodejs8.10
-    popd
+    $PIP3 install AWSIoTPythonSDK
+
+    if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
+      $PIP3 install ${GGD_PIP_DEPENDENCIES}
+    fi
+
+    $PIP3 install mxnet
+    $PIP3 install opencv-python
+    $PIP3 install awscli
+
+    if [ "$OS_RELEASE" == "ID=raspbian" ]; then
+      # Raspbian detected, install the GPIO library
+      $PIP3 install RPi.GPIO
+    fi
+  fi
+
+  # Docker installation
+
+  # This allows the non-root user to use Docker
+  ADD_USER_TO_DOCKER_GROUP="usermod -aG docker ${SUDO_USER}"
+  # Docker Compose installation command. From: https://docs.docker.com/compose/install/
+  KERNEL=$(uname -s)
+  MACHINE=$(uname -m)
+  if [ "$MACHINE" != "x86_64" ]; then
+    echo "Docker Compose is only supported on X86_64. Skipping the installation of Docker Compose."
+    DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE=""
+  else
+    DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE="curl -L \"https://github.com/docker/compose/releases/download/1.25.0/docker-compose-$KERNEL-$MACHINE\" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
+  fi
+
+  if [ "$INSTALLER" == "apt-get" ]; then
+    if [ "$OS_RELEASE" == "ID=raspbian" ]; then
+      # Raspbian specific Docker installation
+      curl -fsSL https://get.docker.com -o get-docker.sh
+      chmod +x get-docker.sh
+      ./get-docker.sh
+      rm get-docker.sh
+      eval $ADD_USER_TO_DOCKER_GROUP
+      # Install Docker compose, if possible
+      $INSTALLER install -y docker-compose
+    else
+      # Do apt-get specific Docker installation. From: https://docs.docker.com/v17.09/engine/installation/linux/docker-ce/ubuntu/#install-using-the-repository
+      $INSTALLER install -y apt-transport-https ca-certificates curl software-properties-common
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+
+      ARCH=$(uname -m)
+
+      # Flag to indicate whether we should do the installation steps for Docker
+      INSTALL_DOCKER=0
+
+      if [ "$ARCH" == "x86_64" ]; then
+        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        INSTALL_DOCKER=1
+      elif [[ "$ARCH" =~ armv.* ]]; then
+        add-apt-repository "deb [arch=armhf] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        INSTALL_DOCKER=1
+      elif [[ "$ARCH" == "aarch64" ]]; then
+        add-apt-repository "deb [arch=arm64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+        INSTALL_DOCKER=1
+      else
+        echo "Could not determine architecture. Docker will not be installed."
+      fi
+
+      # Consolidated installation commands for Docker
+      if [ $INSTALL_DOCKER -eq 1 ]; then
+        PACKAGES_TO_REMOVE="docker docker-engine docker.io containerd runc"
+        $INSTALLER -y remove $PACKAGES_TO_REMOVE
+        $INSTALLER_UPDATE -y update
+        $INSTALLER -y install docker-ce
+        eval $ADD_USER_TO_DOCKER_GROUP
+        # Install Docker compose, if possible
+        eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
+      fi
+    fi
+  elif [[ "$INSTALLER" =~ .*yum ]]; then
+    SYSTEM_RELEASE=$(cat /etc/system-release)
+
+    if [[ "$SYSTEM_RELEASE" =~ "Amazon Linux release 2".* ]]; then
+      echo "Amazon Linux 2 detected, Docker may be version 18 instead of version 19"
+      # Instructions from: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html#install_docker
+      $INSTALLER -y update
+      amazon-linux-extras install -y docker
+      service docker start
+      eval $ADD_USER_TO_DOCKER_GROUP
+      # Install Docker compose, if possible
+      eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
+    else
+      echo "Not Amazon Linux 2 [$SYSTEM_RELEASE], adding Docker CE repo"
+      $INSTALLER -y remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
+      $INSTALLER -y install yum-utils device-mapper-persistent-data lvm2
+      yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+      $INSTALLER -y install docker-ce docker-ce-cli containerd.io
+      eval $ADD_USER_TO_DOCKER_GROUP
+      # Install Docker compose, if possible
+      eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
+    fi
+  else
+    echo "No specific configuration for this installer [$INSTALLER]. Docker will not be installed."
+  fi
+
+  EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
+  NODEJS_8_10=$(which nodejs8.10)
+  NODEJS_8_10_MISSING=$?
+
+  if [ $NODEJS_8_10_MISSING -eq 1 ]; then
+    # Install NodeJS
+    echo "Node is missing"
+    GIT=$(which git)
+    GIT_MISSING=$?
+
+    if [ $GIT_MISSING -eq 1 ]; then
+      echo "git is missing, not installing node"
+    else
+      git clone https://github.com/tj/n.git
+      pushd .
+      cd n
+      export PATH="$PATH:/usr/local/bin"
+      make install
+      n 8.10.0
+      NODEJS=$(which node)
+      ln -s $NODEJS $(dirname $NODEJS)/nodejs8.10
+      popd
+    fi
   fi
 fi
 
