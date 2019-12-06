@@ -63,6 +63,7 @@ public class BasicGradleBuilder implements GradleBuilder {
         BuildLauncher build = projectConnection.newBuild();
         build.forTasks("build");
         build.setStandardOutput(System.out);
+        build.setStandardError(System.err);
         build.run();
 
         return null;
