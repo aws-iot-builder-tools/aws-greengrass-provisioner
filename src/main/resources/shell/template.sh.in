@@ -29,13 +29,13 @@ function untar_payload() {
 
 SCRIPT_NAME=$(basename "$0")
 
-if [[ $SCRIPT_NAME =~ "DEPLOYED" ]]; then
+if [[ $SCRIPT_NAME =~ DEPLOYED ]]; then
   echo "This script has already been used to deploy your core.  Start the core with the start.sh script instead of running the deployer again."
   echo "   "
   echo "If you re-run this script you will need to do a new deployment on your group from the AWS Greengrass console or your functions will not be downloaded automatically."
   echo "   "
   echo "To re-run this script rename it and remove the .DEPLOYED suffix"
-  exit 998
+  exit 1
 fi
 
 GETOPT=$(which getopt)
@@ -117,7 +117,7 @@ if [ -z "$INSTALL" ]; then
 
   if [[ ! $REPLY =~ ^[Yy]$ ]]; then
     echo "Not installing Greengrass"
-    exit 999
+    exit 1
   fi
 fi
 
