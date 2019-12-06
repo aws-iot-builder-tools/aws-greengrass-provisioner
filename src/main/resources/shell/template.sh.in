@@ -33,6 +33,51 @@ function untar_payload() {
   payload_start=$((match + 1))
   tail -n +$payload_start $0 | tar xvf -
 }
+install_aws_credential_process() {
+  GREENGRASS_REGION_FILE="/greengrass/config/region.txt"
+  CREDENTIALS_SCRIPT="/greengrass/config/credentials.sh"
+
+  # Get the user from the first parameter
+  INPUT_USER=$1
+
+  AWS_CLI=$(which aws)
+  AWS_CLI_MISSING=$?
+
+  if [ $AWS_CLI_MISSING -eq 1 ]; then
+    echo "Not configuring credential provider for [$INPUT_USER] since the AWS CLI is not installed"
+    return
+  fi
+
+  # Make sure the .aws directory and config file exist and are owned by the current user
+  DIR=$(eval echo "~$INPUT_USER")
+  mkdir -p $DIR/.aws
+  touch $DIR/.aws/config
+  chown -R $1:$1 $DIR/.aws
+
+  # Always use the greengrass profile
+  PROFILE="--profile greengrass"
+
+  if [ $INPUT_USER != "root" ]; then
+    RUN_USER_PREFIX="runuser -l ${SUDO_USER} -c \""
+    RUN_USER_SUFFIX="\""
+  else
+    RUN_USER_PREFIX=""
+    RUN_USER_SUFFIX=""
+  fi
+
+  REGION=$(cat $GREENGRASS_REGION_FILE)
+
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE region $REGION $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE output json $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE credential_process $CREDENTIALS_SCRIPT $RUN_USER_SUFFIX"
+  eval $CMD
+  CMD="$RUN_USER_PREFIX aws configure set $PROFILE configured_by_ggp true $RUN_USER_SUFFIX"
+  eval $CMD
+}
+
+rootcheck "${@}"
 
 SCRIPT_NAME=$(basename "$0")
 
@@ -152,7 +197,7 @@ fi
 
 if [ -e "stop.sh" ]; then
   echo "Attempting to stop Greengrass, if necessary"
-  ./stop.sh
+  ./${STOP_SCRIPT}
 fi
 
 ADD_USER=$(which adduser)
@@ -176,290 +221,33 @@ if [ $ADD_GROUP_MISSING -eq 1 ]; then
   fi
 fi
 
-YUM=$(which yum)
-YUM_MISSING=$?
+# Dependencies script is in the payload, untar it
+untar_payload
 
-if [ $YUM_MISSING -eq 0 ]; then
-  INSTALLER_UPDATE=$YUM
-  INSTALLER=$YUM
+set -e
+set -x
 
-  # Amazon Linux on EC2 needs this
-  service cgconfig start
+# Remove any old Greengrass installation
+rm -rf /greengrass
 
-  # mount /sys/fs/cgroup if not already done
-  if ! mountpoint -q /sys/fs/cgroup; then
-    mount -t tmpfs -o uid=0,gid=0,mode=0755 cgroup /sys/fs/cgroup
-  fi
+# Put the Greengrass bits in place
+mkdir -p /greengrass && sudo tar -zxf ${GG_BITS} -C /
 
-  pushd .
-  cd /sys/fs/cgroup
+# Copy the configuration information into the Greengrass directory
+cp certs/* /greengrass/certs/
+cp config/* /greengrass/config/
+cp credentials.sh /greengrass/config/
 
-  # get/mount list of enabled cgroup controllers
-  for sys in $(awk '!/^#/ { if ($4 == 1) print $1 }' /proc/cgroups); do
-    mkdir -p $sys
-    if ! mountpoint -q $sys; then
-      if ! mount -n -t cgroup -o $sys cgroup $sys; then
-        rmdir $sys || true
-      fi
-    fi
-  done
-
-  popd
-
-  INSTALLER_SPECIFIC_PACKAGES="java-1.8.0-openjdk libSM"
-else
-  INSTALLER_UPDATE=apt-get
-  INSTALLER=apt-get
-  # Avoid preinst and postinst tasks from asking questions
-  export DEBIAN_FRONTEND=noninteractive
-  INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre-headless libsm6 iproute2"
-fi
+set +e
+set +x
 
 if [ "$UPDATE_DEPENDENCIES" == true ]; then
-  UNAME=$(uname -a)
-
-  # Raspbian specific setup
-  OS_RELEASE=$(grep ^ID= /etc/os-release)
-
-  if [ "$OS_RELEASE" == "ID=raspbian" ]; then
-    # Raspbian detected
-    if [ -f /tmp/REBOOT_REQUIRED ]; then
-      cat /tmp/REBOOT_REQUIRED
-      exit 1
-    fi
-
-    BUSTER=$(cat /etc/os-release | grep -q buster)
-
-    if [ $? -eq 0 ]; then
-      echo "Detected Raspbian Buster, adding --allow-releaseinfo-change option"
-      INSTALLER_UPDATE="apt-get --allow-releaseinfo-change"
-    fi
-
-    CMDLINE=$(cat /boot/cmdline.txt)
-
-    echo "$CMDLINE" | grep -q 'cgroup_enable=memory cgroup_memory=1$'
-
-    if [ $? -eq 0 ]; then
-      echo "cgroups already configured"
-    else
-      sed -i 's/$/ cgroup_enable=memory cgroup_memory=1/' /boot/cmdline.txt
-      REBOOT_REASON="Enabled cgroup_memory in /boot/cmdline.txt.  You must reboot and re-run this installer."
-      echo $REBOOT_REASON >/tmp/REBOOT_REQUIRED
-
-      cat /tmp/REBOOT_REQUIRED
-
-      exit 1
-    fi
-  fi
-
-  set +e
-
-  PIP=$(which pip)
-  PIP_MISSING=$?
-
-  if [ $PIP_MISSING -eq 1 ]; then
-    # Only install these if pip3 is missing
-    PIP_PACKAGES="python2.7 python-pip python-setuptools"
-  else
-    PIP_PACKAGES=
-  fi
-
-  PYTHON2_7=$(which python2.7)
-  PYTHON2_7_MISSING=$?
-
-  if [ $PYTHON2_7_MISSING -eq 1 ]; then
-    # Only install these if python2.7 is missing
-    PYTHON2_7_PACKAGES="python2.7"
-  else
-    PYTHON2_7_PACKAGES=
-  fi
-
-  PIP3=$(which pip3)
-  PIP3_MISSING=$?
-
-  if [ $PIP3_MISSING -eq 1 ]; then
-    # Only install these if pip3 is missing
-    PIP3_PACKAGES="python3.7 python3-pip python3-setuptools"
-  else
-    PIP3_PACKAGES=
-  fi
-
-  PYTHON3_7=$(which python3.7)
-  PYTHON3_7_MISSING=$?
-
-  if [ $PYTHON3_7_MISSING -eq 1 ]; then
-    # Only install these if python3.7 is missing (this can happen if python 3.6 with pip3 is installed but python 3.7 is not e.g. Ubuntu1804)
-    PYTHON3_7_PACKAGES="python3.7 python3-pip python3-setuptools"
-  else
-    PYTHON3_7_PACKAGES=
-  fi
-
-  COUNTER=0
-
-  until $INSTALLER_UPDATE -y update || ((COUNTER++ >= 3)); do
-    echo "Package manager update failed, trying again"
-    sleep 2
-  done
-
-  if [ "$COUNTER" -gt 3 ]; then
-    echo "Failed to run package manager update, can't continue"
-    exit 1
-  fi
-
-  $INSTALLER -y install sqlite3 bzip2 $PIP_PACKAGES $PYTHON2_7_PACKAGES $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
-  $INSTALLER -y install $INSTALLER_SPECIFIC_PACKAGES
-  $INSTALLER -y install mosh
-
-  if [[ $(uname -a) =~ .*hypriotos.* ]]; then
-    easy_install pip
-  fi
-
-  # Just in case it wasn't installed before
-  PIP3=$(which pip3)
-
-  $PIP3 install --upgrade pip
-
-  # Just in case the upgrade moves it
-  PIP3=$(which pip3)
-  PIP3_MISSING=$?
-
-  if [ $PIP3_MISSING -eq 1 ]; then
-    # pip3 was moved and now it is not in a path that is searched by which (or it is gone completely)
-    if [ -f "/usr/local/bin/pip3" ]; then
-      # pip3 was found in a standard location, we can continue
-      PIP3="/usr/local/bin/pip3"
-      PIP3_MISSING=0
-    fi
-  fi
-
-  if [ $PIP3_MISSING -eq 1 ]; then
-    echo "After upgrading pip3 it can no longer be found. Can not install pip3 dependencies."
-  else
-    $PIP3 install AWSIoTPythonSDK
-
-    if [ ! -z "${GGD_PIP_DEPENDENCIES}" ]; then
-      $PIP3 install ${GGD_PIP_DEPENDENCIES}
-    fi
-
-    $PIP3 install mxnet
-    $PIP3 install opencv-python
-    $PIP3 install awscli
-
-    if [ "$OS_RELEASE" == "ID=raspbian" ]; then
-      # Raspbian detected, install the GPIO library
-      $PIP3 install RPi.GPIO
-    fi
-  fi
-
-  # Docker installation
-
-  # This allows the non-root user to use Docker
-  ADD_USER_TO_DOCKER_GROUP="usermod -aG docker ${SUDO_USER}"
-  # Docker Compose installation command. From: https://docs.docker.com/compose/install/
-  KERNEL=$(uname -s)
-  MACHINE=$(uname -m)
-  if [ "$MACHINE" != "x86_64" ]; then
-    echo "Docker Compose is only supported on X86_64. Skipping the installation of Docker Compose."
-    DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE=""
-  else
-    DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE="curl -L \"https://github.com/docker/compose/releases/download/1.25.0/docker-compose-$KERNEL-$MACHINE\" -o /usr/local/bin/docker-compose && chmod +x /usr/local/bin/docker-compose"
-  fi
-
-  if [ "$INSTALLER" == "apt-get" ]; then
-    if [ "$OS_RELEASE" == "ID=raspbian" ]; then
-      # Raspbian specific Docker installation
-      curl -fsSL https://get.docker.com -o get-docker.sh
-      chmod +x get-docker.sh
-      ./get-docker.sh
-      rm get-docker.sh
-      eval $ADD_USER_TO_DOCKER_GROUP
-      # Install Docker compose, if possible
-      $INSTALLER install -y docker-compose
-    else
-      # Do apt-get specific Docker installation. From: https://docs.docker.com/v17.09/engine/installation/linux/docker-ce/ubuntu/#install-using-the-repository
-      $INSTALLER install -y apt-transport-https ca-certificates curl software-properties-common
-      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
-
-      ARCH=$(uname -m)
-
-      # Flag to indicate whether we should do the installation steps for Docker
-      INSTALL_DOCKER=0
-
-      if [ "$ARCH" == "x86_64" ]; then
-        add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        INSTALL_DOCKER=1
-      elif [[ "$ARCH" =~ armv.* ]]; then
-        add-apt-repository "deb [arch=armhf] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        INSTALL_DOCKER=1
-      elif [[ "$ARCH" == "aarch64" ]]; then
-        add-apt-repository "deb [arch=arm64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-        INSTALL_DOCKER=1
-      else
-        echo "Could not determine architecture. Docker will not be installed."
-      fi
-
-      # Consolidated installation commands for Docker
-      if [ $INSTALL_DOCKER -eq 1 ]; then
-        PACKAGES_TO_REMOVE="docker docker-engine docker.io containerd runc"
-        $INSTALLER -y remove $PACKAGES_TO_REMOVE
-        $INSTALLER_UPDATE -y update
-        $INSTALLER -y install docker-ce
-        eval $ADD_USER_TO_DOCKER_GROUP
-        # Install Docker compose, if possible
-        eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
-      fi
-    fi
-  elif [[ "$INSTALLER" =~ .*yum ]]; then
-    SYSTEM_RELEASE=$(cat /etc/system-release)
-
-    if [[ "$SYSTEM_RELEASE" =~ "Amazon Linux release 2".* ]]; then
-      echo "Amazon Linux 2 detected, Docker may be version 18 instead of version 19"
-      # Instructions from: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/docker-basics.html#install_docker
-      $INSTALLER -y update
-      amazon-linux-extras install -y docker
-      service docker start
-      eval $ADD_USER_TO_DOCKER_GROUP
-      # Install Docker compose, if possible
-      eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
-    else
-      echo "Not Amazon Linux 2 [$SYSTEM_RELEASE], adding Docker CE repo"
-      $INSTALLER -y remove docker docker-client docker-client-latest docker-common docker-latest docker-latest-logrotate docker-logrotate docker-engine
-      $INSTALLER -y install yum-utils device-mapper-persistent-data lvm2
-      yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-      $INSTALLER -y install docker-ce docker-ce-cli containerd.io
-      eval $ADD_USER_TO_DOCKER_GROUP
-      # Install Docker compose, if possible
-      eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
-    fi
-  else
-    echo "No specific configuration for this installer [$INSTALLER]. Docker will not be installed."
-  fi
-
-  EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
-  NODEJS_8_10=$(which nodejs8.10)
-  NODEJS_8_10_MISSING=$?
-
-  if [ $NODEJS_8_10_MISSING -eq 1 ]; then
-    # Install NodeJS
-    echo "Node is missing"
-    GIT=$(which git)
-    GIT_MISSING=$?
-
-    if [ $GIT_MISSING -eq 1 ]; then
-      echo "git is missing, not installing node"
-    else
-      git clone https://github.com/tj/n.git
-      pushd .
-      cd n
-      export PATH="$PATH:/usr/local/bin"
-      make install
-      n 8.10.0
-      NODEJS=$(which node)
-      ln -s $NODEJS $(dirname $NODEJS)/nodejs8.10
-      popd
-    fi
-  fi
+  ./${UPDATE_DEPENDENCIES_SCRIPT}
 fi
+
+# After the dependencies are set up try to install the AWS credential process
+install_aws_credential_process "root"
+install_aws_credential_process "${SUDO_USER}"
 
 $ADD_USER --system ggc_user
 $ADD_GROUP --system ggc_group
@@ -480,13 +268,6 @@ if [ $JAVA_8_MISSING -eq 1 ]; then
   fi
 fi
 
-untar_payload
-./install.sh
-
-if [ $? -ne 0 ]; then
-  exit
-fi
-
 if [ -d "${SYSTEMD_DESTINATION_PATH}" ]; then
   echo "systemd detected"
 
@@ -503,7 +284,7 @@ fi
 # At this point everything has been deployed, mark the script as deployed
 mv $SCRIPT_NAME $SCRIPT_NAME.DEPLOYED
 
-if [ "$START" = true ]; then
+if [ "$START" == true ]; then
   ./${START_SCRIPT}
 fi
 

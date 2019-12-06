@@ -6,10 +6,6 @@ import java.util.Optional;
 import java.util.Set;
 
 public interface ScriptHelper {
-    String getInstallScriptName();
-
-    String generateInstallScript(Architecture architecture);
-
     String getStartScriptName();
 
     String generateStartScript(Architecture architecture);
@@ -24,9 +20,13 @@ public interface ScriptHelper {
 
     String generateCredentialsScript();
 
-    String generateGgScript(Set<String> ggdPipDependencies);
+    String generateUpdateDependenciesScript();
+
+    String generateGgScript(Architecture architecture, Set<String> ggdPipDependencies);
 
     String getCredentialsScriptName();
+
+    String getUpdateDependenciesScriptName();
 
     String getMonitorScriptName();
 

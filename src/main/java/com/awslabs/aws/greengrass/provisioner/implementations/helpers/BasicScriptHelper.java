@@ -18,11 +18,11 @@ public class BasicScriptHelper implements ScriptHelper {
     private static final String GGD_PIP_DEPENDENCIES = "GGD_PIP_DEPENDENCIES";
     private static final String LIB_SYSTEMD_SYSTEM_PATH = "/lib/systemd/system";
     private final String shellPath = "shell/";
-    private final String installTemplatePath = shellPath + getInstallScriptName() + ".in";
     private final String startTemplatePath = shellPath + getStartScriptName() + ".in";
     private final String stopTemplatePath = shellPath + getStopScriptName() + ".in";
     private final String cleanTemplatePath = shellPath + getCleanScriptName() + ".in";
     private final String credentialsScriptPath = shellPath + getCredentialsScriptName();
+    private final String updateDependenciesScriptPath = shellPath + getUpdateDependenciesScriptName() + ".in";
     private final String ggScriptTemplatePath = shellPath + "template.sh.in";
     private final String monitorTemplatePath = shellPath + getMonitorScriptName() + ".in";
     private final String systemdTemplatePath = shellPath + getSystemdScriptName() + ".in";
@@ -48,6 +48,11 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     @Override
+    public String getUpdateDependenciesScriptName() {
+        return "update-dependencies.sh";
+    }
+
+    @Override
     public String getMonitorScriptName() {
         return "monitor.sh";
     }
@@ -58,11 +63,6 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     @Override
-    public String getInstallScriptName() {
-        return "install.sh";
-    }
-
-    @Override
     public String getStartScriptName() {
         return "start.sh";
     }
@@ -70,11 +70,6 @@ public class BasicScriptHelper implements ScriptHelper {
     @Override
     public String getStopScriptName() {
         return "stop.sh";
-    }
-
-    @Override
-    public String generateInstallScript(Architecture architecture) {
-        return innerGenerateRunScriptWithArchitecture(installTemplatePath, Optional.ofNullable(architecture));
     }
 
     @Override
@@ -98,8 +93,13 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     @Override
-    public String generateGgScript(Set<String> ggdPipDependencies) {
-        return innerGenerateRunScriptWithGgdPipDependencies(ggScriptTemplatePath, Optional.ofNullable(ggdPipDependencies));
+    public String generateUpdateDependenciesScript() {
+        return innerGenerateRunScriptWithArchitecture(updateDependenciesScriptPath, Optional.empty(), Optional.empty());
+    }
+
+    @Override
+    public String generateGgScript(Architecture architecture, Set<String> ggdPipDependencies) {
+        return innerGenerateRunScriptWithGgdPipDependencies(ggScriptTemplatePath, Optional.of(architecture), Optional.ofNullable(ggdPipDependencies));
     }
 
     @Override
@@ -125,8 +125,8 @@ public class BasicScriptHelper implements ScriptHelper {
         return innerGenerateRunScript(path, architecture, scriptName, Optional.empty(), Optional.empty());
     }
 
-    private String innerGenerateRunScriptWithGgdPipDependencies(String path, Optional<Set<String>> ggdPipDependencies) {
-        return innerGenerateRunScript(path, Optional.empty(), Optional.empty(), Optional.empty(), ggdPipDependencies);
+    private String innerGenerateRunScriptWithGgdPipDependencies(String path, Optional<Architecture> architecture, Optional<Set<String>> ggdPipDependencies) {
+        return innerGenerateRunScript(path, architecture, Optional.empty(), Optional.empty(), ggdPipDependencies);
     }
 
     private void addScriptName(ImmutableMap.Builder<String, String> variables, Optional<String> scriptName) {
@@ -153,11 +153,11 @@ public class BasicScriptHelper implements ScriptHelper {
         variables.put("START_SCRIPT", getStartScriptName());
         variables.put("STOP_SCRIPT", getStopScriptName());
         variables.put("CLEAN_SCRIPT", getCleanScriptName());
-        variables.put("INSTALL_SCRIPT", getInstallScriptName());
         variables.put("GREENGRASS_DAEMON", ggConstants.getGreengrassDaemonName());
         variables.put("MONITOR_SCRIPT", getMonitorScriptName());
         variables.put("SYSTEMD_SCRIPT", getSystemdScriptName());
         variables.put("CREDENTIALS_SCRIPT", getCredentialsScriptName());
+        variables.put("UPDATE_DEPENDENCIES_SCRIPT", getUpdateDependenciesScriptName());
         variables.put("SYSTEMD_DESTINATION_PATH", LIB_SYSTEMD_SYSTEM_PATH);
 
         architecture.ifPresent(arch -> variables.put("GG_BITS", arch.getFilename()));
