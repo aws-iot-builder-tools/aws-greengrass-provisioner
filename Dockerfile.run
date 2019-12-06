@@ -70,6 +70,11 @@ RUN apt-get -y install \
 # Install zip since native builds require it
 RUN apt-get install -y zip
 
+# Install the protobuf compiler so functions can use it in their build process
+RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.1/protoc-3.11.1-linux-x86_64.zip && \
+    unzip protoc-3.11.1-linux-x86_64.zip bin/protoc && \
+    rm protoc-3.11.1-linux-x86_64.zip
+
 COPY AwsGreengrassProvisioner.jar AwsGreengrassProvisioner.jar
 
 ENTRYPOINT ["java", "-jar", "AwsGreengrassProvisioner.jar"]
