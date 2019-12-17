@@ -3,11 +3,10 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
 import io.vavr.control.Try;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.zeroturnaround.zip.ZipUtil;
@@ -19,28 +18,40 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 public abstract class BasicPythonBuilder implements PythonBuilder {
+    private static final String PACKAGE_DIRECTORY = "package";
     private static final String REQUIREMENTS_TXT = "requirements.txt";
     private final Logger log = LoggerFactory.getLogger(BasicPythonBuilder.class);
-    private final String DIST_INFO = ".dist-info";
-    private final String BIN = "bin";
-    private final String INIT_PY = "__init__.py";
     @Inject
     ProcessHelper processHelper;
     @Inject
     LoggingHelper loggingHelper;
-    @Inject
-    ResourceHelper resourceHelper;
-    @Inject
-    IoHelper ioHelper;
 
     @Inject
     public BasicPythonBuilder() {
+    }
+
+    private List<Path> getDirectorySnapshot(Path directory) {
+        return Try.of(() -> Files.list(directory).collect(Collectors.toList())).get();
+    }
+
+    private void cleanUpPackageDirectory(File absolutePackageDirectory) {
+        // Delete any existing package directory
+        Try.run(() -> FileUtils.deleteDirectory(absolutePackageDirectory)).get();
+    }
+
+    private void copyToDirectory(Path path, File destination) {
+        File file = path.toFile();
+
+        if (file.isDirectory()) {
+            Try.run(() -> FileUtils.copyDirectory(file, destination)).get();
+        } else {
+            Try.run(() -> FileUtils.copyToDirectory(file, destination)).get();
+        }
     }
 
     @Override
@@ -55,52 +66,58 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
-        // Snapshot the directory before installing dependencies
-        List<Path> beforeSnapshot = getDirectorySnapshot(functionConf);
+        String functionName = functionConf.getFunctionName();
+        File baseDirectory = functionConf.getBuildDirectory().get().toFile();
 
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf, resourceHelper, ioHelper);
+        // Determine the absolute path of the package directory
+        File absolutePackageDirectory = new File(String.join("/", baseDirectory.getAbsolutePath(), PACKAGE_DIRECTORY));
 
-        if (hasDependencies(functionConf.getBuildDirectory().get())) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Python dependencies");
+        // Determine what the output ZIP file name will be
+        String zipFileName = String.join(".", functionName, "zip");
+        Path zipFilePath = baseDirectory.toPath().resolve(zipFileName);
 
-            installDependencies(functionConf);
+        // Delete any existing package directory
+        cleanUpPackageDirectory(absolutePackageDirectory);
+
+        // Delete any existing ZIP file
+        Try.of(() -> Files.deleteIfExists(zipFilePath.toAbsolutePath())).get();
+
+        // Get a snapshot of all of the files we need to copy to the
+        List<Path> filesToCopyToPackageDirectory = getDirectorySnapshot(baseDirectory.toPath());
+
+        if (hasDependencies(baseDirectory.toPath())) {
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependencies");
+
+            // Install the requirements in a package directory
+            List<String> programAndArguments = new ArrayList<>();
+            programAndArguments.add("pip");
+            programAndArguments.add("install");
+            programAndArguments.add("-r");
+            programAndArguments.add(REQUIREMENTS_TXT);
+            programAndArguments.add("-t");
+            programAndArguments.add(absolutePackageDirectory.getPath());
+
+            ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+            processBuilder.directory(baseDirectory);
+
+            List<String> stdoutStrings = new ArrayList<>();
+            List<String> stderrStrings = new ArrayList<>();
+
+            Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+
+            checkPipStatus(exitVal, stdoutStrings, stderrStrings);
+        } else {
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "No Python dependencies to install");
         }
 
-        // Snapshot the directory after installing dependencies
-        List<Path> afterSnapshot = getDirectorySnapshot(functionConf);
+        // Now the dependencies are in the directory, copy the rest of the necessary files in
+        filesToCopyToPackageDirectory.forEach(file -> copyToDirectory(file, absolutePackageDirectory));
 
-        List<Path> addedFiles = new ArrayList<>(afterSnapshot);
-        addedFiles.removeAll(beforeSnapshot);
+        // Package up everything into a deployment package ZIP file
+        ZipUtil.pack(absolutePackageDirectory, zipFilePath.toFile());
 
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
-
-        File tempFile = Try.of(() -> ioHelper.getTempFile("python-lambda-build", "zip")).get();
-
-        // Get the directories, longest named directories first
-        List<Path> addedDirectories = addedFiles
-                .stream()
-                .filter(path -> path.toFile().isDirectory())
-                .sorted(Comparator.comparingInt(path -> path.toString().length()).reversed())
-                .collect(Collectors.toList());
-
-        // Get the possible Python directories (don't include *dist-info and bin)
-        // NOTE: This is an esoteric fix for Zope being broken which breaks Twisted - https://github.com/kpdyer/fteproxy/issues/66
-        List<Path> possibleBrokenPythonDirectories = addedDirectories
-                .stream()
-                .filter(path -> !path.toString().endsWith(DIST_INFO))
-                .filter(path -> !path.toString().endsWith(BIN))
-                .filter(path -> !path.resolve(INIT_PY).toFile().exists())
-                .collect(Collectors.toList());
-
-        // "Touch" the file to fix this issue
-        possibleBrokenPythonDirectories.stream()
-                .map(path -> path.resolve(INIT_PY).toFile())
-                .forEach(this::touchAndIgnoreExceptions);
-
-        ZipUtil.pack(functionConf.getBuildDirectory().get().toFile(), tempFile);
-
-        moveDeploymentPackage(functionConf, tempFile);
+        // Delete the package directory
+        cleanUpPackageDirectory(absolutePackageDirectory);
     }
 
     @Override
@@ -108,26 +125,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         return buildDirectory.resolve(REQUIREMENTS_TXT).toFile().exists();
     }
 
-    private void installDependencies(FunctionConf functionConf) {
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependencies");
-
-        List<String> programAndArguments = new ArrayList<>();
-        programAndArguments.add(getPip());
-        programAndArguments.add("install");
-        programAndArguments.add("--upgrade");
-        programAndArguments.add("-r");
-        programAndArguments.add(REQUIREMENTS_TXT);
-        programAndArguments.add("-t");
-        programAndArguments.add(".");
-
-        ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
-        processBuilder.directory(functionConf.getBuildDirectory().get().toFile());
-
-        List<String> stdoutStrings = new ArrayList<>();
-        List<String> stderrStrings = new ArrayList<>();
-
-        Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
-
+    private void checkPipStatus(Optional<Integer> exitVal, List<String> stdoutStrings, List<String> stderrStrings) {
         if (!exitVal.isPresent() || exitVal.get() != 0) {
             log.error("Something went wrong with pip");
 
@@ -173,17 +171,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
     }
 
     private void touchAndIgnoreExceptions(File file) {
-        Try.of(() -> touch(file)).get();
-    }
-
-    private Void touch(File file) throws IOException {
-        new FileOutputStream(file).close();
-
-        return null;
-    }
-
-    private List<Path> getDirectorySnapshot(FunctionConf functionConf) {
-        return Try.of(() -> Files.list(functionConf.getBuildDirectory().get()).collect(Collectors.toList())).get();
+        Try.run(() -> new FileOutputStream(file).close()).get();
     }
 
     @Override
