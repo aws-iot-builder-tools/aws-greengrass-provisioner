@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationR
 
 import javax.inject.Inject;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -123,9 +124,14 @@ public class BasicFunctionHelper implements FunctionHelper {
         File tempFile = tempPath.toFile();
         tempFile.deleteOnExit();
 
-        FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
+        FileUtils.copyDirectory(new File(sourceDirectory), tempFile, getFileFilter(), true);
 
         return tempPath.resolve(FUNCTION_CONF).toFile();
+    }
+
+    private FileFilter getFileFilter() {
+        // Omit the venv directory because it contains symlinks that break things in Docker
+        return pathname -> !pathname.getName().startsWith("venv");
     }
 
     private File getGitFunctionConfFile(String functionName) throws IOException {
