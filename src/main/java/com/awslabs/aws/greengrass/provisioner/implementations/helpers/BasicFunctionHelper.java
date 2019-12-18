@@ -130,7 +130,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private FileFilter getFileFilter() {
-        // Only include files that are not the Python virtual environment directory
+        // Omit the venv directory because it contains symlinks that break things in Docker
         return file -> !isPythonVirtualEnvDirectory(file);
     }
 
@@ -146,12 +146,18 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
 
         // Does it contain the virtual environment configuration?
-        if (!file.toPath().resolve("pyvenv.cfg").toFile().exists()) {
-            return false;
+        if (file.toPath().resolve("pyvenv.cfg").toFile().exists()) {
+            // Yes, skip it
+            return true;
         }
 
-        // All checks passed, this looks like a path we should avoid
-        return true;
+        // Does it contain a lib directory?
+        if (file.toPath().resolve("lib").toFile().exists()) {
+            return true;
+        }
+
+        // Didn't hit any of the paths we want to avoid, allow it
+        return false;
     }
 
     private File getGitFunctionConfFile(String functionName) throws IOException {
