@@ -17,6 +17,7 @@ def gradleDependencyVersion = '6.0.1'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
+    distributionType = Wrapper.DistributionType.ALL
 }
 
 // Avoids duplicate class errors - from :https://stackoverflow.com/questions/55855714/duplicate-generated-class-gradle-output-build-vs-intellij-output-out
@@ -62,6 +63,7 @@ def awsSdk2Version = '2.10.36'
 def mavenInvokerVersion = '3.0.1'
 def commonsTextVersion = '1.8'
 def commonsLangVersion = '3.9'
+def commonsIoVersion = '2.6'
 def junitVersion = '4.12'
 def systemRulesVersion = '1.19.0'
 def mockitoVersion = '3.2.4'
@@ -215,6 +217,8 @@ dependencies {
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
     compile "io.vavr:vavr:$vavrVersion"
+    compile "commons-io:commons-io:$commonsIoVersion"
+
     // Dependency added to fix - https://github.com/aws/aws-sdk-java-v2/issues/652
     compile "org.apache.httpcomponents:httpclient:$httpClientVersion"
 

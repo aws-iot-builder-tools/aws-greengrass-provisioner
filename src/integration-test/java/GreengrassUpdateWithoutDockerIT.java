@@ -17,7 +17,6 @@ import java.util.Optional;
 public class GreengrassUpdateWithoutDockerIT {
     private static final String HELLO_WORLD_NODE = "HelloWorldNode";
     private static final String HELLO_WORLD_PYTHON2 = "HelloWorldPython2";
-    private static final String HELLO_WORLD_PYTHON3 = "HelloWorldPython3";
     private static Logger log = LoggerFactory.getLogger(GreengrassUpdateWithoutDockerIT.class);
     @Rule
     public ExpectedException expectedException = ExpectedException.none();

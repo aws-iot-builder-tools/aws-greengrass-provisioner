@@ -26,6 +26,7 @@ import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationR
 
 import javax.inject.Inject;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -123,9 +124,40 @@ public class BasicFunctionHelper implements FunctionHelper {
         File tempFile = tempPath.toFile();
         tempFile.deleteOnExit();
 
-        FileUtils.copyDirectory(new File(sourceDirectory), tempFile);
+        FileUtils.copyDirectory(new File(sourceDirectory), tempFile, getFileFilter(), true);
 
         return tempPath.resolve(FUNCTION_CONF).toFile();
+    }
+
+    private FileFilter getFileFilter() {
+        // Omit the venv directory because it contains symlinks that break things in Docker
+        return file -> !isPythonVirtualEnvDirectory(file);
+    }
+
+    private boolean isPythonVirtualEnvDirectory(File file) {
+        // Is it named venv?
+        if (!file.getName().equals("venv")) {
+            return false;
+        }
+
+        // Is it a directory?
+        if (!file.isDirectory()) {
+            return false;
+        }
+
+        // Does it contain the virtual environment configuration?
+        if (file.toPath().resolve("pyvenv.cfg").toFile().exists()) {
+            // Yes, skip it
+            return true;
+        }
+
+        // Does it contain a lib directory?
+        if (file.toPath().resolve("lib").toFile().exists()) {
+            return true;
+        }
+
+        // Didn't hit any of the paths we want to avoid, allow it
+        return false;
     }
 
     private File getGitFunctionConfFile(String functionName) throws IOException {
