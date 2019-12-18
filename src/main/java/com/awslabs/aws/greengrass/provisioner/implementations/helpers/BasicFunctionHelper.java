@@ -130,8 +130,28 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private FileFilter getFileFilter() {
-        // Omit the venv directory because it contains symlinks that break things in Docker
-        return pathname -> !pathname.getName().startsWith("venv");
+        // Only include files that are not the Python virtual environment directory
+        return file -> !isPythonVirtualEnvDirectory(file);
+    }
+
+    private boolean isPythonVirtualEnvDirectory(File file) {
+        // Is it named venv?
+        if (!file.getName().equals("venv")) {
+            return false;
+        }
+
+        // Is it a directory?
+        if (!file.isDirectory()) {
+            return false;
+        }
+
+        // Does it contain the virtual environment configuration?
+        if (!file.toPath().resolve("pyvenv.cfg").toFile().exists()) {
+            return false;
+        }
+
+        // All checks passed, this looks like a path we should avoid
+        return true;
     }
 
     private File getGitFunctionConfFile(String functionName) throws IOException {
