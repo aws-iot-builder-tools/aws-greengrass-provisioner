@@ -188,6 +188,7 @@ fi
 
 # This allows the non-root user to use Docker
 ADD_USER_TO_DOCKER_GROUP="usermod -aG docker ${SUDO_USER}"
+ADD_GGC_USER_TO_DOCKER_GROUP="usermod -aG docker ggc_user"
 # Docker Compose installation command. From: https://docs.docker.com/compose/install/
 KERNEL=$(uname -s)
 MACHINE=$(uname -m)
@@ -206,6 +207,7 @@ if [ "$INSTALLER" == "apt-get" ]; then
     ./get-docker.sh
     rm get-docker.sh
     eval $ADD_USER_TO_DOCKER_GROUP
+    eval $ADD_GGC_USER_TO_DOCKER_GROUP
     # Install Docker compose, if possible
     $INSTALLER install -y docker-compose
   else
@@ -238,6 +240,7 @@ if [ "$INSTALLER" == "apt-get" ]; then
       $INSTALLER_UPDATE -y update
       $INSTALLER -y install docker-ce
       eval $ADD_USER_TO_DOCKER_GROUP
+      eval $ADD_GGC_USER_TO_DOCKER_GROUP
       # Install Docker compose, if possible
       eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
     fi
@@ -252,6 +255,7 @@ elif [[ "$INSTALLER" =~ .*yum ]]; then
     amazon-linux-extras install -y docker
     service docker start
     eval $ADD_USER_TO_DOCKER_GROUP
+    eval $ADD_GGC_USER_TO_DOCKER_GROUP
     # Install Docker compose, if possible
     eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
   else
@@ -261,6 +265,7 @@ elif [[ "$INSTALLER" =~ .*yum ]]; then
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     $INSTALLER -y install docker-ce docker-ce-cli containerd.io
     eval $ADD_USER_TO_DOCKER_GROUP
+    eval $ADD_GGC_USER_TO_DOCKER_GROUP
     # Install Docker compose, if possible
     eval $DOWNLOAD_AND_INSTALL_DOCKER_COMPOSE
   fi
