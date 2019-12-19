@@ -241,6 +241,10 @@ cp credentials.sh /greengrass/config/
 set +e
 set +x
 
+# Must add the ggc_user and ggc_group before updating dependencies
+$ADD_USER --system ggc_user
+$ADD_GROUP --system ggc_group
+
 if [ "$UPDATE_DEPENDENCIES" == true ]; then
   ./${UPDATE_DEPENDENCIES_SCRIPT}
 fi
@@ -248,9 +252,6 @@ fi
 # After the dependencies are set up try to install the AWS credential process
 install_aws_credential_process "root"
 install_aws_credential_process "${SUDO_USER}"
-
-$ADD_USER --system ggc_user
-$ADD_GROUP --system ggc_group
 
 EXPECTED_JAVA_LOCATION="/usr/local/bin/java8"
 JAVA_8=$(which java8)
