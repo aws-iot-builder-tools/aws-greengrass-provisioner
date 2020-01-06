@@ -95,28 +95,8 @@ task downloadGreengrassBinaries(type: Download) {
     overwrite false
 }
 
-def nodeSdkTarGz = 'aws-greengrass-core-sdk-js-1.4.0.tar.gz'
-def nodeSdkZip = 'aws-greengrass-core-sdk-js.zip'
-
-task fetchGreengrassNodeSdk(type: Download) {
-    src "https://d1onfpft10uf5o.cloudfront.net/greengrass-sdk/downloads/nodejs/8.10/$nodeSdkTarGz"
-    dest new File(buildDir, nodeSdkTarGz)
-    overwrite false
-}
-
-task extractNodeSdk(type: Copy, dependsOn: fetchGreengrassNodeSdk) {
-    from tarTree(fetchGreengrassNodeSdk.dest)
-    into buildDirTemp
-}
-
-task downloadNodeSdk(type: Copy, dependsOn: extractNodeSdk) {
-    from "$buildDirTemp/aws-greengrass-core-sdk-js-1.4.0/sdk/$nodeSdkZip"
-    into "$buildDirFoundation"
-}
-
 task downloadAll {
     dependsOn downloadGreengrassBinaries
-    dependsOn downloadNodeSdk
 }
 
 // This task will be enabled when Greengrass Core and the SDKs are available directly via S3
