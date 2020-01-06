@@ -6,7 +6,6 @@ import org.hamcrest.Matcher;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
-import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -26,14 +25,12 @@ import static org.hamcrest.CoreMatchers.*;
 // NOTE: Ignoring these tests since currently testcontainers throws a java.lang.OutOfMemoryError on every test
 @Ignore
 public class GreengrassBuildWithDockerDeploymentsIT {
+    public static final String AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY = "../aws-greengrass-lambda-functions";
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
-    public static final String AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY = "../aws-greengrass-lambda-functions";
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
     private static GreengrassITShared greengrassITShared;
     private static IoHelper ioHelper;
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
 

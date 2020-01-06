@@ -5,7 +5,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
-import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,8 +14,6 @@ import java.util.Optional;
 
 public class GreengrassBuildWithoutDockerDeploymentsIT {
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithoutDockerDeploymentsIT.class);
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
     GreengrassITShared greengrassITShared;

@@ -4,7 +4,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
-import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.Function;
@@ -18,8 +17,6 @@ public class GreengrassUpdateWithoutDockerIT {
     private static final String HELLO_WORLD_NODE = "HelloWorldNode";
     private static final String HELLO_WORLD_PYTHON2 = "HelloWorldPython2";
     private static Logger log = LoggerFactory.getLogger(GreengrassUpdateWithoutDockerIT.class);
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
     GreengrassITShared greengrassITShared;
