@@ -47,7 +47,8 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         File file = path.toFile();
 
         if (file.isDirectory()) {
-            Try.run(() -> FileUtils.copyDirectory(file, destination)).get();
+            File dirDestination = new File(String.join("/", destination.getPath(), file.getName()));
+            Try.run(() -> FileUtils.copyDirectory(file, dirDestination)).get();
         } else {
             Try.run(() -> FileUtils.copyToDirectory(file, destination)).get();
         }
