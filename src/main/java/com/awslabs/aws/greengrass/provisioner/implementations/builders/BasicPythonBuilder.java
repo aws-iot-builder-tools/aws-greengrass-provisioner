@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
-import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.PythonBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
@@ -52,16 +51,6 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         } else {
             Try.run(() -> FileUtils.copyToDirectory(file, destination)).get();
         }
-    }
-
-    @Override
-    public Optional<SDK> getSdk() {
-        return Optional.empty();
-    }
-
-    @Override
-    public String getSdkDestinationPath() {
-        return ".";
     }
 
     @Override

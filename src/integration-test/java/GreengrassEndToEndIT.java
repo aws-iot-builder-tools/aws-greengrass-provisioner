@@ -8,7 +8,6 @@ import org.hamcrest.collection.IsMapContaining;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
-import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -48,8 +47,6 @@ public class GreengrassEndToEndIT {
     private static final String REGEX_DOT_ALL = "(?s)";
     private static final String GREENGRASS_STARTED_MESSAGE = String.join("", REGEX_DOT_ALL, ".*Greengrass successfully started with PID:.*");
     private static Logger log = LoggerFactory.getLogger(GreengrassEndToEndIT.class);
-    @Rule
-    public ExpectedException expectedException = ExpectedException.none();
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
 

@@ -1,6 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
-import com.awslabs.aws.greengrass.provisioner.data.SDK;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
@@ -35,20 +34,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     @Override
-    public Optional<SDK> getSdk() {
-        return Optional.of(SDK.NODEJS);
-    }
-
-    @Override
-    public String getSdkDestinationPath() {
-        return ".";
-    }
-
-    @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Copying Greengrass SDK");
-        copySdk(log, functionConf, resourceHelper, ioHelper);
-
         if (hasDependencies(functionConf.getBuildDirectory().get())) {
             loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
 

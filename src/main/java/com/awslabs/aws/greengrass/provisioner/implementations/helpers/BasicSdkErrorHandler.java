@@ -5,7 +5,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.core.exception.SdkClientException;
 
-import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.List;
 

@@ -52,13 +52,13 @@ Redeployments of an existing group will happen without re-running the bootstrap 
 X86_64:
 
 ```bash
-GGP -g test-group -a X86_64 -d deployments/python-hello-world.conf --script
+GGP -g test-group -a X86_64 -d deployments/python3-hello-world.conf --script
 ```
 
 ARM32:
 
 ```bash
-GGP -g test-group -a ARM32 -d deployments/python-hello-world.conf --script
+GGP -g test-group -a ARM32 -d deployments/python3-hello-world.conf --script
 ```
 
 Redeployments of an existing group will happen without re-running the bootstrap script.
@@ -66,7 +66,7 @@ Redeployments of an existing group will happen without re-running the bootstrap 
 ## Create a Docker container for a group deployment
 
 ```bash
-GGP -g test-group -a X86_64 -d deployments/python-hello-world.conf -c
+GGP -g test-group -a X86_64 -d deployments/python3-hello-world.conf -c
 ```
 
 This will create a local Docker image with the tag `greengrass:test-group`. This container is
