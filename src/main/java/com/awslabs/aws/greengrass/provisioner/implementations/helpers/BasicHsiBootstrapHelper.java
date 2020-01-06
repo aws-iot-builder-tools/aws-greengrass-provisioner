@@ -47,7 +47,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
     }
 
     @Override
-    public Void execute(HsiBootstrapArguments hsiBootstrapArguments) {
+    public void execute(HsiBootstrapArguments hsiBootstrapArguments) {
         log.info("Copying bootstrap script to host via scp...");
 
         // Get an SSH session to the target
@@ -67,8 +67,8 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
         InputStream bootstrapVendorShStream = new ByteArrayInputStream(bootstrapVendorShString.getBytes());
 
         // Copy the files
-        Try.of(() -> ioHelper.sendFile(session, bootstrapCommonShStream, BOOTSTRAP_COMMON_SH_RESOURCE_PATH, BOOTSTRAP_COMMON_SH)).get();
-        Try.of(() -> ioHelper.sendFile(session, bootstrapVendorShStream, bootstrapVendorResourcePath, bootstrapVendorPath)).get();
+        Try.run(() -> ioHelper.sendFile(session, bootstrapCommonShStream, BOOTSTRAP_COMMON_SH_RESOURCE_PATH, BOOTSTRAP_COMMON_SH)).get();
+        Try.run(() -> ioHelper.sendFile(session, bootstrapVendorShStream, bootstrapVendorResourcePath, bootstrapVendorPath)).get();
 
         // Make them executable
         makeExecutable(session, bootstrapVendorPath);
@@ -97,7 +97,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
 
             log.info("HSI successfully bootstrapped. ARN for the certificate is: " + arn);
 
-            return null;
+            return;
         }
 
         Optional<String> optionalError = output.stream()
@@ -109,8 +109,6 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
         } else {
             log.error("HSI bootstrap failed for an unknown reason");
         }
-
-        return null;
     }
 
     @NotNull

@@ -205,7 +205,7 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
         throw new RuntimeException(throwable);
     }
 
-    private Void printCouldNotCreateTemporaryCredentialsAndThrow(Throwable throwable) {
+    private void printCouldNotCreateTemporaryCredentialsAndThrow(Throwable throwable) {
         log.error("Couldn't create temporary path for credentials");
         throw new RuntimeException(throwable);
     }

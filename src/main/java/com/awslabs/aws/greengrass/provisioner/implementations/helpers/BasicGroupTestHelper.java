@@ -77,7 +77,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     @Override
-    public Void execute(TestArguments testArguments) {
+    public void execute(TestArguments testArguments) {
         LocalDateTime testStartLocalDateTime = LocalDateTime.now();
 
         if (testArguments.deviceUnderTest == null) {
@@ -123,7 +123,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             File deviceTesterZip = Try.of(() -> ioHelper.getTempFile("devicetester", "zip")).get();
             log.info("Downloading Device Tester to [{}] ...", deviceTesterZip.getAbsolutePath());
             // CloudFront requires the referer to be filled in
-            Try.of(() -> ioHelper.download(urlForDeviceTester, deviceTesterZip, Optional.of("https://aws.amazon.com/greengrass/device-tester/"))).get();
+            Try.run(() -> ioHelper.download(urlForDeviceTester, deviceTesterZip, Optional.of("https://aws.amazon.com/greengrass/device-tester/"))).get();
             deviceTesterDirectory = Try.of(() -> extractDeviceTester(deviceTesterZip)).get();
         }
 
@@ -171,7 +171,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                                 "CoreAndGroupInfo",
                                 "json"));
 
-                Try.of(() -> ioHelper.sendFile(finalSession, coreAndGroupInfoJsonTemp.getAbsolutePath(), remoteCoreAndGroupInfoFilename)).get();
+                Try.run(() -> ioHelper.sendFile(finalSession, coreAndGroupInfoJsonTemp.getAbsolutePath(), remoteCoreAndGroupInfoFilename)).get();
             } else {
                 log.info("Not cleaning or generating the config in {}", VAR_LIB_GGQ);
             }
@@ -319,17 +319,15 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                     String.join("-", groupName, testStartLocalDateTime.toString()));
 
             reportLocations.stream().findFirst().ifPresent(path ->
-                    Try.of(() -> moveParentDirectory(path, outputDirectory))
+                    Try.run(() -> moveParentDirectory(path, outputDirectory))
                             .onFailure(Throwable::printStackTrace)
                             .get());
         } finally {
             safeDisconnect(session);
         }
-
-        return null;
     }
 
-    private Void moveParentDirectory(String path, String outputDirectory) throws IOException {
+    private void moveParentDirectory(String path, String outputDirectory) throws IOException {
         new File(outputDirectory).mkdirs();
 
         File parentFile = new File(path).getParentFile();
@@ -342,8 +340,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
         }
 
         FileUtils.copyDirectory(parentFile, resultsDirectory);
-
-        return null;
     }
 
     private void killRemoteProcessesBySearchString(Session finalSession, String searchString) {
@@ -351,10 +347,8 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private void safeDisconnect(Session session) {
-        Try.of(() -> {
-            session.disconnect();
-            return Optional.empty();
-        }).getOrElse(Optional.empty());
+        // Don't call get here, we don't care if it fails
+        Try.run(session::disconnect);
     }
 
     private File extractDeviceTester(File deviceTesterZip) throws IOException {
@@ -362,7 +356,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
         deviceTesterDirectory.deleteOnExit();
         log.info("Extracting Device Tester to [{}] ...", deviceTesterDirectory.getAbsolutePath());
         Path deviceTesterPath = deviceTesterDirectory.toPath();
-        Try.of(() -> ioHelper.extractZip(deviceTesterZip, deviceTesterPath, filename -> filename)).get();
+        Try.run(() -> ioHelper.extractZip(deviceTesterZip, deviceTesterPath, filename -> filename)).get();
         return deviceTesterDirectory;
     }
 

@@ -6,7 +6,7 @@ import io.vavr.control.Try;
 import java.util.Arrays;
 
 public interface Operation<T extends Arguments> {
-    Void execute(T arguments);
+    void execute(T arguments);
 
     ArgumentHelper<T> getArgumentHelper();
 
@@ -18,7 +18,7 @@ public interface Operation<T extends Arguments> {
 
     default boolean execute(String[] args) {
         Try.of(() -> getArgumentHelper().parseArguments(args))
-                .onSuccess(success -> executeOrDisplayHelp(success))
+                .onSuccess(this::executeOrDisplayHelp)
                 .get();
 
         return true;

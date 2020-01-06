@@ -77,12 +77,12 @@ public class BasicIoHelper implements IoHelper {
     }
 
     @Override
-    public Void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException {
-        return extractZip(new FileInputStream(zipFile), destinationPath, filenameTrimmer);
+    public void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException {
+        extractZip(new FileInputStream(zipFile), destinationPath, filenameTrimmer);
     }
 
     @Override
-    public Void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException {
+    public void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException {
         ZipInputStream zis = new ZipInputStream(zipInputStream);
         ZipEntry entry;
 
@@ -110,12 +110,10 @@ public class BasicIoHelper implements IoHelper {
                 fileOutputStream.close();
             }
         }
-
-        return null;
     }
 
     @Override
-    public Void download(String url, File file, Optional<String> optionalReferer) throws IOException {
+    public void download(String url, File file, Optional<String> optionalReferer) throws IOException {
         // From: http://stackoverflow.com/a/921400
         URL website = new URL(url);
         URLConnection urlConnection = website.openConnection();
@@ -124,8 +122,6 @@ public class BasicIoHelper implements IoHelper {
         ReadableByteChannel rbc = Channels.newChannel(inputStream);
         FileOutputStream fos = new FileOutputStream(file);
         fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-
-        return null;
     }
 
     @Override
@@ -281,7 +277,7 @@ public class BasicIoHelper implements IoHelper {
     }
 
     @Override
-    public Void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException {
+    public void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException {
         byte[] byteArrayFromInputStream = getByteArrayFromInputStream(inputFileStream);
 
         // exec 'scp -t rfile' remotely
@@ -345,13 +341,11 @@ public class BasicIoHelper implements IoHelper {
         }
 
         channel.disconnect();
-
-        return null;
     }
 
     @Override
-    public Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException {
-        return sendFile(session, new FileInputStream(localFilename), localFilename, remoteFilename);
+    public void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException {
+        sendFile(session, new FileInputStream(localFilename), localFilename, remoteFilename);
     }
 
     private int checkAck(InputStream inputStream) throws IOException {

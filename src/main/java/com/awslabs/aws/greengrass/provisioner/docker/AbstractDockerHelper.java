@@ -81,14 +81,14 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public void createEcrRepositoryIfNecessary() {
-        Try.of(() -> describeRepositories())
+        Try.run(this::describeRepositories)
                 .onFailure(throwable -> Match(throwable).of(
                         Case($(instanceOf(RepositoryNotFoundException.class)), ignore -> createEcrRepository()),
                         Case($(), this::rethrowAsRuntimeException)))
                 .get();
     }
 
-    private Void describeRepositories() {
+    private void describeRepositories() {
         DescribeRepositoriesResponse describeRepositoriesResponse = getEcrClient().describeRepositories(
                 DescribeRepositoriesRequest.builder()
                         .repositoryNames(ecrRepositoryName.get())
@@ -96,7 +96,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
         if (describeRepositoriesResponse.repositories().size() == 1) {
             log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
-            return null;
+            return;
         }
 
         log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");

@@ -12,7 +12,7 @@ public interface DeploymentHelper extends Operation<DeploymentArguments> {
 
     DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName);
 
-    Void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId);
+    void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId);
 
     void associateRoleToGroup(Role greengrassRole, String groupId);
 

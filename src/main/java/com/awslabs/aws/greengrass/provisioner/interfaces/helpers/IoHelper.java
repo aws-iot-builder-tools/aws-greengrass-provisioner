@@ -229,13 +229,8 @@ public interface IoHelper {
      * @param milliseconds
      */
     default void sleep(int milliseconds) {
-        Try.of(() -> sleepWithCheckedException(milliseconds))
+        Try.run(() -> Thread.sleep(milliseconds))
                 .get();
-    }
-
-    default Void sleepWithCheckedException(int milliseconds) throws InterruptedException {
-        Thread.sleep(milliseconds);
-        return null;
     }
 
     boolean isRunningInDocker();
@@ -244,11 +239,11 @@ public interface IoHelper {
 
     List<String> getPrivateKeyFilesForSsh() throws IOException;
 
-    Void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
+    void extractZip(File zipFile, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
 
-    Void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
+    void extractZip(InputStream zipInputStream, Path destinationPath, Function<String, String> filenameTrimmer) throws IOException;
 
-    Void download(String url, File file, Optional<String> optionalReferer) throws IOException;
+    void download(String url, File file, Optional<String> optionalReferer) throws IOException;
 
     JSch getJschWithPrivateKeysLoaded();
 
@@ -263,8 +258,8 @@ public interface IoHelper {
 
     List<String> runCommand(Session session, String command, Optional<Consumer<String>> optionalStringConsumer) throws JSchException, IOException;
 
-    Void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException;
+    void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException;
 
-    Void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
+    void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
 }
 

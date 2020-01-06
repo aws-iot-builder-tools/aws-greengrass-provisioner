@@ -53,7 +53,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     }
 
     @Override
-    public Void execute(QueryArguments queryArguments) {
+    public void execute(QueryArguments queryArguments) {
         if (!queryArguments.getGroupCa &&
                 !queryArguments.listSubscriptions &&
                 !queryArguments.listFunctions &&
@@ -86,7 +86,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
             writeToFile(queryArguments, pem, outputFilename);
 
-            return null;
+            return;
         }
 
         if (queryArguments.listSubscriptions) {
@@ -100,7 +100,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
             writeToFile(queryArguments, output, outputFilename);
 
-            return null;
+            return;
         }
 
         if (queryArguments.listFunctions) {
@@ -114,7 +114,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
             writeToFile(queryArguments, output, outputFilename);
 
-            return null;
+            return;
         }
 
         if (queryArguments.listDevices) {
@@ -128,7 +128,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
             writeToFile(queryArguments, output, outputFilename);
 
-            return null;
+            return;
         }
 
         if (queryArguments.downloadLogs) {
@@ -145,7 +145,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 log.info("Logs copied to host in [" + directory.getPath().substring(1) + "]");
             }
 
-            return null;
+            return;
         }
 
         if (queryArguments.watchLogs) {
@@ -179,12 +179,13 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
             if (!topLevelLogsPresent(logs)) {
                 log.error("Not all of the Greengrass logs are present in CloudWatch. Turn on CloudWatch logging in your Greengrass group, redeploy, and try again.");
-                return null;
+
+                return;
             }
 
             diagnosticsHelper.runDiagnostics(logs);
 
-            return null;
+            return;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
@@ -324,7 +325,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
         if (directory.exists()) {
             log.warn("Directory for logs [" + directoryName + "] already exists. Removing old logs.");
-            Try.of(() -> deleteDirectory(directory))
+            Try.run(() -> FileUtils.deleteDirectory(directory))
                     .recover(IOException.class, this::throwFailedToDeleteDirectoryException)
                     .get();
         }
@@ -336,12 +337,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
     private Void throwFailedToDeleteDirectoryException(IOException ioException) {
         throw new RuntimeException("Failed to delete previous log directory, can not continue");
-    }
-
-    private Void deleteDirectory(File directory) throws IOException {
-        FileUtils.deleteDirectory(directory);
-
-        return null;
     }
 
     private Tuple3<LogGroup, LogStream, String> formatLogEvents(Tuple3<LogGroup, LogStream, GetLogEventsResponse> logEvents) {

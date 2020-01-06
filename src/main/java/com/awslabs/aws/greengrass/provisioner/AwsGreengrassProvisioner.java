@@ -29,7 +29,7 @@ public class AwsGreengrassProvisioner implements Runnable {
     public static void main(String[] args) {
         SdkErrorHandler sdkErrorHandler = getSdkErrorHandler();
 
-        Try.of(() -> runProvisioner(args))
+        Try.run(() -> runProvisioner(args))
                 .onFailure(throwable -> handleProvisionerFailure(sdkErrorHandler, throwable))
                 .get();
     }
@@ -56,14 +56,12 @@ public class AwsGreengrassProvisioner implements Runnable {
         System.exit(1);
     }
 
-    private static Void runProvisioner(String[] args) {
+    private static void runProvisioner(String[] args) {
         AwsGreengrassProvisioner awsGreengrassProvisioner = getAwsGreengrassProvisioner();
 
         awsGreengrassProvisioner.setArgs(args);
 
         awsGreengrassProvisioner.run();
-
-        return null;
     }
 
     public static SdkErrorHandler getSdkErrorHandler() {

@@ -47,7 +47,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     }
 
     @Override
-    public Void execute(UpdateArguments updateArguments) {
+    public void execute(UpdateArguments updateArguments) {
         if (!updateArguments.addSubscription &&
                 !updateArguments.removeSubscription &&
                 (updateArguments.addDevice == null) &&
@@ -65,27 +65,32 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (updateArguments.addSubscription || updateArguments.removeSubscription) {
             addOrRemoveSubscription(updateArguments, optionalGroupInformation.get());
-            return null;
+
+            return;
         }
 
         if (updateArguments.addDevice != null) {
             addDevice(updateArguments, optionalGroupInformation.get());
-            return null;
+
+            return;
         }
 
         if (updateArguments.removeDevice != null) {
             removeDevice(updateArguments, optionalGroupInformation.get());
-            return null;
+
+            return;
         }
 
         if (updateArguments.addFunction != null) {
             addFunction(updateArguments, optionalGroupInformation.get());
-            return null;
+
+            return;
         }
 
         if (updateArguments.removeFunction != null) {
             removeFunction(updateArguments, optionalGroupInformation.get());
-            return null;
+
+            return;
         }
 
         throw new RuntimeException("This should never happen.  This is a bug.");
@@ -111,7 +116,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         Device deviceToRemove = greengrassHelper.getDevice(deviceName);
         String thingArn = deviceToRemove.thingArn();
 
-        if (!devices.stream().anyMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
+        if (devices.stream().noneMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
             throw new RuntimeException("Device with thing ARN [" + thingArn + "] is not part of this Greengrass Group, nothing to do");
         }
 
@@ -203,7 +208,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             };
         }
 
-        Try.of(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId))
+        Try.run(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId))
                 .onSuccess(successHandler)
                 .get();
     }

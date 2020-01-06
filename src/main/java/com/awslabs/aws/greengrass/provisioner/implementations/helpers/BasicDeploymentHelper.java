@@ -190,7 +190,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private void setEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
-        Try.of(() -> innerSetEnvironmentVariables(deploymentConfBuilder, config))
+        Try.run(() -> innerSetEnvironmentVariables(deploymentConfBuilder, config))
                 .recover(ConfigException.Missing.class, this::logNoEnvironmentVariablesForDeployment)
                 .get();
     }
@@ -201,7 +201,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return null;
     }
 
-    private Void innerSetEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
+    private void innerSetEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
         ConfigObject configObject = config.getObject("conf.environmentVariables");
 
         if (configObject.size() == 0) {
@@ -213,8 +213,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         for (Map.Entry<String, ConfigValue> configValueEntry : tempConfig.entrySet()) {
             deploymentConfBuilder.putEnvironmentVariables(configValueEntry.getKey(), String.valueOf(configValueEntry.getValue().unwrapped()));
         }
-
-        return null;
     }
 
     private Config getFallbackConfig() {
@@ -228,10 +226,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
      * @param coreRole
      * @param groupId
      * @param groupVersionId
-     * @return
      */
     @Override
-    public Void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
+    public void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
         log.info("Creating a deployment");
         log.info("Group ID [" + groupId + "]");
         log.info("Group version ID [" + groupVersionId + "]");
@@ -245,8 +242,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         log.info("Deployment successful");
-
-        return null;
     }
 
     private Callable<DeploymentStatus> getDeploymentStatusCallable(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
@@ -325,7 +320,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @Override
-    public Void execute(DeploymentArguments deploymentArguments) {
+    public void execute(DeploymentArguments deploymentArguments) {
         // Make the directories for build, if necessary
         ioHelper.createDirectoryIfNecessary(ggConstants.getBuildDirectory());
 
@@ -344,8 +339,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Create the service role and role alias, if necessary
         Optional<Role> optionalGreengrassServiceRole;
-        Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse = Optional.empty();
-
+        Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse;
 
         // Create the role for the core, if necessary
         Role coreRole;
@@ -892,7 +886,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
-        Try.of(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(coreRole), groupId, groupVersionId))
+        Try.run(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(coreRole), groupId, groupVersionId))
                 .get();
 
         //////////////////////////////////////////////
@@ -982,8 +976,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (cloudFormationStacksLaunched.size() != 0) {
             waitForStacksToLaunch(cloudFormationStacksLaunched);
         }
-
-        return null;
     }
 
     private void requireAssumeRolePolicy(RoleConf roleConf, String type) {
@@ -1509,7 +1501,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Building script [" + ggShScriptName + "]");
             ByteArrayOutputStream ggScriptTemplate = new ByteArrayOutputStream();
 
-            Try.of(() -> writePayload(architecture, ggdPipDependencies, ggScriptTemplate)).get();
+            Try.run(() -> writePayload(architecture, ggdPipDependencies, ggScriptTemplate)).get();
 
             log.info("Writing script [" + ggShScriptName + "]");
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
@@ -1609,15 +1601,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         s3Client.putObject(putObjectRequest, RequestBody.fromFile(inputFile));
     }
 
-    private Void writePayload(Architecture architecture, Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
+    private void writePayload(Architecture architecture, Set<String> ggdPipDependencies, ByteArrayOutputStream ggScriptTemplate) throws IOException {
         ggScriptTemplate.write(scriptHelper.generateGgScript(architecture, ggdPipDependencies).getBytes());
         ggScriptTemplate.write("PAYLOAD:\n".getBytes());
         ggScriptTemplate.write(getByteArrayOutputStream(installScriptVirtualTarEntries).get().toByteArray());
-
-        return null;
     }
 
-    private void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) throws InterruptedException {
+    private void pushContainerIfNecessary(DeploymentArguments deploymentArguments, String imageId) {
         if (!deploymentArguments.pushContainer) {
             return;
         }
@@ -1628,10 +1618,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String shortEcrEndpointAndRepo = String.join("/", shortEcrEndpoint, deploymentArguments.ecrRepositoryNameString);
 
         try (DockerClient dockerClient = ecrDockerClientProvider.get()) {
-            Try.of(() -> tagImage(deploymentArguments, imageId, shortEcrEndpointAndRepo, dockerClient))
+            Try.run(() -> tagImage(deploymentArguments, imageId, shortEcrEndpointAndRepo, dockerClient))
                     .get();
 
-            Try.of(() -> push(shortEcrEndpointAndRepo, dockerClient))
+            Try.run(() -> push(shortEcrEndpointAndRepo, dockerClient))
                     .onFailure(throwable -> Match(throwable).of(
                             Case($(instanceOf(DockerException.class)), this::logDockerPushFailedAndThrow),
                             Case($(), exceptionHelper::rethrowAsRuntimeException)))
@@ -1678,14 +1668,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         throw new RuntimeException(x);
     }
 
-    private Void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+    private void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
         dockerClient.push(shortEcrEndpointAndRepo, basicProgressHandler, ecrDockerClientProvider.getRegistryAuthSupplier().authFor(""));
-        return null;
     }
 
-    private Void tagImage(DeploymentArguments deploymentArguments, String imageId, String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
+    private void tagImage(DeploymentArguments deploymentArguments, String imageId, String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
         dockerClient.tag(imageId, String.join(":", shortEcrEndpointAndRepo, deploymentArguments.groupName));
-        return null;
     }
 
     private void waitForStacksToLaunch(List<String> cloudFormationStacksLaunched) {
