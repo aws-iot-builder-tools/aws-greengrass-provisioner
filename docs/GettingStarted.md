@@ -42,13 +42,13 @@ your environment (e.g. `./ggp.sh`, `java -jar ...`, etc.)**
 Using a Raspberry Pi?  Use this command:
 
 ```bash
-GGP -a ARM32 -g mytestgroup -d deployments/python-hello-world.conf --script
+GGP -a ARM32 -g mytestgroup -d deployments/python3-hello-world.conf --script
 ```
 
 Using EC2?  Use this command:
 
 ```bash
-GGP -a X86_64 -g mytestgroup -d deployments/python-hello-world.conf --script
+GGP -a X86_64 -g mytestgroup -d deployments/python3-hello-world.conf --script
 ```
 
 After some churning a new file called `gg.mytestgroup.sh` will be created.  Copy that file to the system that you'll be using

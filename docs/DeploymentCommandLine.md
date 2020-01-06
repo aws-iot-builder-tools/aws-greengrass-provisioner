@@ -54,13 +54,13 @@ with this option simply omit the `--ec2-launch` option on subsequent runs and ma
 Example (initial launch):
 
 ```bash
-GGP -d deployments/python-hello-world.conf -g newgroup --ec2-launch
+GGP -d deployments/python3-hello-world.conf -g newgroup --ec2-launch
 ```
 
 Example (subsequent runs):
 
 ```bash
-GGP -d deployments/python-hello-world.conf -g newgroup
+GGP -d deployments/python3-hello-world.conf -g newgroup
 ```
 
 ## Launch Docker container
@@ -85,13 +85,13 @@ Docker container you will receive a warning like this:
 Example (initial launch):
 
 ```bash
-GGP -d deployments/python-hello-world.conf -g newgroup --docker-launch
+GGP -d deployments/python3-hello-world.conf -g newgroup --docker-launch
 ```
 
 Example (subsequent runs):
 
 ```bash
-GGP -d deployments/python-hello-world.conf -g newgroup
+GGP -d deployments/python3-hello-world.conf -g newgroup
 ```
 
 **Note: This option forces the architecture to `X86_64` and enables script output `--script`.**
