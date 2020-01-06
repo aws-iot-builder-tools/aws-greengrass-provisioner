@@ -15,8 +15,6 @@ class GreengrassITShared {
     static final String HELLO_WORLD_PYTHON_3_PROD_PARTIAL = "~HelloWorldPython3:PROD";
     static final String BENCHMARK_JAVA_PROD_PARTIAL = "~CDDBenchmarkJava:PROD";
     static final String BENCHMARK_PROD_PARTIAL = "~Benchmark~:PROD";
-    static final File NODEJS_SDK_FROM_BUILD = new File("./build/foundation/aws-greengrass-core-sdk-js.zip");
-    static final File NODEJS_SDK_REQUIRED_FOR_TESTING = new File("foundation/aws-greengrass-core-sdk-js.zip");
     static final File MASTER_DEPLOYMENTS = new File("../aws-greengrass-lambda-functions/deployments");
     static final File MASTER_FUNCTIONS = new File("../aws-greengrass-lambda-functions/functions");
     static final File MASTER_FOUNDATION = new File("../aws-greengrass-lambda-functions/foundation");
@@ -63,7 +61,6 @@ class GreengrassITShared {
         FileUtils.copyDirectory(GreengrassITShared.MASTER_DEPLOYMENTS, GreengrassITShared.TEMP_DEPLOYMENTS);
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS);
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FOUNDATION, GreengrassITShared.TEMP_FOUNDATION);
-        FileUtils.copyFile(GreengrassITShared.NODEJS_SDK_FROM_BUILD, GreengrassITShared.NODEJS_SDK_REQUIRED_FOR_TESTING);
     }
 
     String getGroupName() {
