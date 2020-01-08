@@ -17,7 +17,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 
 public class MissingRuntimeWithTextErrorDiagnosticRule1Test {
-    private final String runtime = "nodejs8.10";
+    private final String runtime = "nodejs12.x";
     private final String functionArn = "arn:aws:lambda:us-east-1:zzz:function:yyy:11";
     private final String logLine = "unable to create worker process for " + functionArn + ". cannot find executable " + runtime + " under any of the provided paths [/usr/bin /usr/local/bin]";
     private MissingRuntimeWithTextErrorDiagnosticRule1 missingRuntimeForFunctionDiagnosticRule1;

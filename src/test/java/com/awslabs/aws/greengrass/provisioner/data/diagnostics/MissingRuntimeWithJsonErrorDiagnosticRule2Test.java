@@ -18,7 +18,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
 
 public class MissingRuntimeWithJsonErrorDiagnosticRule2Test {
-    private final String runtime = "nodejs8.10";
+    private final String runtime = "nodejs12.x";
     private final String functionArn = "arn:aws:lambda:us-east-1:zzz:function:yyy:11";
     private final String logLine = "Failed to start worker.       {\"workerId\": \"9cd6a690-7f33-4cd0-5dc5-61198aed5617\", \"functionArn\": \"" + functionArn + "\", \"errorString\": \"process start failed: failed to run container sandbox: container_linux.go:344: starting container process caused \\\"exec: \\\\\\\"" + runtime + "\\\\\\\": executable file not found in $PATH\\\"\"}";
     private MissingRuntimeWithJsonErrorDiagnosticRule2 missingRuntimeDiagnosticRule2;

@@ -284,11 +284,12 @@ else
   echo "No specific configuration for this installer [$INSTALLER]. Docker will not be installed."
 fi
 
-EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs8.10"
-NODEJS_8_10=$(which nodejs8.10)
-NODEJS_8_10_MISSING=$?
+EXPECTED_NODEJS_LOCATION="/usr/local/bin/nodejs12.x"
+NODEJS_12_x=$(which nodejs12.x)
+NODEJS_12_x_MISSING=$?
 
-if [ $NODEJS_8_10_MISSING -eq 1 ]; then
+if [ $NODEJS_12_x_MISSING -eq 1 ]; then
+  NODE_VERSION=12.14.1
   # Install NodeJS
   echo "Node is missing"
   GIT=$(which git)
@@ -302,9 +303,8 @@ if [ $NODEJS_8_10_MISSING -eq 1 ]; then
     cd n
     export PATH="$PATH:/usr/local/bin"
     make install
-    n 8.10.0
-    NODEJS=$(which node)
-    ln -s $NODEJS $(dirname $NODEJS)/nodejs8.10
+    n install $NODE_VERSION
+    ln -s /usr/local/n/versions/node/$NODE_VERSION/bin/node $EXPECTED_NODEJS_LOCATION
     popd
   fi
 fi
