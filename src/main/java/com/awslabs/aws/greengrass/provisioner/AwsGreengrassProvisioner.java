@@ -49,7 +49,7 @@ public class AwsGreengrassProvisioner implements Runnable {
         log.error(throwable.getMessage());
 
         if (throwable instanceof ConfigException) {
-            log.error("If configuration values are missing or not resolving properly make sure the deployment.defaults.conf and function.defaults.conf files are up to date. The issue could be to a configuration file layout change. Updating the AWS Greengrass Lambda Functions example repo usually fixes this.");
+            log.error("If configuration values are missing or not resolving properly make sure the deployment.defaults.conf, function.defaults.conf, and connector.defaults.conf files are up to date. The issue could be to a configuration file layout change. Updating the AWS Greengrass Lambda Functions example repo usually fixes this.");
         }
 
         // Make sure the JVM actually exits
