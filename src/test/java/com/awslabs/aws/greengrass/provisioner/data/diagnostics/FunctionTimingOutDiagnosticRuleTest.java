@@ -47,7 +47,7 @@ public class FunctionTimingOutDiagnosticRuleTest {
     }
 
     @Test
-    public void shouldNotReportNode8_10MissingFromDifferentLogGroup() {
+    public void shouldNotReportNode12_xMissingFromDifferentLogGroup() {
         LogGroup logGroup = LogGroup.builder().logGroupName(DiagnosticRule.GGIP_DETECTOR).build();
         LogStream logStream = LogStream.builder().build();
         log = Tuple.of(logGroup, logStream, Collections.singletonList(logLine));

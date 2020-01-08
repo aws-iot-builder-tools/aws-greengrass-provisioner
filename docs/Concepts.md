@@ -14,7 +14,7 @@ Deployment configuration defaults are stored in `deployments/deployment.defaults
 
 Function configurations specify:
 
-- The language to use (`JAVA8`, `PYTHON2_7`, `PYTHON3_7`, or `NODEJS8_10`, `EXECUTABLE`)
+- The language to use (`JAVA8`, `PYTHON2_7`, `PYTHON3_7`, or `NODEJS12_X`, `EXECUTABLE`)
 - The function name which is used to determine its name in AWS Lambda.  A function's final name in AWS Lambda will be
 `GROUP_NAME-FUNCTION_NAME` where `GROUP_NAME` is the name of the group and `FUNCTION_NAME` is the value specified in the
 function.conf file.  This avoids naming conflicts when running multiple cores with the same functions.
