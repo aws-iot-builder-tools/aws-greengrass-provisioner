@@ -76,6 +76,7 @@ def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
+def resultsIteratorForAwsJavaSdkVersion = '0.3.1'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -197,6 +198,7 @@ dependencies {
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
     compile "io.vavr:vavr:$vavrVersion"
     compile "commons-io:commons-io:$commonsIoVersion"
+    compile "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
 
     // Dependency added to fix - https://github.com/aws/aws-sdk-java-v2/issues/652
     compile "org.apache.httpcomponents:httpclient:$httpClientVersion"
