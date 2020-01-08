@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.AwsHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.EnvironmentHelper;
 
 import javax.inject.Inject;
@@ -7,6 +8,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class BasicEnvironmentHelper implements EnvironmentHelper {
+    @Inject
+    AwsHelper awsHelper;
+
     @Inject
     public BasicEnvironmentHelper() {
     }
@@ -22,6 +26,7 @@ public class BasicEnvironmentHelper implements EnvironmentHelper {
         defaultEnvironment.put(AWS_IOT_THING_NAME, coreThingName);
         defaultEnvironment.put(AWS_IOT_THING_ARN, coreThingArn);
         defaultEnvironment.put(AWS_GREENGRASS_GROUP_NAME, groupName);
+        defaultEnvironment.put(REGION, awsHelper.getCurrentRegion().id());
 
         return defaultEnvironment;
     }
