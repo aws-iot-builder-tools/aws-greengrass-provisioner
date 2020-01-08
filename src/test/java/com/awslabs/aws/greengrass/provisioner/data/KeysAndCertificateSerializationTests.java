@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.data;
 
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,6 +44,6 @@ public class KeysAndCertificateSerializationTests {
     public void shouldDeserializeAndCreateIdenticalObject() {
         KeysAndCertificate testKeysAndCertificate = jsonHelper.fromJson(KeysAndCertificate.class, jsonHelper.toJson(keysAndCertificate).getBytes());
 
-        Assert.assertThat(testKeysAndCertificate, is(keysAndCertificate));
+        MatcherAssert.assertThat(testKeysAndCertificate, is(keysAndCertificate));
     }
 }

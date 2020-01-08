@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
 import org.eclipse.paho.client.mqttv3.*;
+import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
@@ -111,7 +112,7 @@ public class GreengrassEndToEndIT {
     public void shouldCreateOemFile() {
         greengrassBuildWithoutDockerDeploymentsIT.shouldBuildNodeFunctionWithoutDocker();
 
-        Assert.assertThat(oemArchiveName.exists(), is(true));
+        MatcherAssert.assertThat(oemArchiveName.exists(), is(true));
     }
 
     @Test
@@ -182,10 +183,10 @@ public class GreengrassEndToEndIT {
 
             @Override
             public void messageArrived(String topic, MqttMessage message) {
-                Assert.assertThat(topic, is(expectedTopic));
+                MatcherAssert.assertThat(topic, is(expectedTopic));
                 String payloadString = new String(message.getPayload());
                 Map<String, Object> payloadMap = jsonHelper.fromJson(Map.class, payloadString.getBytes());
-                Assert.assertThat(payloadMap, IsMapContaining.hasKey("message"));
+                MatcherAssert.assertThat(payloadMap, IsMapContaining.hasKey("message"));
                 flag.set(true);
             }
 
@@ -207,9 +208,9 @@ public class GreengrassEndToEndIT {
 
             @Override
             public void messageArrived(String topic, MqttMessage message) {
-                Assert.assertThat(topic, is(expectedTopic));
+                MatcherAssert.assertThat(topic, is(expectedTopic));
                 String payloadString = new String(message.getPayload());
-                Assert.assertThat(payloadString, containsString("hello world"));
+                MatcherAssert.assertThat(payloadString, containsString("hello world"));
                 flag.set(true);
             }
 

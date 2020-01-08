@@ -3,6 +3,7 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.EC2LinuxVersion;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicDeploymentHelper;
 import io.vavr.Tuple3;
+import org.hamcrest.MatcherAssert;
 import org.jetbrains.annotations.NotNull;
 import org.junit.Assert;
 import org.junit.Before;
@@ -93,7 +94,7 @@ public class GreengrassEC2ImagesIT {
         List<Image> distinctImages = images.stream().distinct().collect(Collectors.toList());
 
         // Make sure all of the images are distinct
-        Assert.assertThat(images.size(), is(distinctImages.size()));
+        MatcherAssert.assertThat(images.size(), is(distinctImages.size()));
     }
 
     private List<String> getAllNameFilters() {

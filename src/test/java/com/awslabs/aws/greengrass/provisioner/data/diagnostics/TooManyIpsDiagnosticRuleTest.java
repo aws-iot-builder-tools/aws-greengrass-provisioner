@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -35,7 +36,7 @@ public class TooManyIpsDiagnosticRuleTest {
 
         Assert.assertTrue(optionalResult.isPresent());
         List<String> result = optionalResult.get();
-        Assert.assertThat(result.size(), is(1));
+        MatcherAssert.assertThat(result.size(), is(1));
     }
 
     @Test

@@ -214,7 +214,7 @@ dependencies {
 
     testCompile "junit:junit:$junitVersion"
     testCompile "com.github.stefanbirkner:system-rules:$systemRulesVersion"
-    testCompile "org.hamcrest:hamcrest-core:$hamcrestVersion"
+    testCompile "org.hamcrest:hamcrest:$hamcrestVersion"
     testCompile "org.mockito:mockito-core:$mockitoVersion"
     testCompile "com.github.awslabs:aws-iot-core-websockets:$awsIotCoreWebsocketsVersion"
 }

@@ -1,5 +1,6 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -37,7 +38,7 @@ public class SoftwareDownloadTest {
 
     @Test
     public void softwareUrlsShouldNotBeEmpty() {
-        Assert.assertThat("Software URLs are empty, this means the Greengrass software list is not configured properly", softwareUrls, is(not(empty())));
+        MatcherAssert.assertThat("Software URLs are empty, this means the Greengrass software list is not configured properly", softwareUrls, is(not(empty())));
     }
 
     @Test
@@ -60,7 +61,7 @@ public class SoftwareDownloadTest {
                 .map(File::new)
                 .collect(Collectors.toList());
 
-        Assert.assertThat("Greengrass distribution file list is empty, this means the Greengrass software list is not configured properly", resourceFiles, is(not(empty())));
+        MatcherAssert.assertThat("Greengrass distribution file list is empty, this means the Greengrass software list is not configured properly", resourceFiles, is(not(empty())));
 
         List<File> missingFiles = resourceFiles.stream()
                 .filter(file -> !file.exists())
@@ -68,7 +69,7 @@ public class SoftwareDownloadTest {
 
         missingFiles.forEach(file -> log.error("Greengrass distribution file [" + file.getName() + "] is missing"));
 
-        Assert.assertThat("Some Greengrass distributions are missing, this means the Greengrass software list is not configured properly", missingFiles, is(empty()));
+        MatcherAssert.assertThat("Some Greengrass distributions are missing, this means the Greengrass software list is not configured properly", missingFiles, is(empty()));
     }
 
     private int getResponseCode(String urlString) {

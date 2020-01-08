@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
+import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,10 +40,10 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule2Test {
 
         Assert.assertTrue(optionalResult.isPresent());
         List<String> result = optionalResult.get();
-        Assert.assertThat(result.size(), is(1));
+        MatcherAssert.assertThat(result.size(), is(1));
         String resultString = result.get(0);
-        Assert.assertThat(resultString, containsString("[" + runtime + "]"));
-        Assert.assertThat(resultString, containsString("[" + functionArn + "]"));
+        MatcherAssert.assertThat(resultString, containsString("[" + runtime + "]"));
+        MatcherAssert.assertThat(resultString, containsString("[" + functionArn + "]"));
     }
 
     @Test

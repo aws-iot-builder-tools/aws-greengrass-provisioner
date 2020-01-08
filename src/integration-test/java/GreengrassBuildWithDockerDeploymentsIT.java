@@ -3,6 +3,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHe
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import org.hamcrest.Matcher;
+import org.hamcrest.MatcherAssert;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
@@ -265,7 +266,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         waitForContainerToFinish(genericContainer);
 
         System.out.println(genericContainer.getLogs());
-        Assert.assertThat(genericContainer.getCurrentContainerInfo().getState().getExitCode(), is(integerMatcher));
+        MatcherAssert.assertThat(genericContainer.getCurrentContainerInfo().getState().getExitCode(), is(integerMatcher));
 
         return genericContainer;
     }
