@@ -5,6 +5,11 @@ import software.amazon.awssdk.services.greengrass.model.Function;
 import java.io.File;
 
 public interface GGConstants {
+    String CONF_FROM_CLOUD_SUBSCRIPTIONS = "conf.fromCloudSubscriptions";
+    String CONF_TO_CLOUD_SUBSCRIPTIONS = "conf.toCloudSubscriptions";
+    String CONF_OUTPUT_TOPICS = "conf.outputTopics";
+    String CONF_INPUT_TOPICS = "conf.inputTopics";
+
     String getRootCaUrl();
 
     String getRootCaName();
@@ -46,6 +51,8 @@ public interface GGConstants {
     String getDefaultsConf();
 
     File getFunctionDefaultsConf();
+
+    File getConnectorDefaultsConf();
 
     String getConfGreengrassContainer();
 

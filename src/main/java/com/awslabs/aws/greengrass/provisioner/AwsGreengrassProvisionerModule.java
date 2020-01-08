@@ -61,6 +61,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(ScriptHelper.class).to(BasicScriptHelper.class);
         bind(GGVariables.class).to(BasicGGVariables.class);
         bind(IotHelper.class).to(BasicIotHelper.class);
+        bind(ConnectorHelper.class).to(BasicConnectorHelper.class);
 
         bind(ResourceHelper.class).to(BasicResourceHelper.class);
         bind(ConfigFileHelper.class).to(BasicConfigFileHelper.class);

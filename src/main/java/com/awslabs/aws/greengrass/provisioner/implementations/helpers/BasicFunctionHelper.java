@@ -238,18 +238,14 @@ public class BasicFunctionHelper implements FunctionHelper {
         return function.resolve("function.cf.yaml");
     }
 
-    private <R> Predicate<R> not(Predicate<R> predicate) {
-        return predicate.negate();
-    }
-
     @Override
-    public List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    public List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Get each enabled function conf file OR the ARN of an existing function
         List<Either<String, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
 
         warnAboutMissingDefaultsIfNecessary();
 
-        return getFunctionConfs(defaultEnvironment, deploymentConf, enabledFunctions, defaultFunctionIsolationMode);
+        return getFunctionConfs(defaultConfig, deploymentConf, enabledFunctions, defaultFunctionIsolationMode);
     }
 
     private void warnAboutMissingDefaultsIfNecessary() {
@@ -258,18 +254,18 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private List<FunctionConf> getFunctionConfs(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfs(Config defaultConfig, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Find any functions with missing config files
-        detectMissingConfigFiles(enabledFunctionConfs);
+        ioHelper.detectMissingConfigs(log, "function", enabledFunctionConfs);
 
-        return getFunctionConfObjects(defaultEnvironment, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
+        return getFunctionConfObjects(defaultConfig, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
         for (Either<String, File> enabledFunctionConf : enabledFunctionConfs) {
-            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultEnvironment, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultConfig, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
 
             enabledFunctionConfObjects.add(functionConf);
         }
@@ -285,7 +281,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, Either<String, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private FunctionConf getFunctionConf(Config defaultConfig, DeploymentConf deploymentConf, Either<String, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
         Config config;
@@ -321,13 +317,11 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Make sure we use the calculated default function isolation mode as the default (forced to no container when using Docker)
         functionDefaults = functionDefaults.withValue(ggConstants.getConfGreengrassContainer(), ConfigValueFactory.fromAnyRef(FunctionIsolationMode.GREENGRASS_CONTAINER.equals(defaultFunctionIsolationMode) ? true : false));
 
+        // Use the function.defaults.conf values
         config = config.withFallback(functionDefaults);
 
-        // Add the default environment values to the config so they can be used for resolution
-        //   (eg. "${AWS_IOT_THING_NAME}" used in the function configuration)
-        for (Map.Entry<String, String> entry : defaultEnvironment.entrySet()) {
-            config = config.withValue(entry.getKey(), ConfigValueFactory.fromAnyRef(entry.getValue()));
-        }
+        // Use the default config (environment) values
+        config = config.withFallback(defaultConfig);
 
         // Resolve the entire fallback config
         config = config.resolve();
@@ -354,10 +348,10 @@ public class BasicFunctionHelper implements FunctionHelper {
         functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
         functionConfBuilder.isPinned(config.getBoolean("conf.pinned"));
         functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
-        functionConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
-        functionConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
-        functionConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
-        functionConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
+        functionConfBuilder.fromCloudSubscriptions(config.getStringList(GGConstants.CONF_FROM_CLOUD_SUBSCRIPTIONS));
+        functionConfBuilder.toCloudSubscriptions(config.getStringList(GGConstants.CONF_TO_CLOUD_SUBSCRIPTIONS));
+        functionConfBuilder.outputTopics(config.getStringList(GGConstants.CONF_OUTPUT_TOPICS));
+        functionConfBuilder.inputTopics(config.getStringList(GGConstants.CONF_INPUT_TOPICS));
         functionConfBuilder.isAccessSysFs(config.getBoolean("conf.accessSysFs"));
         functionConfBuilder.isGreengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
         functionConfBuilder.uid(config.getInt("conf.uid"));
@@ -397,22 +391,6 @@ public class BasicFunctionHelper implements FunctionHelper {
     private void addSecretNamesToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> secretNames) {
         IntStream.range(0, secretNames.size())
                 .forEach(index -> functionConfBuilder.putEnvironmentVariables("SECRET_" + index, secretNames.get(index)));
-    }
-
-    private void detectMissingConfigFiles(List<Either<String, File>> enabledFunctionConfigFiles) {
-        List<String> missingConfigFunctions = enabledFunctionConfigFiles.stream()
-                .filter(Either::isRight)
-                .map(Either::get)
-                .filter(not(File::exists))
-                .map(File::getPath)
-                .collect(Collectors.toList());
-
-        if (missingConfigFunctions.size() > 0) {
-            log.error("Missing config files (this is NOT OK in normal deployments): ");
-            missingConfigFunctions
-                    .forEach(functionName -> log.error("  " + functionName));
-            throw new RuntimeException("Missing configuration files, can not build deployment");
-        }
     }
 
     private List<Either<String, File>> getEnabledFunctions(DeploymentConf deploymentConf) {

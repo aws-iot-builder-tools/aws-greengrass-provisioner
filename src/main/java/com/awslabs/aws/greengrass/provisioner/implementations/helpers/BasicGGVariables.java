@@ -11,7 +11,6 @@ import javax.inject.Inject;
 
 public class BasicGGVariables implements GGVariables {
     @Inject
-    public
     GGConstants ggConstants;
 
     @Inject
@@ -71,6 +70,11 @@ public class BasicGGVariables implements GGVariables {
     @Override
     public Config getFunctionDefaults() {
         return ConfigFactory.parseFile(ggConstants.getFunctionDefaultsConf());
+    }
+
+    @Override
+    public Config getConnectorDefaults() {
+        return ConfigFactory.parseFile(ggConstants.getConnectorDefaultsConf());
     }
 
     @Override

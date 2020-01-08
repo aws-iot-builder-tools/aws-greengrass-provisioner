@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.typesafe.config.Config;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -21,7 +22,7 @@ public interface FunctionHelper {
     String HTTPS = "https://";
     String FUNCTION_CONF = "function.conf";
 
-    List<FunctionConf> getFunctionConfObjects(Map<String, String> defaultEnvironment, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode);
+    List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode);
 
     void verifyFunctionsAreSupported(List<FunctionConf> functionConfs);
 

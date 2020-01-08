@@ -27,6 +27,8 @@ public interface GGVariables {
 
     Config getFunctionDefaults();
 
+    Config getConnectorDefaults();
+
     FunctionIsolationMode getDefaultFunctionIsolationMode();
 }
 

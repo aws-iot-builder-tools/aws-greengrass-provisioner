@@ -66,10 +66,10 @@ public class BasicGGDHelper implements GGDHelper {
 
         ggdConfBuilder.thingName(config.getString("conf.thingName"));
         ggdConfBuilder.connectedShadows(config.getStringList("conf.connectedShadows"));
-        ggdConfBuilder.fromCloudSubscriptions(config.getStringList("conf.fromCloudSubscriptions"));
-        ggdConfBuilder.toCloudSubscriptions(config.getStringList("conf.toCloudSubscriptions"));
-        ggdConfBuilder.outputTopics(config.getStringList("conf.outputTopics"));
-        ggdConfBuilder.inputTopics(config.getStringList("conf.inputTopics"));
+        ggdConfBuilder.fromCloudSubscriptions(config.getStringList(GGConstants.CONF_FROM_CLOUD_SUBSCRIPTIONS));
+        ggdConfBuilder.toCloudSubscriptions(config.getStringList(GGConstants.CONF_TO_CLOUD_SUBSCRIPTIONS));
+        ggdConfBuilder.outputTopics(config.getStringList(GGConstants.CONF_OUTPUT_TOPICS));
+        ggdConfBuilder.inputTopics(config.getStringList(GGConstants.CONF_INPUT_TOPICS));
         ggdConfBuilder.scriptName(ggdName);
         ggdConfBuilder.rootPath(scriptPath.toPath());
         ggdConfBuilder.dependencies(config.getStringList("conf.dependencies"));
