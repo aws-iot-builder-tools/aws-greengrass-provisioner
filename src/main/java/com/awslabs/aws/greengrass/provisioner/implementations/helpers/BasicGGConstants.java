@@ -11,6 +11,7 @@ import java.io.File;
 public class BasicGGConstants implements GGConstants {
     private static final String DEVICE_KEY = "device.key";
     private static final String DEVICE_CRT = "device.crt";
+    private static final String DEPLOYMENTS_DIRECTORY = "deployments";
     @Inject
     IoHelper ioHelper;
 
@@ -90,7 +91,12 @@ public class BasicGGConstants implements GGConstants {
 
     @Override
     public File getFunctionDefaultsConf() {
-        return new File("deployments/function.defaults.conf");
+        return new File(String.join("/", DEPLOYMENTS_DIRECTORY, "function.defaults.conf"));
+    }
+
+    @Override
+    public File getConnectorDefaultsConf() {
+        return new File(String.join("/", DEPLOYMENTS_DIRECTORY, "connector.defaults.conf"));
     }
 
     @Override
@@ -100,7 +106,7 @@ public class BasicGGConstants implements GGConstants {
 
     @Override
     public File getDeploymentDefaultsConf() {
-        return new File("deployments/deployment.defaults.conf");
+        return new File(String.join("/", DEPLOYMENTS_DIRECTORY, "deployment.defaults.conf"));
     }
 
     @Override

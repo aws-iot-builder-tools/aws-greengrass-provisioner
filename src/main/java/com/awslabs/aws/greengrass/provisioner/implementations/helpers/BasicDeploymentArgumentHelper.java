@@ -10,10 +10,6 @@ import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetBucketLocationRequest;
-import software.amazon.awssdk.services.s3.model.GetBucketLocationResponse;
-import software.amazon.awssdk.services.s3.model.NoSuchBucketException;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -30,7 +26,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    S3Client s3Client;
+    S3Helper s3Helper;
     @Inject
     SshHelper sshHelper;
 
@@ -248,13 +244,9 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
 
             // At this point the S3 options look good, make sure that the bucket exists
-            GetBucketLocationRequest getBucketLocationRequest = GetBucketLocationRequest.builder()
-                    .bucket(deploymentArguments.s3Bucket)
-                    .build();
-
-            Try.of(() -> s3Client.getBucketLocation(getBucketLocationRequest))
-                    .recover(NoSuchBucketException.class, this::throwBucketDoesNotExistError)
-                    .get();
+            if (!s3Helper.bucketExists(deploymentArguments.s3Bucket)) {
+                throw new RuntimeException("Specified S3 bucket does not exist. The bucket must already exist before running the provisioner");
+            }
         } else if (deploymentArguments.s3Directory != null) {
             throw new RuntimeException("S3 directory was specified with no S3 bucket. S3 bucket is required.");
         }
@@ -279,9 +271,5 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         return deploymentArguments;
-    }
-
-    private GetBucketLocationResponse throwBucketDoesNotExistError(Throwable throwable) {
-        throw new RuntimeException("Specified S3 bucket does not exist. The bucket must already exist before running the provisioner");
     }
 }

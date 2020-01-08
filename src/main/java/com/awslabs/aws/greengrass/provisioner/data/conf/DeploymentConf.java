@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import org.immutables.value.Value;
+import software.amazon.awssdk.services.greengrass.model.Connector;
 
 import java.util.List;
 import java.util.Map;
@@ -25,4 +26,6 @@ public abstract class DeploymentConf {
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract boolean isSyncShadow();
+
+    public abstract List<String> getConnectors();
 }

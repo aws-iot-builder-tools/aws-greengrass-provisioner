@@ -6,9 +6,11 @@ import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
 import com.oblac.nomen.Nomen;
+import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.slf4j.Logger;
 import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 
 import java.io.*;
@@ -23,7 +25,10 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.zip.GZIPInputStream;
+
+import static io.vavr.Predicates.not;
 
 public interface IoHelper {
     String TEMP_DIRECTORY = "/tmp/";
@@ -261,5 +266,28 @@ public interface IoHelper {
     void sendFile(Session session, InputStream inputFileStream, String localFilename, String remoteFilename) throws JSchException, IOException;
 
     void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
+
+    default void detectMissingConfigs(Logger log, String type, List<Either<String, File>> confFilesAndArns) {
+        List<File> confFiles = confFilesAndArns.stream()
+                .filter(Either::isRight)
+                .map(Either::get)
+                .collect(Collectors.toList());
+
+        detectMissingConfigFiles(log, type, confFiles);
+    }
+
+    default void detectMissingConfigFiles(Logger log, String type, List<File> confFiles) {
+        List<String> missingConfFiles = confFiles.stream()
+                .filter(not(File::exists))
+                .map(File::getPath)
+                .collect(Collectors.toList());
+
+        if (missingConfFiles.size() > 0) {
+            log.error("Missing " + type + " conf files (this is NOT OK in normal deployments): ");
+            missingConfFiles
+                    .forEach(functionName -> log.error("  " + functionName));
+            throw new RuntimeException("Missing " + type + " conf files, can not build deployment");
+        }
+    }
 }
 

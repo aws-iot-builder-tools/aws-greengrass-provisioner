@@ -131,6 +131,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     JsonHelper jsonHelper;
     @Inject
     SshHelper sshHelper;
+    @Inject
+    TypeSafeConfigHelper typeSafeConfigHelper;
+    @Inject
+    ConnectorHelper connectorHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -173,14 +177,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             deploymentConfBuilder.isSyncShadow(true);
         }
 
+        // Roles
+
         // Core role info
-        deploymentConfBuilder.coreRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.core"));
+        deploymentConfBuilder.coreRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.core"));
 
         // Lambda role info
-        deploymentConfBuilder.lambdaRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.lambda"));
+        deploymentConfBuilder.lambdaRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.lambda"));
 
         // Service role info
-        deploymentConfBuilder.serviceRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.service"));
+        deploymentConfBuilder.serviceRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.service"));
+
+        // Connector confs
+        deploymentConfBuilder.connectors(config.getStringList("conf.connectors"));
 
         deploymentConfBuilder.ggds(config.getStringList("conf.ggds"));
 
@@ -262,35 +271,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             if (deploymentStatus.equals(DeploymentStatus.NEEDS_NEW_DEPLOYMENT)) {
                 if (greengrassServiceRole.isPresent() && greengrassRole.isPresent()) {
-                    log.warn("There was a problem with IAM roles, attempting a new deployment");
-
-                    // Disassociate roles
-                    log.warn("Disassociating Greengrass service role");
-                    greengrassHelper.disassociateServiceRoleFromAccount();
-                    log.warn("Disassociating role from group");
-                    greengrassHelper.disassociateRoleFromGroup(groupId);
-
-                    log.warn("Letting IAM settle...");
-
-                    ioHelper.sleep(30000);
-
-                    // Reassociate roles
-                    log.warn("Reassociating Greengrass service role");
-                    associateServiceRoleToAccount(greengrassServiceRole.get());
-                    log.warn("Reassociating Greengrass group role");
-                    associateRoleToGroup(greengrassRole.get(), groupId);
-
-                    log.warn("Letting IAM settle...");
-
-                    ioHelper.sleep(30000);
-
-                    log.warn("Trying another deployment");
-                    deploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
-                    log.warn("Deployment created [" + deploymentId + "]");
-
-                    log.warn("Letting deployment settle...");
-
-                    ioHelper.sleep(30000);
+                    deploymentId = iamDisassociateReassociateAndLetSettle(greengrassServiceRole, greengrassRole, groupId, groupVersionId);
                 } else {
                     log.error("Deployment failed due to IAM issue.");
                     return DeploymentStatus.FAILED;
@@ -304,6 +285,40 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 return deploymentStatus;
             }
         }
+    }
+
+    private String iamDisassociateReassociateAndLetSettle(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId) {
+        String deploymentId;
+        log.warn("There was a problem with IAM roles, attempting a new deployment");
+
+        // Disassociate roles
+        log.warn("Disassociating Greengrass service role");
+        greengrassHelper.disassociateServiceRoleFromAccount();
+        log.warn("Disassociating role from group");
+        greengrassHelper.disassociateRoleFromGroup(groupId);
+
+        log.warn("Letting IAM settle...");
+
+        ioHelper.sleep(30000);
+
+        // Reassociate roles
+        log.warn("Reassociating Greengrass service role");
+        associateServiceRoleToAccount(greengrassServiceRole.get());
+        log.warn("Reassociating Greengrass group role");
+        associateRoleToGroup(greengrassRole.get(), groupId);
+
+        log.warn("Letting IAM settle...");
+
+        ioHelper.sleep(30000);
+
+        log.warn("Trying another deployment");
+        deploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
+        log.warn("Deployment created [" + deploymentId + "]");
+
+        log.warn("Letting deployment settle...");
+
+        ioHelper.sleep(30000);
+        return deploymentId;
     }
 
     @Override
@@ -543,7 +558,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
 
-        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultEnvironment, deploymentConf, defaultFunctionIsolationMode);
+        // Get a config object with the default environment values (eg. "${AWS_IOT_THING_NAME}" used in the function and connector configuration)
+        Config defaultConfig = typeSafeConfigHelper.addDefaultValues(defaultEnvironment, Optional.empty());
+
+        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultConfig, deploymentConf, defaultFunctionIsolationMode);
 
         // Find Python functions that may not have had their language updated, this should never happen
         Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
@@ -795,20 +813,33 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Creating subscription definition");
         String subscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
+        ///////////////////////////
+        // Create the connectors //
+        ///////////////////////////
+
+        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
+
+        log.info("Creating connector definition");
+        Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
+
         ////////////////////////////////////
         // Create a minimal group version //
         ////////////////////////////////////
 
         log.info("Creating group version");
 
-        GroupVersion groupVersion = GroupVersion.builder()
-                .coreDefinitionVersionArn(coreDefinitionVersionArn)
-                .functionDefinitionVersionArn(functionDefinitionVersionArn)
-                .subscriptionDefinitionVersionArn(subscriptionDefinitionVersionArn)
-                .deviceDefinitionVersionArn(deviceDefinitionVersionArn)
-                .loggerDefinitionVersionArn(loggerDefinitionVersionArn)
-                .resourceDefinitionVersionArn(resourceDefinitionVersionArn)
-                .build();
+        GroupVersion.Builder groupVersionBuilder = GroupVersion.builder();
+
+        // Connector definition can not be empty or the cloud service will reject it
+        optionalConnectionDefinitionVersionArn.ifPresent(groupVersionBuilder::connectorDefinitionVersionArn);
+        groupVersionBuilder.coreDefinitionVersionArn(coreDefinitionVersionArn);
+        groupVersionBuilder.deviceDefinitionVersionArn(deviceDefinitionVersionArn);
+        groupVersionBuilder.functionDefinitionVersionArn(functionDefinitionVersionArn);
+        groupVersionBuilder.loggerDefinitionVersionArn(loggerDefinitionVersionArn);
+        groupVersionBuilder.resourceDefinitionVersionArn(resourceDefinitionVersionArn);
+        groupVersionBuilder.subscriptionDefinitionVersionArn(subscriptionDefinitionVersionArn);
+
+        GroupVersion groupVersion = groupVersionBuilder.build();
 
         String groupVersionId = greengrassHelper.createGroupVersion(groupId, groupVersion);
 

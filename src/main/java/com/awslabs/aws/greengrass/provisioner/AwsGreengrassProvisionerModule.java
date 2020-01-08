@@ -7,6 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.implementations.helpers.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.spotify.docker.client.ProgressHandler;
@@ -44,6 +45,9 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(SecretsManagerClient.class).toProvider(new SafeProvider<>(SecretsManagerClient::create));
         bind(AwsRegionProviderChain.class).toProvider(new SafeProvider<>(DefaultAwsRegionProviderChain::new));
 
+        // Object mapper
+        bind(ObjectMapper.class).toProvider(ObjectMapper::new);
+
         // Clients that need special configuration
         // NOTE: Using this pattern allows us to wrap the creation of these clients in some error checking code that can give the user information on what to do in the case of a failure
         bind(IamClient.class).toProvider(new SafeProvider<>(() -> IamClient.builder().region(Region.AWS_GLOBAL).build()));
@@ -57,6 +61,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(ScriptHelper.class).to(BasicScriptHelper.class);
         bind(GGVariables.class).to(BasicGGVariables.class);
         bind(IotHelper.class).to(BasicIotHelper.class);
+        bind(ConnectorHelper.class).to(BasicConnectorHelper.class);
 
         bind(ResourceHelper.class).to(BasicResourceHelper.class);
         bind(ConfigFileHelper.class).to(BasicConfigFileHelper.class);
@@ -79,6 +84,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(EnvironmentHelper.class).to(BasicEnvironmentHelper.class);
         bind(ExecutorHelper.class).to(SingleThreadedExecutorHelper.class);
         bind(SecretsManagerHelper.class).to(BasicSecretsManagerHelper.class);
+        bind(TypeSafeConfigHelper.class).to(BasicTypeSafeConfigHelper.class);
         //bind(ExecutorHelper.class).to(ParallelExecutorHelper.class);
 
         // Argument helpers
@@ -114,6 +120,8 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(ExceptionHelper.class).to(BasicExceptionHelper.class);
 
         bind(DiagnosticsHelper.class).to(BasicDiagnosticsHelper.class);
+
+        bind(S3Helper.class).to(BasicS3Helper.class);
 
         bind(SshHelper.class).to(BasicSshHelper.class);
 

@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
+import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -86,4 +87,6 @@ public interface GreengrassHelper {
     List<Subscription> getSubscriptions(GroupInformation groupInformation);
 
     GetGroupCertificateAuthorityResponse getGroupCa(GroupInformation groupInformation);
+
+    Optional<String> createConnectorDefinitionVersion(List<ConnectorConf> connectors);
 }
