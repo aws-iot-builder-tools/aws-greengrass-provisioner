@@ -131,6 +131,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     JsonHelper jsonHelper;
     @Inject
     SshHelper sshHelper;
+    @Inject
+    TypeSafeConfigHelper typeSafeConfigHelper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -173,14 +175,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             deploymentConfBuilder.isSyncShadow(true);
         }
 
+        // Roles
+
         // Core role info
-        deploymentConfBuilder.coreRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.core"));
+        deploymentConfBuilder.coreRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.core"));
 
         // Lambda role info
-        deploymentConfBuilder.lambdaRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.lambda"));
+        deploymentConfBuilder.lambdaRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.lambda"));
 
         // Service role info
-        deploymentConfBuilder.serviceRoleConf(RoleConf.fromConfigAndPrefix(config, "conf.service"));
+        deploymentConfBuilder.serviceRoleConf(RoleConf.fromConfigAndPrefix(typeSafeConfigHelper, config, "conf.service"));
 
         deploymentConfBuilder.ggds(config.getStringList("conf.ggds"));
 
