@@ -78,7 +78,6 @@ def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
 
 def buildDirDist = "$buildDir/dist"
-def buildDirTemp = "$buildDir/temp"
 def buildDirFoundation = "$buildDir/foundation"
 
 task downloadGreengrassBinaries(type: Download) {
