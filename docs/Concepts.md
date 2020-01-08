@@ -5,6 +5,7 @@
 Deployment configurations specify:
 
 - Which functions to deploy, if any
+- Which connectors to deploy, if any
 - Role and policy information for the core, if different than the defaults
 - Which Greengrass Device scripts to generate when the `--ggd` option is specified, if any
 
@@ -31,6 +32,28 @@ an alias for the version that was published is created.  This makes the subscrip
 - Machine learning resource information (Files in S3 or SageMaker training job ARNs)
 
 Function configuration defaults are stored in `deployments/function.defaults.conf`.
+
+## Connector configurations
+
+Connector configurations specify:
+
+- The connector ARN (e.g. `"arn:aws:greengrass:"${REGION}"::/connectors/DockerApplicationDeployment/versions/1"` where `${REGION}` will be filled in with the the default region of your AWS CLI configuration automatically)
+- The connector parameters
+
+The connector parameters for each connector are different. The Docker connector parameters look like this:
+
+```
+    parameters = {
+      DockerComposeFileS3Version = ""
+      DockerUserId = ""
+      DockerComposeFileS3Bucket = "YOUR-BUCKET"
+      DockerContainerStatusLogFrequency = ""
+      DockerComposeFileS3Key = "YOUR-FILE"
+      DockerComposeFileDestinationPath = "/tmp"
+    }
+```
+
+Connector configuration defaults are stored in `deployments/connector.defaults.conf`.
 
 ## Per function CloudFormation templates
 
