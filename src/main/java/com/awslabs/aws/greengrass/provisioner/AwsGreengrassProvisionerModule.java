@@ -83,6 +83,7 @@ public class AwsGreengrassProvisionerModule extends AbstractModule {
         bind(EnvironmentHelper.class).to(BasicEnvironmentHelper.class);
         bind(ExecutorHelper.class).to(SingleThreadedExecutorHelper.class);
         bind(SecretsManagerHelper.class).to(BasicSecretsManagerHelper.class);
+        bind(TypeSafeConfigHelper.class).to(BasicTypeSafeConfigHelper.class);
         //bind(ExecutorHelper.class).to(ParallelExecutorHelper.class);
 
         // Argument helpers
