@@ -61,8 +61,6 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    ThreadHelper threadHelper;
-    @Inject
     IamHelper iamHelper;
     @Inject
     ProcessHelper processHelper;
