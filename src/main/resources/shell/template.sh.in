@@ -33,6 +33,7 @@ function untar_payload() {
   payload_start=$((match + 1))
   tail -n +$payload_start $0 | tar xvf -
 }
+
 install_aws_credential_process() {
   GREENGRASS_REGION_FILE="/greengrass/config/region.txt"
   CREDENTIALS_SCRIPT="/greengrass/config/credentials.sh"
@@ -246,7 +247,9 @@ $ADD_USER --system ggc_user
 $ADD_GROUP --system ggc_group
 
 if [ "$UPDATE_DEPENDENCIES" == true ]; then
+  set -e
   ./${UPDATE_DEPENDENCIES_SCRIPT}
+  set +e
 fi
 
 # After the dependencies are set up try to install the AWS credential process
