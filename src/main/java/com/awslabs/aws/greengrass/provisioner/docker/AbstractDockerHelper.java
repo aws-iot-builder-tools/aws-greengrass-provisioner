@@ -240,6 +240,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     @Override
     public void dumpImagesInfo() {
+        // Do not call get() on this Try so we can fail and keep going
         Try.of(() -> listImages().stream()
                 .map(image -> image.id() + " [" + image.repoTags().stream().collect(Collectors.joining("|")) + "]")
                 .collect(Collectors.joining(", ")))
