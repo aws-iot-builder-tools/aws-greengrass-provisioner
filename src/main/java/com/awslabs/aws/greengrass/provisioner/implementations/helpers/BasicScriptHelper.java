@@ -3,7 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ScriptHelper;
 import com.google.common.collect.ImmutableMap;
 
@@ -31,7 +31,7 @@ public class BasicScriptHelper implements ScriptHelper {
     @Inject
     IotHelper iotHelper;
     @Inject
-    ResourceHelper resourceHelper;
+    JavaResourceHelper javaResourceHelper;
 
     @Inject
     public BasicScriptHelper() {
@@ -164,7 +164,7 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     private String innerGenerateRunScript(String path, Optional<Architecture> architecture, Optional<String> scriptName, Optional<String> thingName, Optional<Set<String>> ggdPipDependencies) {
-        String input = resourceHelper.resourceToString(path);
+        String input = javaResourceHelper.resourceToString(path);
 
         ImmutableMap.Builder<String, String> variablesBuilder = new ImmutableMap.Builder<>();
 

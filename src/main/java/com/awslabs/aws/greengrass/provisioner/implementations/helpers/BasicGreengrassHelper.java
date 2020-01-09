@@ -9,7 +9,6 @@ import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.awscore.AwsRequest;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -39,7 +38,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     @Inject
     IdExtractor idExtractor;
     @Inject
-    ResourceHelper resourceHelper;
+    GreengrassResourceHelper greengrassResourceHelper;
     @Inject
     ConnectorHelper connectorHelper;
 
@@ -724,7 +723,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .resources(resources)
                 .build();
 
-        resourceHelper.validateResourceDefinitionVersion(resourceDefinitionVersion);
+        greengrassResourceHelper.validateResourceDefinitionVersion(resourceDefinitionVersion);
 
         CreateResourceDefinitionRequest createResourceDefinitionRequest = CreateResourceDefinitionRequest.builder()
                 .initialVersion(resourceDefinitionVersion)

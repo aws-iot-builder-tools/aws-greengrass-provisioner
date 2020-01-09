@@ -5,7 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ResourceHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -25,7 +25,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     @Inject
     LoggingHelper loggingHelper;
     @Inject
-    ResourceHelper resourceHelper;
+    JavaResourceHelper javaResourceHelper;
     @Inject
     IoHelper ioHelper;
 

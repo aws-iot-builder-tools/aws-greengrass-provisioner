@@ -36,7 +36,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
     @Inject
     SshHelper sshHelper;
     @Inject
-    ResourceHelper resourceHelper;
+    JavaResourceHelper javaResourceHelper;
     @Inject
     StsClient stsClient;
     @Inject
@@ -57,10 +57,10 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
         final String bootstrapVendorResourcePath = String.join("/", GREENGRASS_HSI, bootstrapVendorPath);
 
         // Get input streams for the resources
-        InputStream bootstrapCommonShStream = resourceHelper.getResourceAsStream(BOOTSTRAP_COMMON_SH_RESOURCE_PATH);
+        InputStream bootstrapCommonShStream = javaResourceHelper.getResourceAsStream(BOOTSTRAP_COMMON_SH_RESOURCE_PATH);
 
         // Get the bootstrap script for this vendor as a string, replace the PKCS11 URL into it
-        String bootstrapVendorShString = resourceHelper.resourceToString(bootstrapVendorResourcePath);
+        String bootstrapVendorShString = javaResourceHelper.resourceToString(bootstrapVendorResourcePath);
         bootstrapVendorShString = bootstrapVendorShString.replaceAll(PKCS_11_URL, hsiBootstrapArguments.hsiVendor.getPkcs11Url());
 
         // Turn it back into an input stream
