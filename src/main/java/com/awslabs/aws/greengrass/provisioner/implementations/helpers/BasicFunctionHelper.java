@@ -893,12 +893,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         return new AbstractMap.SimpleEntry<>(function, functionConf);
     }
 
-    private AbstractMap.SimpleEntry<Function, FunctionConf> buildGreengrassFunctionModel(String aliasArn, FunctionConf functionConf) {
-        Function function = greengrassHelper.buildFunctionModel(aliasArn, functionConf);
-
-        return new AbstractMap.SimpleEntry<>(function, functionConf);
-    }
-
     private FunctionConf setEnvironmentVariables(Map<String, String> environmentVariablesForLocalLambdas, FunctionConf functionConf) {
         Map<String, String> environmentVariables = new HashMap<>(functionConf.getEnvironmentVariables());
         environmentVariables.putAll(environmentVariablesForLocalLambdas);
