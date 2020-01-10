@@ -128,6 +128,16 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
                 System.exit(1);
             }
 
+            if (stderrStrings.stream().anyMatch(string -> string.contains("Could not find a version that satisfies the requirement")) ||
+                    stderrStrings.stream().anyMatch(string -> string.contains("No matching distribution found"))) {
+                stdoutStrings.forEach(log::warn);
+                stderrStrings.forEach(log::error);
+
+                log.error("Building this function failed because a dependency was not available. Error messages are above.");
+
+                System.exit(1);
+            }
+
             if (isCorrectPipVersion()) {
                 log.error("pip version is correct but the Python dependency failed to install");
             } else {
