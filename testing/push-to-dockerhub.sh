@@ -14,7 +14,7 @@ TAG=$1
 if [ -z "$TAG" ]; then
   TAG=$(git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-')
 
-  if [ $? -ne 0 ]; then
+  if [ -z "$TAG" ]; then
     TAG=$(git rev-parse HEAD)
   fi
 else
