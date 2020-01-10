@@ -15,6 +15,10 @@ while [[ true ]]; do
   if [[ $signature1 != $signature2 ]]; then
     TAG=$(git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-')
 
+    if [ $? -ne 0 ]; then
+      TAG=$(git rev-parse HEAD)
+    fi
+
     if [[ "$TAG" == "master" ]]; then
       ./build-ggp-docker-container.sh
       echo "Refusing to automatically push to master..."
