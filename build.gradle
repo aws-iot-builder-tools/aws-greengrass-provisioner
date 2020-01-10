@@ -99,7 +99,6 @@ task downloadAll {
     dependsOn downloadGreengrassBinaries
 }
 
-// This task will be enabled when Greengrass Core and the SDKs are available directly via S3
 assemble.dependsOn downloadAll
 check.dependsOn downloadAll
 
