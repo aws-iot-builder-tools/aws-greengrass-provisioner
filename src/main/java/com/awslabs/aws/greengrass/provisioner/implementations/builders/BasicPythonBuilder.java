@@ -80,7 +80,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
             // Install the requirements in a package directory
             List<String> programAndArguments = new ArrayList<>();
-            programAndArguments.add("pip");
+            programAndArguments.add(getPip());
             programAndArguments.add("install");
             programAndArguments.add("-r");
             programAndArguments.add(REQUIREMENTS_TXT);
