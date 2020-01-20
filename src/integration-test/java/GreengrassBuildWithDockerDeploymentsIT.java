@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.CoreMatchers.*;
 
 // NOTE: Ignoring these tests since currently testcontainers throws a java.lang.OutOfMemoryError on every test
-@Ignore
 public class GreengrassBuildWithDockerDeploymentsIT {
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
