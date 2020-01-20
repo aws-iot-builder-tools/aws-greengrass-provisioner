@@ -424,11 +424,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             String path = temp.getString(PATH);
 
-            Optional<String> optionalName = getName(temp);
-            String name = makeNameSafe(path, optionalName);
-
             LocalDeviceResource localDeviceResource = ImmutableLocalDeviceResource.builder()
-                    .name(name)
                     .path(path)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
                     .build();
@@ -453,11 +449,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .recover(ConfigException.Missing.class, throwable -> sourcePath)
                     .get();
 
-            Optional<String> optionalName = getName(temp);
-            String name = makeNameSafe(sourcePath, optionalName);
-
             LocalVolumeResource localVolumeResource = ImmutableLocalVolumeResource.builder()
-                    .name(name)
                     .sourcePath(sourcePath)
                     .destinationPath(destinationPath)
                     .isReadWrite(temp.getBoolean(READ_WRITE))
@@ -479,11 +471,7 @@ public class BasicFunctionHelper implements FunctionHelper {
             String uri = temp.getString(URI);
             String path = temp.getString(PATH);
 
-            Optional<String> optionalName = getName(temp);
-            String name = makeNameSafe(path, optionalName);
-
             LocalS3Resource localS3Resource = ImmutableLocalS3Resource.builder()
-                    .name(name)
                     .uri(uri)
                     .path(path)
                     .build();
@@ -528,11 +516,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                 throw new RuntimeException("SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [" + arn + "]");
             }
 
-            Optional<String> optionalName = getName(temp);
-            String name = makeNameSafe(path, optionalName);
-
             LocalSageMakerResource localSageMakerResource = ImmutableLocalSageMakerResource.builder()
-                    .name(name)
                     .arn(arn)
                     .path(path)
                     .build();
@@ -604,16 +588,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         return Try.of(() -> Optional.of(config.getString("name")))
                 .recover(ConfigException.Missing.class, throwable -> Optional.empty())
                 .get();
-    }
-
-    private String makeNameSafe(String path, Optional<String> name) {
-        // Device names can't have special characters in them - https://docs.aws.amazon.com/greengrass/latest/apireference/createresourcedefinition-post.html
-        return Optional.of(name.orElse(path)
-                .replaceAll("[^a-zA-Z0-9:_-]", "-")
-                .replaceFirst("^-", "")
-                .replaceFirst("-$", "")
-                .trim())
-                .orElseThrow(() -> new RuntimeException("Name cannot be empty"));
     }
 
     private void setEnvironmentVariablesFromConf(ImmutableFunctionConf.Builder functionConfBuilder, Config config) {
