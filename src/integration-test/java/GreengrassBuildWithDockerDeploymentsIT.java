@@ -4,7 +4,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.slf4j.Logger;
@@ -25,6 +24,7 @@ import static org.hamcrest.CoreMatchers.*;
 
 // NOTE: Ignoring these tests since currently testcontainers throws a java.lang.OutOfMemoryError on every test
 public class GreengrassBuildWithDockerDeploymentsIT {
+    public static final String DOT_AWS = ".aws";
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
@@ -96,25 +96,25 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private GenericContainer startAndGetContainer(String arguments) {
-        String hostAwsCredentialsPath = String.join("/", getHome(), ".aws");
+        String hostAwsCredentialsPath = String.join("/", getHome(), DOT_AWS);
         MountableFile hostAwsCredentialsMountableFile = MountableFile.forHostPath(new File(hostAwsCredentialsPath).toPath());
-        String containerAwsCredentialsPath = "/root/.aws";
+        String containerAwsCredentialsPath = String.join("", "/root/", DOT_AWS);
 
-        String hostFoundationPath = getHostPath("foundation");
+        String hostFoundationPath = GreengrassITShared.FOUNDATION;
         MountableFile hostFoundationMountableFile = MountableFile.forHostPath(new File(hostFoundationPath).toPath());
-        String containerFoundationPath = "/foundation";
+        String containerFoundationPath = String.join("", "/", GreengrassITShared.FOUNDATION);
 
-        String hostDeploymentsPath = getHostPath("deployments");
+        String hostDeploymentsPath = GreengrassITShared.DEPLOYMENTS;
         MountableFile hostDeploymentsMountableFile = MountableFile.forHostPath(new File(hostDeploymentsPath).toPath());
-        String containerDeploymentsPath = "/deployments";
+        String containerDeploymentsPath = String.join("", "/", GreengrassITShared.DEPLOYMENTS);
 
-        String hostFunctionsPath = getHostPath("functions");
+        String hostFunctionsPath = GreengrassITShared.FUNCTIONS;
         MountableFile hostFunctionsMountableFile = MountableFile.forHostPath(new File(hostFunctionsPath).toPath());
-        String containerFunctionsPath = "/functions";
+        String containerFunctionsPath = String.join("", "/", GreengrassITShared.FUNCTIONS);
 
-        String hostGgdsPath = getHostPath("ggds");
+        String hostGgdsPath = GreengrassITShared.GGDS;
         MountableFile hostGgdsMountableFile = MountableFile.forHostPath(new File(hostGgdsPath).toPath());
-        String containerGgdsPath = "/ggds";
+        String containerGgdsPath = String.join("", "/", GreengrassITShared.GGDS);
 
         GenericContainer genericContainer = new GenericContainer<>(getContainerName())
                 .withCopyFileToContainer(hostAwsCredentialsMountableFile, containerAwsCredentialsPath)
@@ -127,11 +127,6 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         genericContainer.start();
 
         return genericContainer;
-    }
-
-    @NotNull
-    private String getHostPath(String foundation) {
-        return String.join("/", "..", "aws-greengrass-lambda-functions", foundation);
     }
 
     private void waitForContainerToFinish(GenericContainer genericContainer) {
