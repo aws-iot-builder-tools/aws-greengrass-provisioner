@@ -698,7 +698,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////
 
         log.info("Creating resource definition");
-        String resourceDefinitionVersionArn = greengrassHelper.createResourceDefinitionVersion(functionConfs);
+        String resourceDefinitionVersionArn = greengrassHelper.createResourceDefinitionFromFunctionConfs(functionConfs);
 
         /////////////////////////////////////////////////////////////////////////
         // Build the function definition for the Lambda function and a version //

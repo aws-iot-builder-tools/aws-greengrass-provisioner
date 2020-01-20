@@ -697,7 +697,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createResourceDefinitionVersion(List<FunctionConf> functionConfs) {
+    public String createResourceDefinitionFromFunctionConfs(List<FunctionConf> functionConfs) {
         // Log that the local resources from functions outside of the Greengrass container will be scrubbed
         functionConfs.stream()
                 .filter(functionConf -> !functionConf.isGreengrassContainer())
