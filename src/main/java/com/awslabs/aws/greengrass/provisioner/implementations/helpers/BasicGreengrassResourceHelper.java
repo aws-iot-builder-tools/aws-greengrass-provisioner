@@ -2,17 +2,13 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassResourceHelper;
-import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.*;
 
 import javax.inject.Inject;
-import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
-
-import static com.google.common.io.Resources.getResource;
 
 public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
     private final Logger log = LoggerFactory.getLogger(BasicGreengrassHelper.class);
@@ -23,37 +19,38 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
 
     @Override
     public void validateResourceDefinitionVersion(ResourceDefinitionVersion resourceDefinitionVersion) {
-        List<Resource> resourceList = resourceDefinitionVersion.resources();
+        List<Resource> resources = resourceDefinitionVersion.resources();
 
-        List<LocalDeviceResourceData> localDeviceResources = resourceList.stream()
+        List<LocalDeviceResourceData> localDeviceResources = resources.stream()
                 .map(res -> res.resourceDataContainer().localDeviceResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        disallowDuplicateLocalDeviceSourcePaths(localDeviceResources);
+        disallowDuplicateDeviceSourcePaths(localDeviceResources);
+        disallowDeviceSourcePathsNotInDev(localDeviceResources);
 
-        List<LocalVolumeResourceData> localVolumeResources = resourceList.stream()
+        List<LocalVolumeResourceData> localVolumeResources = resources.stream()
                 .map(res -> res.resourceDataContainer().localVolumeResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
-        disallowDuplicateLocalVolumeSourcePaths(localVolumeResources);
+        disallowDuplicateVolumeSourcePathsWithDifferentDestinationPaths(localVolumeResources);
 
-        List<S3MachineLearningModelResourceData> localS3Resources = resourceList.stream()
+        List<S3MachineLearningModelResourceData> localS3Resources = resources.stream()
                 .map(res -> res.resourceDataContainer().s3MachineLearningModelResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         disallowDuplicateS3DestinationPaths(localS3Resources);
 
-        List<SageMakerMachineLearningModelResourceData> localSageMakerResources = resourceList.stream()
+        List<SageMakerMachineLearningModelResourceData> localSageMakerResources = resources.stream()
                 .map(res -> res.resourceDataContainer().sageMakerMachineLearningModelResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         disallowDuplicateSageMakerDestinationPaths(localSageMakerResources);
 
-        List<SecretsManagerSecretResourceData> localSecretsManagerResources = resourceList.stream()
+        List<SecretsManagerSecretResourceData> localSecretsManagerResources = resources.stream()
                 .map(res -> res.resourceDataContainer().secretsManagerSecretResourceData())
                 .filter(Objects::nonNull)
                 .collect(Collectors.toList());
@@ -74,7 +71,7 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
                 .map(SecretsManagerSecretResourceData::arn)
                 .collect(Collectors.toList());
 
-        Optional<List<String>> duplicates = findDuplicates(secretArns);
+        Optional<List<String>> duplicates = findMultipleDestinations(secretArns);
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
@@ -86,36 +83,59 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
         }
     }
 
-    private void disallowDuplicateLocalDeviceSourcePaths(List<LocalDeviceResourceData> resources) {
+    private void disallowDuplicateDeviceSourcePaths(List<LocalDeviceResourceData> resources) {
         List<String> sourcePaths = resources.stream()
                 .map(LocalDeviceResourceData::sourcePath)
                 .collect(Collectors.toList());
 
-        Optional<List<String>> duplicates = findDuplicates(sourcePaths);
+        Optional<List<String>> duplicates = findMultipleDestinations(sourcePaths);
 
-        if (duplicates.isPresent()) {
-            String duplicatesString = duplicates.get().stream()
-                    .map(string -> "\"" + string + "\"")
-                    .collect(Collectors.joining(", "));
-
-            log.error("Duplicate local device resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
-            throw new RuntimeException("Invalid resource configuration");
+        if (!duplicates.isPresent()) {
+            return;
         }
+
+        String duplicatesString = duplicates.get().stream()
+                .map(string -> "\"" + string + "\"")
+                .collect(Collectors.joining(", "));
+
+        log.error("Duplicate local device resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+        throw new RuntimeException("Invalid resource configuration");
     }
 
-    private void disallowDuplicateLocalVolumeSourcePaths(List<LocalVolumeResourceData> resources) {
-        List<String> sourcePaths = resources.stream()
-                .map(LocalVolumeResourceData::sourcePath)
+    private void disallowDeviceSourcePathsNotInDev(List<LocalDeviceResourceData> resources) {
+        List<String> invalidSourcePaths = resources.stream()
+                .map(LocalDeviceResourceData::sourcePath)
+                .filter(sourcePath -> !sourcePath.startsWith("/dev"))
                 .collect(Collectors.toList());
 
-        Optional<List<String>> duplicates = findDuplicates(sourcePaths);
+        if (invalidSourcePaths.size() == 0) {
+            return;
+        }
 
-        if (duplicates.isPresent()) {
-            String duplicatesString = duplicates.get().stream()
-                    .map(string -> "\"" + string + "\"")
+        String invalidString = invalidSourcePaths.stream()
+                .map(string -> "\"" + string + "\"")
+                .collect(Collectors.joining(", "));
+
+        log.error("Local device resource source paths were specified outside of /dev [" + invalidString + "].  Greengrass will not accept this configuration.");
+        throw new RuntimeException("Invalid resource configuration");
+    }
+
+    private void disallowDuplicateVolumeSourcePathsWithDifferentDestinationPaths(List<LocalVolumeResourceData> resources) {
+        Map<String, Set<String>> map = new HashMap<>();
+
+        // Find the destination paths for each source path
+        resources.forEach(resource -> map.computeIfAbsent(resource.sourcePath(), x -> new HashSet<>()).add(resource.destinationPath()));
+
+        // Isolate the source paths with more than one destination path
+        Optional<List<Map.Entry<String, Set<String>>>> multipleDestinations = findMultipleDestinations(map);
+
+        if (multipleDestinations.isPresent()) {
+            String multipleDestinationsString = multipleDestinations.get().stream()
+                    .map(entry -> "Source [" + entry.getKey() + "], destinations [" + String.join(", ", entry.getValue()) + "]")
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local volume resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            log.error("Duplicate local volume resource destination paths defined [" + multipleDestinationsString + "].  Greengrass will not accept this configuration.");
+
             throw new RuntimeException("Invalid resource configuration");
         }
     }
@@ -125,7 +145,7 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
                 .map(SageMakerMachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
-        Optional<List<String>> duplicates = findDuplicates(sourcePaths);
+        Optional<List<String>> duplicates = findMultipleDestinations(sourcePaths);
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
@@ -142,7 +162,7 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
                 .map(S3MachineLearningModelResourceData::destinationPath)
                 .collect(Collectors.toList());
 
-        Optional<List<String>> duplicates = findDuplicates(sourcePaths);
+        Optional<List<String>> duplicates = findMultipleDestinations(sourcePaths);
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
@@ -154,7 +174,7 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
         }
     }
 
-    private Optional<List<String>> findDuplicates(List<String> inputList) {
+    private Optional<List<String>> findMultipleDestinations(List<String> inputList) {
         List<String> outputList = new ArrayList<>(inputList);
         Set<String> deduplicatedList = new HashSet<>(inputList);
 
