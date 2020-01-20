@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassResourceHelper;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
@@ -58,6 +59,14 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
                 .collect(Collectors.toList());
 
         disallowDuplicateSecretsManagerSecrets(localSecretsManagerResources);
+    }
+
+    @Override
+    public <R> List<R> flatMapResources(List<FunctionConf> functionConfs, java.util.function.Function<FunctionConf, List<R>> method) {
+        return functionConfs.stream()
+                .map(method)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
     }
 
     private void disallowDuplicateSecretsManagerSecrets(List<SecretsManagerSecretResourceData> resources) {
@@ -157,5 +166,17 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
         }
 
         return Optional.empty();
+    }
+
+    private Optional<List<Map.Entry<String, Set<String>>>> findMultipleDestinations(Map<String, Set<String>> inputMap) {
+        List<Map.Entry<String, Set<String>>> duplicates = inputMap.entrySet().stream()
+                .filter(entry -> entry.getValue().size() > 1)
+                .collect(Collectors.toList());
+
+        if (duplicates.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(duplicates);
     }
 }

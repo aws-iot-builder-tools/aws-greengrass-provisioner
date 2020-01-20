@@ -16,6 +16,8 @@ import software.amazon.awssdk.services.iot.model.ResourceNotFoundException;
 
 import javax.inject.Inject;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 public class BasicGreengrassHelper implements GreengrassHelper {
@@ -709,15 +711,35 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .filter(FunctionConf::isGreengrassContainer)
                 .collect(Collectors.toList());
 
+        // Only get the resources for functions in the container
+        List<LocalDeviceResource> localDeviceResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalDeviceResources);
+        List<LocalVolumeResource> localVolumeResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalVolumeResources);
+        List<LocalS3Resource> localS3Resources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalS3Resources);
+        List<LocalSageMakerResource> localSageMakerResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalSageMakerResources);
+        List<LocalSecretsManagerResource> localSecretsManagerResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalSecretsManagerResources);
+
+        return createResourceDefinition(localDeviceResources, localVolumeResources, localS3Resources, localSageMakerResources, localSecretsManagerResources);
+    }
+
+    public String createResourceDefinition(List<LocalDeviceResource> localDeviceResources, List<LocalVolumeResource> localVolumeResources, List<LocalS3Resource> localS3Resources, List<LocalSageMakerResource> localSageMakerResources, List<LocalSecretsManagerResource> localSecretsManagerResources) {
+        // Filter out duplicate devices (only the path needs to be the same)
+        localDeviceResources = localDeviceResources.stream()
+                .filter(distinctByKey(LocalDeviceResource::getPath))
+                .collect(Collectors.toList());
+
+        // Filter out duplicate volumes (only the source path needs to be the same)
+        localVolumeResources = localVolumeResources.stream()
+                .filter(distinctByKey(LocalVolumeResource::getPath))
+                .collect(Collectors.toList());
+
         List<Resource> resources = new ArrayList<>();
 
-        functionsInGreengrassContainer.forEach(functionConf -> {
-            resources.addAll(processLocalDeviceResources(functionConf));
-            resources.addAll(processLocalVolumeResources(functionConf));
-            resources.addAll(processLocalS3Resources(functionConf));
-            resources.addAll(processLocalSageMakerResources(functionConf));
-            resources.addAll(processLocalSecretsManagerResources(functionConf));
-        });
+        // Add those resources to the list
+        resources.addAll(processLocalDeviceResources(localDeviceResources));
+        resources.addAll(processLocalVolumeResources(localVolumeResources));
+        resources.addAll(processLocalS3Resources(localS3Resources));
+        resources.addAll(processLocalSageMakerResources(localSageMakerResources));
+        resources.addAll(processLocalSecretsManagerResources(localSecretsManagerResources));
 
         ResourceDefinitionVersion resourceDefinitionVersion = ResourceDefinitionVersion.builder()
                 .resources(resources)
@@ -733,6 +755,12 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         CreateResourceDefinitionResponse createResourceDefinitionResponse = greengrassClient.createResourceDefinition(createResourceDefinitionRequest);
 
         return createResourceDefinitionResponse.latestVersionArn();
+    }
+
+    // From https://stackoverflow.com/a/27872852/796579
+    public <T> Predicate<T> distinctByKey(java.util.function.Function<? super T, ?> keyExtractor) {
+        Set<Object> seen = ConcurrentHashMap.newKeySet();
+        return t -> seen.add(keyExtractor.apply(t));
     }
 
     private boolean functionConfHasLocalResources(FunctionConf functionConf) {
@@ -760,8 +788,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return false;
     }
 
-    private List<Resource> processLocalSageMakerResources(FunctionConf functionConf) {
-        return functionConf.getLocalSageMakerResources().stream()
+    private List<Resource> processLocalSageMakerResources(List<LocalSageMakerResource> localSageMakerResources) {
+        return localSageMakerResources.stream()
                 .map(this::processLocalSageMakerResource)
                 .collect(Collectors.toList());
     }
@@ -779,8 +807,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localSageMakerResource.getName(), localSageMakerResource.getName());
     }
 
-    private List<Resource> processLocalSecretsManagerResources(FunctionConf functionConf) {
-        return functionConf.getLocalSecretsManagerResources().stream()
+    private List<Resource> processLocalSecretsManagerResources(List<LocalSecretsManagerResource> localSecretsManagerResources) {
+        return localSecretsManagerResources.stream()
                 .map(this::processLocalSecretsManagerResource)
                 .collect(Collectors.toList());
     }
@@ -797,8 +825,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localSecretsManagerResource.getResourceName(), localSecretsManagerResource.getResourceName());
     }
 
-    private List<Resource> processLocalS3Resources(FunctionConf functionConf) {
-        return functionConf.getLocalS3Resources().stream()
+    private List<Resource> processLocalS3Resources(List<LocalS3Resource> localS3Resources) {
+        return localS3Resources.stream()
                 .map(this::processLocalS3Resource)
                 .collect(Collectors.toList());
     }
@@ -816,8 +844,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localS3Resource.getName(), localS3Resource.getName());
     }
 
-    private List<Resource> processLocalVolumeResources(FunctionConf functionConf) {
-        return functionConf.getLocalVolumeResources().stream()
+    private List<Resource> processLocalVolumeResources(List<LocalVolumeResource> localVolumeResources) {
+        return localVolumeResources.stream()
                 .map(this::processLocalVolumeResource)
                 .collect(Collectors.toList());
     }
@@ -840,8 +868,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return createResource(resourceDataContainer, localVolumeResource.getName(), localVolumeResource.getName());
     }
 
-    private List<Resource> processLocalDeviceResources(FunctionConf functionConf) {
-        return functionConf.getLocalDeviceResources().stream()
+    private List<Resource> processLocalDeviceResources(List<LocalDeviceResource> localDeviceResources) {
+        return localDeviceResources.stream()
                 .map(this::processLocalDeviceResource)
                 .collect(Collectors.toList());
     }
