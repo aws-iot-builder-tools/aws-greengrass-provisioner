@@ -26,7 +26,6 @@ import static org.hamcrest.CoreMatchers.*;
 // NOTE: Ignoring these tests since currently testcontainers throws a java.lang.OutOfMemoryError on every test
 @Ignore
 public class GreengrassBuildWithDockerDeploymentsIT {
-    public static final String AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY = "../aws-greengrass-lambda-functions";
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
@@ -94,7 +93,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private String getContainerName() {
-        return String.join(":", GreengrassITShared.TIMMATTISON_AWS_GREENGRASS_PROVISIONER, getBranch());
+        return String.join(":", GreengrassITShared.DOCKERHUB_TIMMATTISON_AWS_GREENGRASS_PROVISIONER, getBranch());
     }
 
     private GenericContainer startAndGetContainer(String arguments) {
@@ -228,7 +227,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 11: Reuse Python 3 Hello World in another group with Docker
     @Test
     public void shouldReusePython3FunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.HELLO_WORLD_PYTHON_3_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.HELLO_WORLD_PYTHON_3_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
@@ -240,7 +239,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 12: Reuse Java benchmark in another group with Docker
     @Test
     public void shouldReuseJavaFunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.BENCHMARK_JAVA_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_JAVA_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
@@ -252,7 +251,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 13: Fail to reuse Java benchmark in another group with Docker
     @Test
     public void shouldFailToReuseBroadPatternFunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.BENCHMARK_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
