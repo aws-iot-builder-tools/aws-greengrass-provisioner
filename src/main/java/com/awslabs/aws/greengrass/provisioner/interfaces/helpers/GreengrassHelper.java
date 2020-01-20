@@ -60,7 +60,7 @@ public interface GreengrassHelper {
 
     DeploymentStatus waitForDeploymentStatusToChange(String groupId, String deploymentId);
 
-    String createResourceDefinitionVersion(List<FunctionConf> functionConfs);
+    String createResourceDefinitionFromFunctionConfs(List<FunctionConf> functionConfs);
 
     Device getDevice(String thingName);
 

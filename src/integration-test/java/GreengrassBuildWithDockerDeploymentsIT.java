@@ -4,7 +4,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
-import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.slf4j.Logger;
@@ -24,9 +23,8 @@ import java.util.concurrent.TimeUnit;
 import static org.hamcrest.CoreMatchers.*;
 
 // NOTE: Ignoring these tests since currently testcontainers throws a java.lang.OutOfMemoryError on every test
-@Ignore
 public class GreengrassBuildWithDockerDeploymentsIT {
-    public static final String AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY = "../aws-greengrass-lambda-functions";
+    public static final String DOT_AWS = ".aws";
     private static final Matcher<Integer> EXIT_CODE_IS_ZERO = equalTo(0);
     private static final Matcher<Integer> EXIT_CODE_IS_NOT_ZERO = not(EXIT_CODE_IS_ZERO);
     private static Logger log = LoggerFactory.getLogger(GreengrassBuildWithDockerDeploymentsIT.class);
@@ -94,29 +92,29 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private String getContainerName() {
-        return String.join(":", GreengrassITShared.TIMMATTISON_AWS_GREENGRASS_PROVISIONER, getBranch());
+        return String.join(":", GreengrassITShared.DOCKERHUB_TIMMATTISON_AWS_GREENGRASS_PROVISIONER, getBranch());
     }
 
     private GenericContainer startAndGetContainer(String arguments) {
-        String hostAwsCredentialsPath = String.join("/", getHome(), ".aws");
+        String hostAwsCredentialsPath = String.join("/", getHome(), DOT_AWS);
         MountableFile hostAwsCredentialsMountableFile = MountableFile.forHostPath(new File(hostAwsCredentialsPath).toPath());
-        String containerAwsCredentialsPath = "/root/.aws";
+        String containerAwsCredentialsPath = String.join("", "/root/", DOT_AWS);
 
-        String hostFoundationPath = getHostPath("foundation");
+        String hostFoundationPath = GreengrassITShared.FOUNDATION;
         MountableFile hostFoundationMountableFile = MountableFile.forHostPath(new File(hostFoundationPath).toPath());
-        String containerFoundationPath = "/foundation";
+        String containerFoundationPath = String.join("", "/", GreengrassITShared.FOUNDATION);
 
-        String hostDeploymentsPath = getHostPath("deployments");
+        String hostDeploymentsPath = GreengrassITShared.DEPLOYMENTS;
         MountableFile hostDeploymentsMountableFile = MountableFile.forHostPath(new File(hostDeploymentsPath).toPath());
-        String containerDeploymentsPath = "/deployments";
+        String containerDeploymentsPath = String.join("", "/", GreengrassITShared.DEPLOYMENTS);
 
-        String hostFunctionsPath = getHostPath("functions");
+        String hostFunctionsPath = GreengrassITShared.FUNCTIONS;
         MountableFile hostFunctionsMountableFile = MountableFile.forHostPath(new File(hostFunctionsPath).toPath());
-        String containerFunctionsPath = "/functions";
+        String containerFunctionsPath = String.join("", "/", GreengrassITShared.FUNCTIONS);
 
-        String hostGgdsPath = getHostPath("ggds");
+        String hostGgdsPath = GreengrassITShared.GGDS;
         MountableFile hostGgdsMountableFile = MountableFile.forHostPath(new File(hostGgdsPath).toPath());
-        String containerGgdsPath = "/ggds";
+        String containerGgdsPath = String.join("", "/", GreengrassITShared.GGDS);
 
         GenericContainer genericContainer = new GenericContainer<>(getContainerName())
                 .withCopyFileToContainer(hostAwsCredentialsMountableFile, containerAwsCredentialsPath)
@@ -129,11 +127,6 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         genericContainer.start();
 
         return genericContainer;
-    }
-
-    @NotNull
-    private String getHostPath(String foundation) {
-        return String.join("/", "..", "aws-greengrass-lambda-functions", foundation);
     }
 
     private void waitForContainerToFinish(GenericContainer genericContainer) {
@@ -228,7 +221,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 11: Reuse Python 3 Hello World in another group with Docker
     @Test
     public void shouldReusePython3FunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.HELLO_WORLD_PYTHON_3_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.HELLO_WORLD_PYTHON_3_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
@@ -240,7 +233,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 12: Reuse Java benchmark in another group with Docker
     @Test
     public void shouldReuseJavaFunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.BENCHMARK_JAVA_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_JAVA_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
@@ -252,7 +245,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     // Test set 13: Fail to reuse Java benchmark in another group with Docker
     @Test
     public void shouldFailToReuseBroadPatternFunctionWithDocker() throws IOException {
-        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.of(AWS_GREENGRASS_LAMBDA_FUNCTIONS_VIA_PARENT_DIRECTORY), GreengrassITShared.BENCHMARK_PROD_PARTIAL, greengrassITShared.getGroupName());
+        File tempDeploymentConfFile = greengrassITShared.setupReusedFunctionDeploymentConf(Optional.empty(), GreengrassITShared.BENCHMARK_PROD_PARTIAL, greengrassITShared.getGroupName());
 
         // Build it
         runContainer(greengrassITShared.getBenchmarkDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
