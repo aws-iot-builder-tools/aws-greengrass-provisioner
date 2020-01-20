@@ -66,7 +66,7 @@ class GreengrassITShared {
 
         FileUtils.copyDirectory(GreengrassITShared.MASTER_DEPLOYMENTS, GreengrassITShared.TEMP_DEPLOYMENTS);
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FOUNDATION, GreengrassITShared.TEMP_FOUNDATION);
-       
+
         IOFileFilter ignoreVenvDirectories = FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("venv"));
 
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ignoreVenvDirectories);
