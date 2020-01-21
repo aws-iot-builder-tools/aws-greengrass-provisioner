@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.DeviceTesterLogMessageType;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import com.jcraft.jsch.Session;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;

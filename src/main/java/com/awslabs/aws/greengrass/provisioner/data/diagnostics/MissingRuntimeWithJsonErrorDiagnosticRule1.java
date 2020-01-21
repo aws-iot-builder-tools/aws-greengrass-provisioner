@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 
 import javax.inject.Inject;
 import java.util.Collections;
