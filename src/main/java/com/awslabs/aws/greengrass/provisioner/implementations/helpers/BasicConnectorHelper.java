@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2S3Helper;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import io.vavr.Tuple2;
@@ -30,7 +31,7 @@ public class BasicConnectorHelper implements ConnectorHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    S3Helper s3Helper;
+    V2S3Helper s3Helper;
 
     @Inject
     public BasicConnectorHelper() {

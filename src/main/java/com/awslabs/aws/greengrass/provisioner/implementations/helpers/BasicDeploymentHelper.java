@@ -12,6 +12,7 @@ import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengra
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -83,7 +84,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     ScriptHelper scriptHelper;
     @Inject
-    IamHelper iamHelper;
+    V2IamHelper iamHelper;
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
@@ -1360,7 +1361,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         iamHelper.attachRolePolicies(role, roleConf.getIamManagedPolicies());
 
-        iamHelper.putInlinePolicy(role, roleConf.getIamPolicy());
+        iamHelper.putInlinePolicy(role, "inline-by-ggp", roleConf.getIamPolicy());
 
         return role;
     }
