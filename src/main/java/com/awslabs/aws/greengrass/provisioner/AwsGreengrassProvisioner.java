@@ -1,7 +1,8 @@
 package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.Operation;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SdkErrorHandler;
+import com.awslabs.aws.iot.resultsiterator.helpers.v2.V2HelperModule;
+import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2SdkErrorHandler;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.ProvisionException;
@@ -27,14 +28,14 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     public static void main(String[] args) {
-        SdkErrorHandler sdkErrorHandler = getSdkErrorHandler();
+        V2SdkErrorHandler sdkErrorHandler = getSdkErrorHandler();
 
         Try.run(() -> runProvisioner(args))
                 .onFailure(throwable -> handleProvisionerFailure(sdkErrorHandler, throwable))
                 .get();
     }
 
-    private static void handleProvisionerFailure(SdkErrorHandler sdkErrorHandler, Throwable throwable) {
+    private static void handleProvisionerFailure(V2SdkErrorHandler sdkErrorHandler, Throwable throwable) {
         // Sometimes dependency injection exceptions mask the actual SDK exception
         if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
             throwable = throwable.getCause();
@@ -64,8 +65,8 @@ public class AwsGreengrassProvisioner implements Runnable {
         awsGreengrassProvisioner.run();
     }
 
-    public static SdkErrorHandler getSdkErrorHandler() {
-        return getInjector().getInstance(SdkErrorHandler.class);
+    public static V2SdkErrorHandler getSdkErrorHandler() {
+        return getInjector().getInstance(V2SdkErrorHandler.class);
     }
 
     public static AwsGreengrassProvisioner getAwsGreengrassProvisioner() {
@@ -74,7 +75,7 @@ public class AwsGreengrassProvisioner implements Runnable {
 
     public static Injector getInjector() {
         if (!optionalInjector.isPresent()) {
-            optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule()));
+            optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule(), new V2HelperModule()));
         }
 
         return optionalInjector.get();

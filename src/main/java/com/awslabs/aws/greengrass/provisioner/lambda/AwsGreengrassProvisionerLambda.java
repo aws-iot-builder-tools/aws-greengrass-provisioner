@@ -7,7 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import io.vavr.control.Try;
 
 import javax.inject.Inject;

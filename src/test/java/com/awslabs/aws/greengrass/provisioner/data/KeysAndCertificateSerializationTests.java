@@ -1,9 +1,8 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.implementations.BasicJsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import org.hamcrest.MatcherAssert;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import software.amazon.awssdk.services.iot.model.KeyPair;

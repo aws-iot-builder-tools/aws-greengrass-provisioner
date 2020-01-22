@@ -4,6 +4,8 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.DeviceTesterLogMessageType;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
 import com.jcraft.jsch.Session;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -61,7 +63,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     @Inject
     IoHelper ioHelper;
     @Inject
-    IamHelper iamHelper;
+    V2IamHelper iamHelper;
     @Inject
     ProcessHelper processHelper;
     @Inject

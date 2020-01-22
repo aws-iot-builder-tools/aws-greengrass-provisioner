@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;

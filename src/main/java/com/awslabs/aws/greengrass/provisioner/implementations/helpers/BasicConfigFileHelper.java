@@ -4,7 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments
 import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ConfigFileHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import software.amazon.awssdk.regions.Region;
 
 import javax.inject.Inject;

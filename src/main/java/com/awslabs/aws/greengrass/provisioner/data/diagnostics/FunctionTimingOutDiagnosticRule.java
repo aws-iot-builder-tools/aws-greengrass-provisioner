@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import io.vavr.Tuple3;
 import software.amazon.awssdk.services.cloudwatchlogs.model.LogGroup;
 import software.amazon.awssdk.services.cloudwatchlogs.model.LogStream;

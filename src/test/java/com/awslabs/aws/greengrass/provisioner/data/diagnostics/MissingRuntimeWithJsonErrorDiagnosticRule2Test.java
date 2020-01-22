@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 
-import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicJsonHelper;
+import com.awslabs.aws.iot.resultsiterator.helpers.implementations.BasicJsonHelper;
 import io.vavr.Tuple;
 import io.vavr.Tuple3;
 import org.hamcrest.MatcherAssert;
