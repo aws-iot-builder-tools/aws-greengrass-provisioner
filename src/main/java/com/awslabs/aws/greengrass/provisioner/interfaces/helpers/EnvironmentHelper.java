@@ -8,6 +8,7 @@ public interface EnvironmentHelper {
     String AWS_IOT_THING_ARN = "AWS_IOT_THING_ARN";
     String AWS_GREENGRASS_GROUP_NAME = "AWS_GREENGRASS_GROUP_NAME";
     String REGION = "REGION";
+    String ACCOUNT_ID = "ACCOUNT_ID";
 
     Map<String, String> getDefaultEnvironment(String groupId, String coreThingName, String coreThingArn, String groupName);
 }

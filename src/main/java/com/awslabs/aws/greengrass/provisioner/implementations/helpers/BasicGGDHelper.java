@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableGGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.EnvironmentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGDHelper;
 import com.typesafe.config.Config;
@@ -59,7 +60,7 @@ public class BasicGGDHelper implements GGDHelper {
 
     private GGDConf innerGetGgdConf(String groupName, String ggdName, File ggdConfigFile, File scriptPath, ImmutableGGDConf.Builder ggdConfBuilder) {
         Config config = ConfigFactory.parseFile(ggdConfigFile);
-        config = config.withValue("GROUP_NAME", ConfigValueFactory.fromAnyRef(groupName));
+        config = config.withValue(EnvironmentHelper.AWS_GREENGRASS_GROUP_NAME, ConfigValueFactory.fromAnyRef(groupName));
         Config fallback = ConfigFactory.parseFile(new File(ggConstants.getGgdDefaultsConf()));
         config = config.withFallback(fallback);
         config = config.resolve();

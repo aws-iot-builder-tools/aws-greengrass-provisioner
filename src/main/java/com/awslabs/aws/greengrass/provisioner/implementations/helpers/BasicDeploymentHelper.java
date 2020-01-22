@@ -147,7 +147,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @Override
-    public DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName) {
+    public DeploymentConf getDeploymentConf(String coreThingName, String deploymentConfigFilename, String groupName) {
         File deploymentConfigFile = new File(deploymentConfigFilename);
 
         if (!deploymentConfigFile.exists()) {
@@ -155,8 +155,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
-                .withValue("ACCOUNT_ID", ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
-                .withValue("REGION", ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
+                .withValue(EnvironmentHelper.ACCOUNT_ID, ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
+                .withValue(EnvironmentHelper.REGION, ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
+                .withValue(EnvironmentHelper.AWS_IOT_THING_NAME, ConfigValueFactory.fromAnyRef(coreThingName))
                 .withFallback(getFallbackConfig())
                 .resolve();
 
@@ -341,6 +342,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Make the directories for build, if necessary
         ioHelper.createDirectoryIfNecessary(ggConstants.getBuildDirectory());
 
+        // Get the core thing name
+        String coreThingName = ggVariables.getCoreThingName(deploymentArguments.groupName);
+
         ///////////////////////////////////////
         // Load the deployment configuration //
         ///////////////////////////////////////
@@ -350,7 +354,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (isEmptyDeployment(deploymentArguments)) {
             deploymentConf = getEmptyDeploymentConf(deploymentArguments);
         } else {
-            deploymentConf = Try.of(() -> getDeploymentConf(deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
+            deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
                     .get();
         }
 
@@ -405,7 +409,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////
 
         log.info("Creating core thing");
-        String coreThingName = ggVariables.getCoreThingName(deploymentArguments.groupName);
         String coreThingArn = iotHelper.createThing(coreThingName);
 
         //////////////////////////////////

@@ -10,7 +10,7 @@ public interface DeploymentHelper extends Operation<DeploymentArguments> {
     String EMPTY = "EMPTY";
     String CORE_SUB_NAME = "core";
 
-    DeploymentConf getDeploymentConf(String deploymentConfigFilename, String groupName);
+    DeploymentConf getDeploymentConf(String coreThingName, String deploymentConfigFilename, String groupName);
 
     void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId);
 
