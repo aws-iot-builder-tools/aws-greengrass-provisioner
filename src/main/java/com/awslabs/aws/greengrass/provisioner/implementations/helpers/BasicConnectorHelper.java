@@ -68,18 +68,15 @@ public class BasicConnectorHelper implements ConnectorHelper {
     private ConnectorConf getConnectorConf(Config defaultConfig, File connectorConfFile) {
         ImmutableConnectorConf.Builder connectorConfBuilder = ImmutableConnectorConf.builder();
 
-        Config config = ConfigFactory.parseFile(connectorConfFile);
-
         Config connectorDefaults = ggVariables.getConnectorDefaults();
 
-        // Use the connector.defaults.conf values
-        config = config.withFallback(connectorDefaults);
-
-        // Use the default config (environment) values
-        config = config.withFallback(defaultConfig);
-
-        // Resolve the entire fallback config
-        config = config.resolve();
+        Config config = ConfigFactory.parseFile(connectorConfFile)
+                // Use the connector.defaults.conf values
+                .withFallback(connectorDefaults)
+                // Use the default config (environment) values
+                .withFallback(defaultConfig)
+                // Resolve the entire fallback config
+                .resolve();
 
         connectorConfBuilder.fromCloudSubscriptions(config.getStringList(GGConstants.CONF_FROM_CLOUD_SUBSCRIPTIONS));
         connectorConfBuilder.toCloudSubscriptions(config.getStringList(GGConstants.CONF_TO_CLOUD_SUBSCRIPTIONS));
