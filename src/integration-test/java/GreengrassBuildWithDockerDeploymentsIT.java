@@ -130,7 +130,8 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private void waitForContainerToFinish(GenericContainer genericContainer) {
-        /* Can be used when debugging
+        // Can be used when debugging
+        /*
         Slf4jLogConsumer logConsumer = new Slf4jLogConsumer(log);
         genericContainer.followOutput(logConsumer);
          */

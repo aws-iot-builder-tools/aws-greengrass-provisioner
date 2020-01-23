@@ -1,4 +1,4 @@
-FROM openjdk:8
+FROM amazoncorretto:11-al2-full
 
 COPY build.gradle /build/
 COPY gradlew /build/
