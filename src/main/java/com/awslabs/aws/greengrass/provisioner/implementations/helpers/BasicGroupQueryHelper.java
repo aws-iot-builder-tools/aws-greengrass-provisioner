@@ -7,6 +7,8 @@ import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import io.vavr.control.Try;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.io.FileUtils;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
@@ -19,8 +21,10 @@ import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class BasicGroupQueryHelper implements GroupQueryHelper {
     public static final String BUILD_DIRECTORY = "build/";
@@ -133,7 +137,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.downloadLogs) {
-            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
+            Stream<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
 
             File directory = cleanAndCreateDirectory(queryArguments.groupName);
 
@@ -150,15 +154,14 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.watchLogs) {
-            List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
+            Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
 
-            List<Tuple3<LogGroup, LogStream, String>> logGroupStreamAndForwardTokens = logEvents.stream()
-                    .map(this::getNextForwardTokenForEvents)
-                    .collect(Collectors.toList());
+            Stream<Tuple3<LogGroup, LogStream, String>> logGroupStreamAndForwardTokens = logEvents
+                    .map(this::getNextForwardTokenForEvents);
 
             do {
                 // Get the new events using the forward tokens
-                List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> newEvents = logGroupStreamAndForwardTokens.stream()
+                List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> newEvents = logGroupStreamAndForwardTokens
                         .map(this::getLogEvents)
                         .collect(Collectors.toList());
 
@@ -167,8 +170,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
                 // Get the next set of forward tokens
                 logGroupStreamAndForwardTokens = newEvents.stream()
-                        .map(this::getNextForwardTokenForEvents)
-                        .collect(Collectors.toList());
+                        .map(this::getNextForwardTokenForEvents);
 
                 // Sleep so we don't hit the CloudWatch Logs APIs too much
                 ioHelper.sleep(1000);
@@ -176,7 +178,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.diagnose) {
-            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
+            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation)
+                    .collect(Collectors.toList());
 
             if (!topLevelLogsPresent(logs)) {
                 log.error("Not all of the Greengrass logs are present in CloudWatch. Turn on CloudWatch logging in your Greengrass group, redeploy, and try again.");
@@ -200,17 +203,14 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         return presentLogGroups.containsAll(greengrassTopLevelLogNames);
     }
 
-    @NotNull
-    private List<Tuple3<LogGroup, LogStream, String>> getLatestLogMessagesForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
-        List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
+    private Stream<Tuple3<LogGroup, LogStream, String>> getLatestLogMessagesForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
+        Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
 
-        return logEvents.stream()
-                .map(this::formatLogEvents)
-                .collect(Collectors.toList());
+        return logEvents
+                .map(this::formatLogEvents);
     }
 
-    @NotNull
-    private List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLatestLogEventsForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
+    private Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLatestLogEventsForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
         List<LogGroup> allLogGroups = getAllLogGroupsForGreengrassGroup(groupInformation);
 
         List<Tuple2<LogGroup, LogStream>> allLogStreams = getAllLogStreamsForGreengrassGroup(queryArguments, allLogGroups);
@@ -242,11 +242,9 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         return Tuple.of(logGroupStreamAndEvents._1, logGroupStreamAndEvents._2, logGroupStreamAndEvents._3.nextForwardToken());
     }
 
-    @NotNull
-    private List<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLogEventsForLogStreams(List<Tuple2<LogGroup, LogStream>> allLogStreams) {
+    private Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLogEventsForLogStreams(List<Tuple2<LogGroup, LogStream>> allLogStreams) {
         return allLogStreams.stream()
-                .map(this::getLogEvents)
-                .collect(Collectors.toList());
+                .map(this::getLogEvents);
     }
 
     @NotNull
@@ -442,7 +440,21 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 .logStreamName(logStream.logStreamName())
                 .build();
 
-        return Tuple.of(logGroup, logStream, cloudWatchLogsClient.getLogEvents(getLogEventsRequest));
+        GetLogEventsResponse getLogEventsResponse = safeGetLogEvents(getLogEventsRequest);
+
+        return Tuple.of(logGroup, logStream, getLogEventsResponse);
+    }
+
+    private GetLogEventsResponse safeGetLogEvents(GetLogEventsRequest getLogEventsRequest) {
+        RetryPolicy<GetLogEventsResponse> getLogEventsResponseRetryPolicy = new RetryPolicy<GetLogEventsResponse>()
+                .handleIf(throwable -> throwable.getMessage().contains("Rate exceeded"))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(3)
+                .onRetry(failure -> log.warn("Rate exceeded for CloudWatchEvents GetLogEvents. Temporarily backing off."))
+                .onRetriesExceeded(failure -> log.error("Rate exceeded multiple times, giving up"));
+
+        return Failsafe.with(getLogEventsResponseRetryPolicy).get(() ->
+                cloudWatchLogsClient.getLogEvents(getLogEventsRequest));
     }
 
     private Tuple3<LogGroup, LogStream, GetLogEventsResponse> getLogEvents(Tuple3<LogGroup, LogStream, String> logGroupStreamAndForwardToken) {
@@ -456,6 +468,6 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 .nextToken(forwardToken)
                 .build();
 
-        return Tuple.of(logGroup, logStream, cloudWatchLogsClient.getLogEvents(getLogEventsRequest));
+        return Tuple.of(logGroup, logStream, safeGetLogEvents(getLogEventsRequest));
     }
 }
