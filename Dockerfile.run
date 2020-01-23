@@ -1,12 +1,8 @@
-FROM ubuntu:18.04
+FROM amazoncorretto:11-al2-full
 
-# Update package manager
-RUN apt-get update -y && apt-get upgrade -y && \
-    apt-get -y clean
-
-# Install wget so we can fetch Device Tester
-RUN apt-get install -y wget libdigest-sha-perl && \
-    apt-get -y clean
+# Install wget so we can fetch Device Tester and shasum so we can validate it
+RUN yum install -y wget perl-Digest-SHA && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Fetch and validate Device Tester
 RUN cd / && \
@@ -14,36 +10,43 @@ RUN cd / && \
     wget --referer=https://aws.amazon.com/greengrass/device-tester/ https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_linux_1.3.2.zip && \
     shasum -c /devicetester_greengrass_linux_1.3.2.zip.sha
 
-# Install JDK 8 so Java functions can be built, JRE 11 to run GGP
-RUN apt-get install -y openjdk-8-jdk-headless openjdk-11-jre-headless && \
-    apt-get -y clean
+# Install JDK 8 so Java functions can be built
+RUN amazon-linux-extras enable corretto8 && \
+    yum install -y java-1.8.0-amazon-corretto-devel && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install pip so Python 2 functions can be built
-RUN apt-get install -y python-pip && \
-    apt-get -y clean
+RUN yum install -y python2-pip python2 python2-setuptools && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install pip so Python 3 functions can be built
-RUN apt-get install -y python3-pip && \
-    apt-get -y clean
+RUN yum install -y python3-pip python3 python3-setuptools && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install NodeJS and npm so Node functions can be built
-RUN apt-get install -y npm && \
-    apt-get -y clean
+RUN yum install -y gcc-c++ make && \
+    curl -sL https://rpm.nodesource.com/setup_12.x | bash - && \
+    yum install -y nodejs && \
+    yum clean all && rm -rf /var/cache/yum
+
+# Install unzip so we can unzip Gradle
+RUN yum install -y unzip
 
 # Install latest version of Gradle with sources to speed up Java builds. Lambda function developers need sources but we don't so we clear them out.
 #   If we just install the version without sources though it will still attempt to download the distribution each time since it is named differently.
 #   Therefore we download the sources distribution but clean out the components we don't need.
-RUN apt-get install -y gradle && \
-    mkdir temp && \
+RUN wget -c https://services.gradle.org/distributions/gradle-6.1-all.zip && \
+    mkdir -p /opt/gradle && \
+    unzip -d /opt/gradle gradle-6.1-all.zip
+
+RUN mkdir temp && \
     cd temp && \
-    gradle init && \
-    gradle wrapper --gradle-version 6.0 --distribution-type all && \
+    /opt/gradle/gradle-6.1/bin/gradle init && \
+    /opt/gradle/gradle-6.1/bin/gradle wrapper --gradle-version 6.1 --distribution-type all && \
     ./gradlew tasks && \
     cd .. && \
     rm -rf temp && \
-    apt-get --purge -y remove gradle && \
-    apt-get --purge -y autoremove && \
-    apt-get -y clean && \
+    rm -f gradle*zip && \
     rm -rf /root/.gradle/wrapper/dists/*/*/*/src \
            /root/.gradle/wrapper/dists/*/*/*/samples \
            /root/.gradle/wrapper/dists/*/*/*/media \
@@ -51,24 +54,14 @@ RUN apt-get install -y gradle && \
            /root/.gradle/wrapper/dists/*/*/*/docs
 
 # Added Docker CLI to allow Docker builds of native functions inside of the container
-RUN apt-get -y install \
-    apt-transport-https \
-    ca-certificates \
-    curl \
-    gnupg-agent \
-    software-properties-common && \
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add - && \
-    add-apt-repository \
-      "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-      $(lsb_release -cs) \
-      stable" && \
-    apt-get update && \
-    apt-get -y install docker-ce-cli && \
-    apt-get --purge -y autoremove && \
-    apt-get -y clean
+RUN yum install -y yum-utils && \
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
+    yum install -y docker-ce-cli && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install zip since native builds require it
-RUN apt-get install -y zip
+RUN yum install -y zip && \
+    yum clean all && rm -rf /var/cache/yum
 
 # Install the protobuf compiler so functions can use it in their build process
 RUN wget https://github.com/protocolbuffers/protobuf/releases/download/v3.11.1/protoc-3.11.1-linux-x86_64.zip && \
