@@ -59,6 +59,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     IoHelper ioHelper;
     @Inject
     SecretsManagerHelper secretsManagerHelper;
+    @Inject
+    TypeSafeConfigHelper typeSafeConfigHelper;
 
     @Inject
     public BasicFunctionHelper() {
@@ -379,6 +381,18 @@ public class BasicFunctionHelper implements FunctionHelper {
                 functionConfBuilder.cfTemplate(cfTemplate);
             }
         }
+
+        // Optional string lists for core role
+        functionConfBuilder.coreRoleIamManagedPolicies(typeSafeConfigHelper.getStringListOrReturnEmpty(config, "conf.coreRoleIamManagedPolicies"));
+
+        // Optional JSON policy for core role
+        functionConfBuilder.coreRoleIamPolicy(typeSafeConfigHelper.getObjectAndRenderOrReturnEmpty(config, "conf.coreRoleIamPolicy"));
+
+        // Optional string lists for service role
+        functionConfBuilder.serviceRoleIamManagedPolicies(typeSafeConfigHelper.getStringListOrReturnEmpty(config, "conf.serviceRoleIamManagedPolicies"));
+
+        // Optional JSON policy for service role
+        functionConfBuilder.serviceRoleIamPolicy(typeSafeConfigHelper.getObjectAndRenderOrReturnEmpty(config, "conf.serviceRoleIamPolicy"));
 
         return functionConfBuilder.build();
     }

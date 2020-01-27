@@ -72,4 +72,12 @@ public abstract class FunctionConf {
     public String getGroupFunctionName() {
         return String.join("-", getGroupName(), getFunctionName());
     }
+
+    public abstract Optional<List<String>> getCoreRoleIamManagedPolicies();
+
+    public abstract Optional<String> getCoreRoleIamPolicy();
+
+    public abstract Optional<List<String>> getServiceRoleIamManagedPolicies();
+
+    public abstract Optional<String> getServiceRoleIamPolicy();
 }
