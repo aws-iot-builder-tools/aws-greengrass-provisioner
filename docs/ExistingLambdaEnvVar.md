@@ -1,6 +1,6 @@
 # Supported GGP Environment Variables for existing Lambda deployment
-
-Given the following configuration:
+If you want to create a new GG group using an existing Lambda function you need to set a ```GGP_FUNCTION_CONF``` environment variable inside your Lambda.
+For example, given the following configuration stored as `value` of the ```GGP_FUNCTION_CONF```:
 ```bash
 conf {
     language = "PYTHON2_7",
@@ -37,7 +37,7 @@ The parameters are:
   - Java 8 (```JAVA8```)
   - C, C++ and any language that supports importing C libraries (```EXECUTABLE```)
 - ```functionName```: name of the function
-- [handlerName][handlerName]: At the time you create a Lambda function, you specify a handler, which is a function in your code, that AWS Lambda can invoke when the service executes your code. 
+- [handlerName][handlerName]: when you create a Lambda function, you have to specify a handler, which is a function that AWS invokes when the Lambda is is executed.
 - [aliasName][aliasName]: you can create one or more aliases for your AWS Lambda function. A Lambda alias is like a pointer to a specific Lambda function version. Users can access the function version using the alias ARN.
 - [pinned][pinned]: True if the function is pinned. Pinned means the function is long-lived and starts when the core starts.
 - [functionBinary][functionBinary]: this corresponds to the ```EncodingType```. The expected encoding type of the input payload for the function. The default is json.
