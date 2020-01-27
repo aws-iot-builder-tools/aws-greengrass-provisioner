@@ -63,7 +63,7 @@ public class BasicIotHelper implements IotHelper {
     }
 
     private String recoverFromResourceAlreadyExistsException(String name, ResourceAlreadyExistsException throwable) {
-        if (throwable.getMessage().contains("with different tags")) {
+        if (throwable.getMessage().contains("with different attributes")) {
             log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
 
             DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
