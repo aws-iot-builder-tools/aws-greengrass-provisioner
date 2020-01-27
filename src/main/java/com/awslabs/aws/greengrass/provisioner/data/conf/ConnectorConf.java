@@ -26,4 +26,12 @@ public abstract class ConnectorConf {
     public abstract List<String> getInputTopics();
 
     public abstract Connector getConnector();
+
+    public abstract Optional<List<String>> getCoreRoleIamManagedPolicies();
+
+    public abstract Optional<String> getCoreRoleIamPolicy();
+
+    public abstract Optional<List<String>> getServiceRoleIamManagedPolicies();
+
+    public abstract Optional<String> getServiceRoleIamPolicy();
 }

@@ -410,6 +410,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         List<FunctionConf> functionConfs = getFunctionConfs(deploymentConf, defaultFunctionIsolationMode, defaultConfig);
 
+        ///////////////////////////
+        // Create the connectors //
+        ///////////////////////////
+
+        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
+
+        log.info("Creating connector definition");
+        Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Merge any additional permissions that the functions need into the core and service role configurations //
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -433,6 +442,38 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             List<String> additionalServiceRoleIamManagedPolicies = getRoleIamManagedPolicies(functionConfs.stream()
                     .map(FunctionConf::getServiceRoleIamManagedPolicies));
+
+            RoleConf mergedServiceRoleConf = mergeRoleConf(deploymentConf.getServiceRoleConf().get(), additionalServiceRoleIamPolicies, additionalServiceRoleIamManagedPolicies);
+
+            // Use the merged service role conf
+            deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                    .serviceRoleConf(mergedServiceRoleConf)
+                    .build();
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Merge any additional permissions that the connectors need into the core and service role configurations //
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        additionalCoreRoleIamPolicies = getRoleIamPolicies(connectorConfs.stream()
+                .map(ConnectorConf::getCoreRoleIamPolicy));
+
+        additionalCoreRoleIamManagedPolicies = getRoleIamManagedPolicies(connectorConfs.stream()
+                .map(ConnectorConf::getCoreRoleIamManagedPolicies));
+
+        mergedCoreRoleConf = mergeRoleConf(deploymentConf.getCoreRoleConf(), additionalCoreRoleIamPolicies, additionalCoreRoleIamManagedPolicies);
+
+        // Use the merged core role conf
+        deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                .coreRoleConf(mergedCoreRoleConf)
+                .build();
+
+        if (deploymentConf.getServiceRoleConf().isPresent()) {
+            List<Map> additionalServiceRoleIamPolicies = getRoleIamPolicies(connectorConfs.stream()
+                    .map(ConnectorConf::getServiceRoleIamPolicy));
+
+            List<String> additionalServiceRoleIamManagedPolicies = getRoleIamManagedPolicies(connectorConfs.stream()
+                    .map(ConnectorConf::getServiceRoleIamManagedPolicies));
 
             RoleConf mergedServiceRoleConf = mergeRoleConf(deploymentConf.getServiceRoleConf().get(), additionalServiceRoleIamPolicies, additionalServiceRoleIamManagedPolicies);
 
@@ -813,15 +854,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Creating subscription definition");
         String subscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
-        ///////////////////////////
-        // Create the connectors //
-        ///////////////////////////
-
-        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
-
-        log.info("Creating connector definition");
-        Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
-
         ////////////////////////////////////
         // Create a minimal group version //
         ////////////////////////////////////
@@ -1122,7 +1154,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
-       
+
         return functionConfs;
     }
 
