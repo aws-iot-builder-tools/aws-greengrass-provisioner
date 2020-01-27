@@ -53,6 +53,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static io.vavr.API.*;
 import static io.vavr.Predicates.instanceOf;
@@ -358,7 +359,93 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .get();
         }
 
-        // Create the service role and role alias, if necessary
+        ///////////////////////////////////////////////////
+        // Create an AWS Greengrass Group and get its ID //
+        ///////////////////////////////////////////////////
+
+        if (greengrassHelper.groupExists(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
+            throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
+        }
+
+        log.info("Creating a Greengrass group, if necessary");
+        String groupId = greengrassHelper.createGroupIfNecessary(deploymentArguments.groupName);
+
+        ///////////////////////
+        // Create core thing //
+        ///////////////////////
+
+        log.info("Creating core thing");
+        String coreThingArn = iotHelper.createThing(coreThingName);
+
+        ///////////////////////////////////////////////////
+        // Determine the default function isolation mode //
+        ///////////////////////////////////////////////////
+
+        FunctionIsolationMode defaultFunctionIsolationMode;
+
+        if (isEmptyDeployment(deploymentArguments)) {
+            // If we're doing an empty deployment default to no container mode
+            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
+        } else if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
+            // If we're doing a Docker launch we always use no container
+            log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
+            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
+        } else {
+            // If we're not doing a Docker launch use the default values in the configuration file
+            defaultFunctionIsolationMode = ggVariables.getDefaultFunctionIsolationMode();
+        }
+
+        ////////////////////////////////////////////////////////////
+        // Build the default environment for all Lambda functions //
+        ////////////////////////////////////////////////////////////
+
+        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
+
+        // Get a config object with the default environment values (eg. "${AWS_IOT_THING_NAME}" used in the function and connector configuration)
+        Config defaultConfig = typeSafeConfigHelper.addDefaultValues(defaultEnvironment, Optional.empty());
+
+        //////////////////////////////////////////////////////////////////////
+        // Find enabled functions and create function conf objects for them //
+        //////////////////////////////////////////////////////////////////////
+
+        List<FunctionConf> functionConfs = getFunctionConfs(deploymentConf, defaultFunctionIsolationMode, defaultConfig);
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Merge any additional permissions that the functions need into the core and service role configurations //
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        List<Map> additionalCoreRoleIamPolicies = getRoleIamPolicies(functionConfs.stream()
+                .map(FunctionConf::getCoreRoleIamPolicy));
+
+        List<String> additionalCoreRoleIamManagedPolicies = getRoleIamManagedPolicies(functionConfs.stream()
+                .map(FunctionConf::getCoreRoleIamManagedPolicies));
+
+        RoleConf mergedCoreRoleConf = mergeRoleConf(deploymentConf.getCoreRoleConf(), additionalCoreRoleIamPolicies, additionalCoreRoleIamManagedPolicies);
+
+        // Use the merged core role conf
+        deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                .coreRoleConf(mergedCoreRoleConf)
+                .build();
+
+        if (deploymentConf.getServiceRoleConf().isPresent()) {
+            List<Map> additionalServiceRoleIamPolicies = getRoleIamPolicies(functionConfs.stream()
+                    .map(FunctionConf::getServiceRoleIamPolicy));
+
+            List<String> additionalServiceRoleIamManagedPolicies = getRoleIamManagedPolicies(functionConfs.stream()
+                    .map(FunctionConf::getServiceRoleIamManagedPolicies));
+
+            RoleConf mergedServiceRoleConf = mergeRoleConf(deploymentConf.getServiceRoleConf().get(), additionalServiceRoleIamPolicies, additionalServiceRoleIamManagedPolicies);
+
+            // Use the merged service role conf
+            deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                    .serviceRoleConf(mergedServiceRoleConf)
+                    .build();
+        }
+
+        //////////////////////////////////////////////////////////
+        // Create the service role and role alias, if necessary //
+        //////////////////////////////////////////////////////////
+
         Optional<Role> optionalGreengrassServiceRole;
         Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse;
 
@@ -392,24 +479,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(coreRole, deploymentConf.getCoreRoleConf().getAlias().get()));
-
-        ///////////////////////////////////////////////////
-        // Create an AWS Greengrass Group and get its ID //
-        ///////////////////////////////////////////////////
-
-        if (greengrassHelper.groupExists(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
-            throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
-        }
-
-        log.info("Creating a Greengrass group, if necessary");
-        String groupId = greengrassHelper.createGroupIfNecessary(deploymentArguments.groupName);
-
-        ////////////////////////////////////
-        // Create things and certificates //
-        ////////////////////////////////////
-
-        log.info("Creating core thing");
-        String coreThingArn = iotHelper.createThing(coreThingName);
 
         //////////////////////////////////
         // Create or reuse certificates //
@@ -467,9 +536,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         String coreCertificateArn = optionalCoreCertificateArn.get();
 
-        ////////////////////////////////////////////////
-        // Policy creation for the core, if necessary //
-        ////////////////////////////////////////////////
+        ////////////////////////////////////////////////////
+        // IoT policy creation for the core, if necessary //
+        ////////////////////////////////////////////////////
 
         String corePolicyName;
 
@@ -538,80 +607,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////////////////////////
 
         List<Subscription> subscriptions = new ArrayList<>();
-
-        ///////////////////////////////////////////////////
-        // Determine the default function isolation mode //
-        ///////////////////////////////////////////////////
-
-        FunctionIsolationMode defaultFunctionIsolationMode;
-
-        if (isEmptyDeployment(deploymentArguments)) {
-            // If we're doing an empty deployment default to no container mode
-            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
-        } else if ((deploymentArguments.dockerLaunch) || (deploymentArguments.buildContainer)) {
-            // If we're doing a Docker launch we always use no container
-            log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
-            defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
-        } else {
-            // If we're not doing a Docker launch use the default values in the configuration file
-            defaultFunctionIsolationMode = ggVariables.getDefaultFunctionIsolationMode();
-        }
-
-        ///////////////////////////////////////////////////
-        // Find enabled functions and their mapping info //
-        ///////////////////////////////////////////////////
-
-        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
-
-        // Get a config object with the default environment values (eg. "${AWS_IOT_THING_NAME}" used in the function and connector configuration)
-        Config defaultConfig = typeSafeConfigHelper.addDefaultValues(defaultEnvironment, Optional.empty());
-
-        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultConfig, deploymentConf, defaultFunctionIsolationMode);
-
-        // Find Python functions that may not have had their language updated, this should never happen
-        Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
-
-        List<FunctionConf> legacyPythonFunctions = functionConfs.stream()
-                .filter(legacyPythonPredicate)
-                .collect(Collectors.toList());
-
-        if (legacyPythonFunctions.size() != 0) {
-            log.error("Some Python functions do not have a Python version specified, this should never happen!");
-            legacyPythonFunctions.stream()
-                    .map(FunctionConf::getFunctionName)
-                    .forEach(log::error);
-            throw new UnsupportedOperationException();
-        }
-
-        // Find Node functions that may not have had their language updated, this should never happen
-        Predicate<FunctionConf> legacyNodePredicate = functionConf -> functionConf.getLanguage().equals(Language.Node);
-
-        List<FunctionConf> legacyNodeFunctions = functionConfs.stream()
-                .filter(legacyNodePredicate)
-                .collect(Collectors.toList());
-
-        if (legacyNodeFunctions.size() != 0) {
-            log.error("Some Node functions do not have a Node version specified, this should never happen!");
-            legacyNodeFunctions.stream()
-                    .map(FunctionConf::getFunctionName)
-                    .forEach(log::error);
-            throw new UnsupportedOperationException();
-        }
-
-        // Find Java functions that may not have had their language updated, this should never happen
-        Predicate<FunctionConf> legacyJavaPredicate = functionConf -> functionConf.getLanguage().equals(Language.Java);
-
-        List<FunctionConf> legacyJavaFunctions = functionConfs.stream()
-                .filter(legacyJavaPredicate)
-                .collect(Collectors.toList());
-
-        if (legacyJavaFunctions.size() != 0) {
-            log.error("Some Java functions do not have a Java version specified, this should never happen!");
-            legacyJavaFunctions.stream()
-                    .map(FunctionConf::getFunctionName)
-                    .forEach(log::error);
-            throw new UnsupportedOperationException();
-        }
 
         ////////////////////////////////////////////////////
         // Determine if any functions need to run as root //
@@ -1012,6 +1007,117 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (cloudFormationStacksLaunched.size() != 0) {
             waitForStacksToLaunch(cloudFormationStacksLaunched);
         }
+    }
+
+    @NotNull
+    public List<String> getRoleIamManagedPolicies(Stream<Optional<List<String>>> optionalStream) {
+        return optionalStream
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList());
+    }
+
+    @NotNull
+    public List<Map> getRoleIamPolicies(Stream<Optional<String>> optionalStream) {
+        return optionalStream
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(json -> jsonHelper.fromJson(Map.class, json.getBytes()))
+                .collect(Collectors.toList());
+    }
+
+    private RoleConf mergeRoleConf(RoleConf coreRoleConf, List<Map> additionalIamPolicies, List<String> additionalCoreRoleIamManagedPolicies) {
+        // Get the existing IAM policy or an empty map
+        Map<String, Object> iamPolicy = coreRoleConf.getIamPolicy().map(string -> jsonHelper.fromJson(Map.class, string.getBytes())).orElse(new HashMap<String, Object>());
+
+        List<Object> flattenedAdditionalIamPolicies = additionalIamPolicies.stream()
+                .map(map -> Optional.ofNullable(map.get("Statement")))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .map(list -> (List<List<Object>>) list)
+                .flatMap(List::stream)
+                .collect(Collectors.toList());
+
+        if (!flattenedAdditionalIamPolicies.isEmpty()) {
+            // If the original IAM policy had no statements then we need to create one to hold the additional values
+            List<Object> statements = (List<Object>) iamPolicy.computeIfAbsent("Statement", x -> new ArrayList());
+
+            // If the original IAM policy had no version we need to add that as well
+            iamPolicy.computeIfAbsent("Version", x -> "2012-10-17");
+
+            statements.addAll(flattenedAdditionalIamPolicies);
+        }
+
+        // Get the existing managed IAM policies or an empty list
+        List<String> iamManagedPolicies = coreRoleConf.getIamManagedPolicies().orElse(new ArrayList<>());
+
+        // Add all of the new managed IAM policies if there are any
+        iamManagedPolicies.addAll(additionalCoreRoleIamManagedPolicies);
+
+        ImmutableRoleConf.Builder builder = ImmutableRoleConf.builder().from(coreRoleConf);
+
+        if (!iamPolicy.isEmpty()) {
+            builder.iamPolicy(jsonHelper.toJson(iamPolicy));
+        }
+
+        if (!iamManagedPolicies.isEmpty()) {
+            builder.iamManagedPolicies(iamManagedPolicies);
+        }
+
+        return builder.build();
+    }
+
+    @NotNull
+    public List<FunctionConf> getFunctionConfs(DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode, Config defaultConfig) {
+        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultConfig, deploymentConf, defaultFunctionIsolationMode);
+
+        // Find Python functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);
+
+        List<FunctionConf> legacyPythonFunctions = functionConfs.stream()
+                .filter(legacyPythonPredicate)
+                .collect(Collectors.toList());
+
+        if (legacyPythonFunctions.size() != 0) {
+            log.error("Some Python functions do not have a Python version specified, this should never happen!");
+            legacyPythonFunctions.stream()
+                    .map(FunctionConf::getFunctionName)
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+
+        // Find Node functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyNodePredicate = functionConf -> functionConf.getLanguage().equals(Language.Node);
+
+        List<FunctionConf> legacyNodeFunctions = functionConfs.stream()
+                .filter(legacyNodePredicate)
+                .collect(Collectors.toList());
+
+        if (legacyNodeFunctions.size() != 0) {
+            log.error("Some Node functions do not have a Node version specified, this should never happen!");
+            legacyNodeFunctions.stream()
+                    .map(FunctionConf::getFunctionName)
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+
+        // Find Java functions that may not have had their language updated, this should never happen
+        Predicate<FunctionConf> legacyJavaPredicate = functionConf -> functionConf.getLanguage().equals(Language.Java);
+
+        List<FunctionConf> legacyJavaFunctions = functionConfs.stream()
+                .filter(legacyJavaPredicate)
+                .collect(Collectors.toList());
+
+        if (legacyJavaFunctions.size() != 0) {
+            log.error("Some Java functions do not have a Java version specified, this should never happen!");
+            legacyJavaFunctions.stream()
+                    .map(FunctionConf::getFunctionName)
+                    .forEach(log::error);
+            throw new UnsupportedOperationException();
+        }
+       
+        return functionConfs;
     }
 
     private void requireAssumeRolePolicy(RoleConf roleConf, String type) {
