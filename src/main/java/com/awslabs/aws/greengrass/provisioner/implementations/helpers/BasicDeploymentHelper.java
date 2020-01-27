@@ -1047,6 +1047,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             iamPolicy.computeIfAbsent("Version", x -> "2012-10-17");
 
             statements.addAll(flattenedAdditionalIamPolicies);
+
+            // De-duplicate statements and put them back in the map
+            iamPolicy.put("Statement", new ArrayList<>(new HashSet<>(statements)));
         }
 
         // Get the existing managed IAM policies or an empty list
@@ -1054,6 +1057,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Add all of the new managed IAM policies if there are any
         iamManagedPolicies.addAll(additionalCoreRoleIamManagedPolicies);
+
+        // De-duplicate IAM managed policies and put them back in the list
+        iamManagedPolicies = new ArrayList<>(new HashSet<>(iamManagedPolicies));
 
         ImmutableRoleConf.Builder builder = ImmutableRoleConf.builder().from(coreRoleConf);
 
