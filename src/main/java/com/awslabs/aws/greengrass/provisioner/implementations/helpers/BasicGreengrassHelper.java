@@ -629,7 +629,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .onRetriesExceeded(failure -> log.error("Deployment never transitioned to in progress. Cannot continue."));
 
         // If the deployment has any of these fatal errors we will give up immediately
-        RetryPolicy<GetDeploymentStatusResponse> failureDeploymentStatusPolicy = new RetryPolicy<GetDeploymentStatusResponse>()
+        Fallback<GetDeploymentStatusResponse> failureDeploymentStatusPolicy = Fallback.of(GetDeploymentStatusResponse.builder().deploymentStatus(FAILURE).build())
                 // Greengrass probably can't read a SageMaker model #1
                 .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "Greengrass does not have permission to read the object", "If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored."))
                 // Greengrass probably can't read a SageMaker model #2

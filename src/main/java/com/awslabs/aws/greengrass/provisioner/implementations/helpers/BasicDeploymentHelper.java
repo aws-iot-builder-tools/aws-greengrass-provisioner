@@ -260,8 +260,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private DeploymentStatus getDeploymentStatus(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId, String initialDeploymentId) {
-        DeploymentStatus deploymentStatus;
-
         // Using a StringBuilder here allows us to update the deployment ID if a redeployment is necessary
         StringBuilder deploymentId = new StringBuilder();
         deploymentId.append(initialDeploymentId);
@@ -275,7 +273,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .withMaxRetries(3)
                 .handleIf(throwable -> requiresIamReassociation(throwable, deploymentId, serviceRole, coreRole, groupId, groupVersionId));
 
-        deploymentStatus = Failsafe.with(deploymentStatusRetryPolicy)
+        DeploymentStatus deploymentStatus = Failsafe.with(deploymentStatusRetryPolicy)
                 .get(() -> greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId.toString()));
 
         return deploymentStatus;
