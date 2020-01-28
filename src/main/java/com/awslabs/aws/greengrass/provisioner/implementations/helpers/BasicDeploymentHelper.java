@@ -1232,7 +1232,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Copying bootstrap script to host via scp...");
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-        log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + host + "] and run 'screen -r' to see the progress");
+        log.info("Running bootstrap script on target host in screen, connect to the target host [" + user + "@" + host + "] and run 'screen -r' to see the progress");
         runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of(GREENGRASS_SESSION_NAME), true);
         session.disconnect();
         return true;

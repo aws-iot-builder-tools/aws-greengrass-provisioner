@@ -189,8 +189,8 @@ public class BasicIoHelper implements IoHelper {
                 .handle(SshRecoverableException.class)
                 .withDelay(Duration.ofSeconds(10))
                 .withMaxRetries(3)
-                .onRetry(failure -> log.warn("Waiting for instance to become available [" + failure.getLastFailure().getMessage() + "]"))
-                .onRetriesExceeded(failure -> log.error("Instance never became available [" + failure.getFailure().getMessage() + "]"));
+                .onRetry(failure -> log.warn("Waiting for target host to become available [" + failure.getLastFailure().getMessage() + "]"))
+                .onRetriesExceeded(failure -> log.error("Target host never became available [" + failure.getFailure().getMessage() + "]"));
 
         return Failsafe.with(sessionRetryPolicy)
                 .get(() -> innerGetSession(hostname, user, jsch, connectedMessage, timeoutMessage, refusedMessage, errorMessage));
