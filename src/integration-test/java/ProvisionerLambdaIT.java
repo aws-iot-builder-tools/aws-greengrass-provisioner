@@ -47,7 +47,7 @@ public class ProvisionerLambdaIT {
         iotHelper.createPolicyIfNecessary(GREENGRASS_DEFAULT_POLICY_NAME, GREENGRASS_DEFAULT_POLICY);
         LambdaInput lambdaInput = new LambdaInput();
         lambdaInput.GroupName = ioHelper.getUuid();
-        lambdaInput.CoreRoleName = "GreengrassCoreRole";
+        lambdaInput.CoreRoleName = "Greengrass_CoreRole";
         lambdaInput.ServiceRoleExists = true;
         lambdaInput.CorePolicyName = GREENGRASS_DEFAULT_POLICY_NAME;
         lambdaInput.KeyPath = NEW_KEY_PATH;
