@@ -8,6 +8,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
@@ -86,8 +87,7 @@ public class SubscriptionHelperTest {
 
         List<Subscription> output = basicSubscriptionHelper.connectFunctionsAndDevices(map, ggdConfList);
 
-        topics.stream()
-                .allMatch(topic -> oneMatches(output, abInputArn, abOutputArn, topic));
+        Assert.assertTrue(topics.stream().allMatch(topic -> oneMatches(output, abInputArn, abOutputArn, topic)));
     }
 
     private boolean oneMatches(List<Subscription> subscriptions, String expectedTarget, String expectedSource, String expectedSubject) {
