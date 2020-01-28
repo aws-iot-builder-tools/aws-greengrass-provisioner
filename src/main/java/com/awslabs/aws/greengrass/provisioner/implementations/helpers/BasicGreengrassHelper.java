@@ -704,7 +704,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return shouldRedeploy(getDeploymentStatusResponse, Collections.singletonList(expectedPartialErrorString), logMessage);
     }
 
-    private boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, List<String> expectedPartialErrorStrings, String logMessage) {
+    protected boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, List<String> expectedPartialErrorStrings, String logMessage) {
         String errorMessage = getDeploymentStatusResponse.errorMessage();
 
         // Look for any false results
