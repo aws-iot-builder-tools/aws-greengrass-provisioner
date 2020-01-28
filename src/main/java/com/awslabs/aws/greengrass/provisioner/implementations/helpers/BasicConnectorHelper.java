@@ -91,6 +91,18 @@ public class BasicConnectorHelper implements ConnectorHelper {
 
         connectorConfBuilder.connector(connector);
 
+        // Optional string lists for core role
+        connectorConfBuilder.coreRoleIamManagedPolicies(typeSafeConfigHelper.getStringListOrReturnEmpty(config, "conf.coreRoleIamManagedPolicies"));
+
+        // Optional JSON policy for core role
+        connectorConfBuilder.coreRoleIamPolicy(typeSafeConfigHelper.getObjectAndRenderOrReturnEmpty(config, "conf.coreRoleIamPolicy"));
+
+        // Optional string lists for service role
+        connectorConfBuilder.serviceRoleIamManagedPolicies(typeSafeConfigHelper.getStringListOrReturnEmpty(config, "conf.serviceRoleIamManagedPolicies"));
+
+        // Optional JSON policy for service role
+        connectorConfBuilder.serviceRoleIamPolicy(typeSafeConfigHelper.getObjectAndRenderOrReturnEmpty(config, "conf.serviceRoleIamPolicy"));
+
         return connectorConfBuilder.build();
     }
 
