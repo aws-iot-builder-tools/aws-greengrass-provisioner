@@ -1,8 +1,8 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import org.hamcrest.MatcherAssert;
-import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,6 +18,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.Matchers.empty;
 
+@Ignore
 public class SoftwareDownloadTest {
     private final Logger log = LoggerFactory.getLogger(SoftwareDownloadTest.class);
     private List<Architecture> architectureList;
