@@ -8,6 +8,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
+import org.hamcrest.MatcherAssert;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
@@ -17,6 +19,7 @@ import software.amazon.awssdk.services.greengrass.model.Subscription;
 import java.io.File;
 import java.util.*;
 
+import static org.hamcrest.CoreMatchers.is;
 import static org.mockito.Mockito.mock;
 
 public class SubscriptionHelperTest {
@@ -56,6 +59,39 @@ public class SubscriptionHelperTest {
     }
 
     @Test
+    public void testTopicCandidateMethod() {
+        testTopicCandidateBothWays("a", "a", "a");
+
+        testTopicCandidateBothWays("a", "b", Optional.empty());
+
+        testTopicCandidateBothWays("a/b", "a/+", "a/b");
+
+        testTopicCandidateBothWays("a/+", "a/+", "a/+");
+
+        testTopicCandidateBothWays("a/more/complex/+/thing", "a/more/#", "a/more/complex/+/thing");
+        testTopicCandidateBothWays("a/more/complex/+/thing", "a/more/complex/+/thing", "a/more/complex/+/thing");
+        testTopicCandidateBothWays("a/more/complex/+/thing", "a/more/complex/y/thing", "a/more/complex/y/thing");
+
+        testTopicCandidateBothWays("a/+/+/+/thing", "a/more/complex/+/thing", "a/more/complex/+/thing");
+
+        testTopicCandidateBothWays("a/+/#", "a/more/complex/+/thing", "a/more/complex/+/thing");
+
+        testTopicCandidateBothWays("/poorlyformedtopic", "/poorlyformedtopic", "/poorlyformedtopic");
+
+        // NOTE: Topics with trailing slashes are not handled yet
+        // testTopicCandidateBothWays("/poorlyformedtopic/", "/poorlyformedtopic/", "/poorlyformedtopic/");
+    }
+
+    private void testTopicCandidateBothWays(String input1, String input2, String expectedOutput) {
+        testTopicCandidateBothWays(input1, input2, Optional.of(expectedOutput));
+    }
+
+    private void testTopicCandidateBothWays(String input1, String input2, Optional<String> expectedOutput) {
+        MatcherAssert.assertThat(basicSubscriptionHelper.topicCandidate(input1, input2), is(expectedOutput));
+        MatcherAssert.assertThat(basicSubscriptionHelper.topicCandidate(input2, input1), is(expectedOutput));
+    }
+
+    @Test
     public void simpleDirectFunctionToFunctionTopicMappingTest() {
         List<String> topics = Arrays.asList("a", "b", "c", "d", "e");
         Map<Function, FunctionConf> map = new HashMap<>();
@@ -86,8 +122,7 @@ public class SubscriptionHelperTest {
 
         List<Subscription> output = basicSubscriptionHelper.connectFunctionsAndDevices(map, ggdConfList);
 
-        topics.stream()
-                .allMatch(topic -> oneMatches(output, abInputArn, abOutputArn, topic));
+        Assert.assertTrue(topics.stream().allMatch(topic -> oneMatches(output, abInputArn, abOutputArn, topic)));
     }
 
     private boolean oneMatches(List<Subscription> subscriptions, String expectedTarget, String expectedSource, String expectedSubject) {

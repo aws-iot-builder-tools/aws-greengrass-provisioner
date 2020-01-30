@@ -1,7 +1,5 @@
-import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import org.hamcrest.MatcherAssert;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -82,10 +80,5 @@ public class SoftwareDownloadTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
-    }
-
-    @Test
-    public void shouldGetAwsGreengrassProvisioner() {
-        AwsGreengrassProvisioner.getAwsGreengrassProvisioner();
     }
 }

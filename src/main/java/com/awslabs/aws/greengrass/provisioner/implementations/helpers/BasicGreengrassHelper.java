@@ -3,11 +3,15 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNecessaryException;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.GreengrassIdExtractor;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.Fallback;
+import net.jodah.failsafe.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
@@ -16,6 +20,7 @@ import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.ResourceNotFoundException;
 
 import javax.inject.Inject;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
@@ -615,9 +620,51 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .deploymentId(deploymentId)
                 .build();
 
+        // If the deployment is building we will retry
+        RetryPolicy<GetDeploymentStatusResponse> buildingDeploymentPolicy = new RetryPolicy<GetDeploymentStatusResponse>()
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(10)
+                .handleResultIf(this::isBuilding)
+                .onRetry(failure -> log.warn("Waiting for the deployment to transition to in progress..."))
+                .onRetriesExceeded(failure -> log.error("Deployment never transitioned to in progress. Cannot continue."));
+
+        // If the deployment has any of these fatal errors we will give up immediately
+        Fallback<GetDeploymentStatusResponse> failureDeploymentStatusPolicy = Fallback.of(GetDeploymentStatusResponse.builder().deploymentStatus(FAILURE).build())
+                // Greengrass probably can't read a SageMaker model #1
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "Greengrass does not have permission to read the object", "If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored."))
+                // Greengrass probably can't read a SageMaker model #2
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "refers to a resource transfer-learning-example with nonexistent S3 object", "If you are using a SageMaker model your model appears to no longer exist in S3."))
+                // Configuration is not valid
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "group config is invalid", "Group configuration is invalid"))
+                // Group definition is not valid
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "We cannot deploy because the group definition is invalid or corrupted", "Group definition is invalid"))
+                // Artifact could not be downloaded
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "Artifact download retry exceeded the max retries", "Artifact could not be downloaded (exceeded maximum retries)"))
+                // Greengrass is not configured to run as root but some Lambda functions require root
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "Greengrass is not configured to run lambdas with root permissions", "Greengrass is not configured to run as root but some Lambda functions are configured to run as root"))
+                // The user or group Greengrass is running as does not have access to a file on the host
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "user or group doesn't have permission on the file", "The user or group Greengrass is running as does not have access to a file on the host"))
+                // A file is missing on the Greengrass host
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, "file doesn't exist", "A file is missing on the Greengrass host"))
+                // A configuration parameter is invalid
+                .handleResultIf(statusResponse -> shouldRedeploy(statusResponse, Arrays.asList("configuration parameter", "does not match required pattern"), "One or more configuration parameters were specified that did not match the allowed patterns. Adjust the values and try again."));
+
+        // If the deployment is failing because of apparent IAM issues we'll throw an exception and the caller will try again
+        Fallback<GetDeploymentStatusResponse> needsIamReassociationPolicy = Fallback.<GetDeploymentStatusResponse>ofException(e -> new IamReassociationNecessaryException())
+                // No service role associated with this account
+                .handleResultIf(statusResponse -> throwIamReassociationExceptionIfNecessary(statusResponse, "TES service role is not associated with this account", "A service role is not associated with this account for Greengrass. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]"))
+                // Service role may be missing
+                .handleResultIf(statusResponse -> throwIamReassociationExceptionIfNecessary(statusResponse, "GreenGrass is not authorized to assume the Service Role associated with this account", "The service role associated with this account may be missing. Check that the role returned from the CLI command 'aws greengrass get-service-role-for-account' still exists. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]"))
+                // Invalid security token
+                .handleResultIf(statusResponse -> throwIamReassociationExceptionIfNecessary(statusResponse, "security token included in the request is invalid", "Invalid security token, a redeployment is necessary"))
+                // Cloud service event
+                .handleResultIf(statusResponse -> throwIamReassociationExceptionIfNecessary(statusResponse, "having a problem right now", "Cloud service event, a redeployment is necessary"));
+
         log.info("Checking deployment status...");
 
-        GetDeploymentStatusResponse getDeploymentStatusResponse = greengrassClient.getDeploymentStatus(getDeploymentStatusRequest);
+        GetDeploymentStatusResponse getDeploymentStatusResponse = Failsafe.with(needsIamReassociationPolicy, failureDeploymentStatusPolicy, buildingDeploymentPolicy)
+                .get(() -> greengrassClient.getDeploymentStatus(getDeploymentStatusRequest));
+
         String deploymentStatus = getDeploymentStatusResponse.deploymentStatus();
 
         switch (deploymentStatus) {
@@ -625,78 +672,56 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             case SUCCESS:
                 return DeploymentStatus.SUCCESSFUL;
             case FAILURE:
-                String errorMessage = getDeploymentStatusResponse.errorMessage();
-
-                log.error("Greengrass service reported an error [" + errorMessage + "]");
-
-                if (errorMessage.contains("TES service role is not associated with this account")) {
-                    // No service role associated with this account
-                    log.error("A service role is not associated with this account for Greengrass. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]");
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("GreenGrass is not authorized to assume the Service Role associated with this account")) {
-                    // Service role may be missing
-                    log.error("The service role associated with this account may be missing. Check that the role returned from the CLI command 'aws greengrass get-service-role-for-account' still exists. See the Greengrass service role documentation for more information [https://docs.aws.amazon.com/greengrass/latest/developerguide/service-role.html]");
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("Greengrass does not have permission to read the object")) {
-                    // Greengrass probably can't read a SageMaker model
-                    log.error("If you are using a SageMaker model your Greengrass service role may not have access to the bucket where your model is stored.");
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("refers to a resource transfer-learning-example with nonexistent S3 object")) {
-                    log.error("If you are using a SageMaker model your model appears to no longer exist in S3.");
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("group config is invalid")) {
-                    // Can't succeed if the definition is not valid
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("We cannot deploy because the group definition is invalid or corrupted")) {
-                    // Can't succeed if the definition is not valid
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("Artifact download retry exceeded the max retries")) {
-                    // Can't succeed if the artifact can't be downloaded
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("Greengrass is not configured to run lambdas with root permissions")) {
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("user or group doesn't have permission on the file")) {
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("file doesn't exist")) {
-                    return DeploymentStatus.FAILED;
-                }
-
-                if (errorMessage.contains("configuration parameter") && (errorMessage.contains("does not match required pattern"))) {
-                    log.error("One or more configuration parameters were specified that did not match the allowed patterns. Adjust the values and try again.");
-                    return DeploymentStatus.FAILED;
-                }
-
-                // Possible error messages we've encountered
-                //   "The security token included in the request is invalid."
-                //   "We're having a problem right now.  Please try again in a few minutes."
-
-                return DeploymentStatus.NEEDS_NEW_DEPLOYMENT;
-            case BUILDING:
-                log.info("Deployment is being built...");
-                return DeploymentStatus.BUILDING;
+                return DeploymentStatus.FAILED;
         }
 
-        log.error("Unexpected deployment status [" + deploymentStatus + "]");
+        throw new RuntimeException("Unexpected deployment status [" + deploymentStatus + "]");
+    }
 
-        return DeploymentStatus.FAILED;
+    private boolean throwIamReassociationExceptionIfNecessary(GetDeploymentStatusResponse getDeploymentStatusResponse, String expectedPartialErrorString, String logMessage) {
+        // Is this a failure?
+        if (shouldRedeploy(getDeploymentStatusResponse, expectedPartialErrorString, logMessage)) {
+            // Yes, the caller should throw an exception
+            return true;
+        }
+
+        // Not a failure, ignore
+        return false;
+    }
+
+    private boolean isBuilding(GetDeploymentStatusResponse getDeploymentStatusResponse) {
+        if (getDeploymentStatusResponse.deploymentStatus().equals(BUILDING)) {
+            log.info("Deployment is being built...");
+
+            // A failure in the sense that it is not ready yet
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, String expectedPartialErrorString, String logMessage) {
+        return shouldRedeploy(getDeploymentStatusResponse, Collections.singletonList(expectedPartialErrorString), logMessage);
+    }
+
+    protected boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, List<String> expectedPartialErrorStrings, String logMessage) {
+        String errorMessage = getDeploymentStatusResponse.errorMessage();
+
+        // Look for any false results
+        Optional<Boolean> optionalBoolean = expectedPartialErrorStrings.stream()
+                .map(string -> !errorMessage.contains(string))
+                .filter(bool -> bool)
+                .findAny();
+
+        if (optionalBoolean.isPresent()) {
+            // Didn't find one or more of the required matches, this is not a match
+            return false;
+        }
+
+        // Yes, this is the error we expected
+        log.error(logMessage);
+
+        return true;
     }
 
     @Override

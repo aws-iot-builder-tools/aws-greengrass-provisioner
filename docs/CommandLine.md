@@ -194,7 +194,7 @@ GGP -d deployments/all-hello-world.conf --launch pi@192.168.1.5 -a ARM32 --hsi P
 
 ... lots of output ...
 
-Running bootstrap script on host in screen, connect to the instance [pi@192.168.1.5] and run 'screen -r' to see the progress
+Running bootstrap script on host in screen, connect to the target host [pi@192.168.1.5] and run 'screen -r' to see the progress
 ```
 
 Step 3 - monitor the deployment:
@@ -237,7 +237,7 @@ GGP -d deployments/all-hello-world.conf --launch pi@192.168.1.5 -a ARM32 --hsi P
 
 ... lots of output ...
 
-Running bootstrap script on host in screen, connect to the instance [pi@192.168.1.5] and run 'screen -r' to see the progress
+Running bootstrap script on host in screen, connect to the target host [pi@192.168.1.5] and run 'screen -r' to see the progress
 ```
 
 Step 4 - monitor the deployment:

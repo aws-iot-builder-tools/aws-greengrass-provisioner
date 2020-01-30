@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
 import com.awslabs.aws.greengrass.provisioner.data.conf.*;
+import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNecessaryException;
 import com.awslabs.aws.greengrass.provisioner.docker.BasicProgressHandler;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.docker.OfficialGreengrassImageDockerHelper;
@@ -248,47 +249,60 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String initialDeploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
         log.info("Deployment created [" + initialDeploymentId + "]");
 
-        Optional<DeploymentStatus> optionalDeploymentStatus = threadHelper.timeLimitTask(getDeploymentStatusCallable(serviceRole, coreRole, groupId, groupVersionId, initialDeploymentId), 5, TimeUnit.MINUTES);
+        DeploymentStatus deploymentStatus = getDeploymentStatus(serviceRole, coreRole, groupId, groupVersionId, initialDeploymentId);
 
-        if (!optionalDeploymentStatus.isPresent() || !optionalDeploymentStatus.get().equals(DeploymentStatus.SUCCESSFUL)) {
+        if (!DeploymentStatus.SUCCESSFUL.equals(deploymentStatus)) {
+            // Not successful, throw an exception to bail out
             throw new RuntimeException("Deployment failed");
         }
 
         log.info("Deployment successful");
     }
 
-    private Callable<DeploymentStatus> getDeploymentStatusCallable(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
-        return () -> getDeploymentStatus(greengrassServiceRole, greengrassRole, groupId, groupVersionId, initialDeploymentId);
+    private DeploymentStatus getDeploymentStatus(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId, String initialDeploymentId) {
+        // Using a StringBuilder here allows us to update the deployment ID if a redeployment is necessary
+        StringBuilder deploymentId = new StringBuilder();
+        deploymentId.append(initialDeploymentId);
+
+        //////////////////////////////////////////////
+        // Wait for the deployment status to change //
+        //////////////////////////////////////////////
+
+        RetryPolicy<DeploymentStatus> deploymentStatusRetryPolicy = new RetryPolicy<DeploymentStatus>()
+                // If we need a redeployment we'll handle that up to three times
+                .withMaxRetries(3)
+                .handleIf(throwable -> requiresIamReassociation(throwable, deploymentId, serviceRole, coreRole, groupId, groupVersionId));
+
+        DeploymentStatus deploymentStatus = Failsafe.with(deploymentStatusRetryPolicy)
+                .get(() -> greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId.toString()));
+
+        return deploymentStatus;
     }
 
-    private DeploymentStatus getDeploymentStatus(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId, String initialDeploymentId) {
-        DeploymentStatus deploymentStatus;
-
-        String deploymentId = initialDeploymentId;
-
-        while (true) {
-            //////////////////////////////////////////////
-            // Wait for the deployment status to change //
-            //////////////////////////////////////////////
-
-            deploymentStatus = greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId);
-
-            if (deploymentStatus.equals(DeploymentStatus.NEEDS_NEW_DEPLOYMENT)) {
-                if (greengrassServiceRole.isPresent() && greengrassRole.isPresent()) {
-                    deploymentId = iamDisassociateReassociateAndLetSettle(greengrassServiceRole, greengrassRole, groupId, groupVersionId);
-                } else {
-                    log.error("Deployment failed due to IAM issue.");
-                    return DeploymentStatus.FAILED;
-                }
-            } else if (deploymentStatus.equals(DeploymentStatus.BUILDING)) {
-                ioHelper.sleep(5000);
-            }
-
-            if (deploymentStatus.equals(DeploymentStatus.FAILED) ||
-                    deploymentStatus.equals(DeploymentStatus.SUCCESSFUL)) {
-                return deploymentStatus;
-            }
+    private boolean requiresIamReassociation(Throwable throwable, StringBuilder deploymentId, Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
+        // Is this the exception we expected?
+        if (!(throwable instanceof IamReassociationNecessaryException)) {
+            // No, ignore it
+            return false;
         }
+
+        // Do we have the roles necessary to attempt a reassociation?
+        if (!serviceRole.isPresent() || !coreRole.isPresent()) {
+            // No, ignore it
+            return false;
+        }
+
+        // We have both roles, we can try to reassociate them
+        String newDeploymentId = iamDisassociateReassociateAndLetSettle(serviceRole, coreRole, groupId, groupVersionId);
+
+        // Clear out the old deployment ID
+        deploymentId.setLength(0);
+
+        // Use the new deployment ID
+        deploymentId.append(newDeploymentId);
+
+        // Tell the caller to retry if they can
+        return true;
     }
 
     private String iamDisassociateReassociateAndLetSettle(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId) {
@@ -322,6 +336,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.warn("Letting deployment settle...");
 
         ioHelper.sleep(30000);
+
         return deploymentId;
     }
 
@@ -410,6 +425,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         List<FunctionConf> functionConfs = getFunctionConfs(deploymentConf, defaultFunctionIsolationMode, defaultConfig);
 
+        ///////////////////////////
+        // Create the connectors //
+        ///////////////////////////
+
+        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
+
+        log.info("Creating connector definition");
+        Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
+
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Merge any additional permissions that the functions need into the core and service role configurations //
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -433,6 +457,38 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             List<String> additionalServiceRoleIamManagedPolicies = getRoleIamManagedPolicies(functionConfs.stream()
                     .map(FunctionConf::getServiceRoleIamManagedPolicies));
+
+            RoleConf mergedServiceRoleConf = mergeRoleConf(deploymentConf.getServiceRoleConf().get(), additionalServiceRoleIamPolicies, additionalServiceRoleIamManagedPolicies);
+
+            // Use the merged service role conf
+            deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                    .serviceRoleConf(mergedServiceRoleConf)
+                    .build();
+        }
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        // Merge any additional permissions that the connectors need into the core and service role configurations //
+        /////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+        additionalCoreRoleIamPolicies = getRoleIamPolicies(connectorConfs.stream()
+                .map(ConnectorConf::getCoreRoleIamPolicy));
+
+        additionalCoreRoleIamManagedPolicies = getRoleIamManagedPolicies(connectorConfs.stream()
+                .map(ConnectorConf::getCoreRoleIamManagedPolicies));
+
+        mergedCoreRoleConf = mergeRoleConf(deploymentConf.getCoreRoleConf(), additionalCoreRoleIamPolicies, additionalCoreRoleIamManagedPolicies);
+
+        // Use the merged core role conf
+        deploymentConf = ImmutableDeploymentConf.builder().from(deploymentConf)
+                .coreRoleConf(mergedCoreRoleConf)
+                .build();
+
+        if (deploymentConf.getServiceRoleConf().isPresent()) {
+            List<Map> additionalServiceRoleIamPolicies = getRoleIamPolicies(connectorConfs.stream()
+                    .map(ConnectorConf::getServiceRoleIamPolicy));
+
+            List<String> additionalServiceRoleIamManagedPolicies = getRoleIamManagedPolicies(connectorConfs.stream()
+                    .map(ConnectorConf::getServiceRoleIamManagedPolicies));
 
             RoleConf mergedServiceRoleConf = mergeRoleConf(deploymentConf.getServiceRoleConf().get(), additionalServiceRoleIamPolicies, additionalServiceRoleIamManagedPolicies);
 
@@ -813,15 +869,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Creating subscription definition");
         String subscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
-        ///////////////////////////
-        // Create the connectors //
-        ///////////////////////////
-
-        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
-
-        log.info("Creating connector definition");
-        Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
-
         ////////////////////////////////////
         // Create a minimal group version //
         ////////////////////////////////////
@@ -1122,7 +1169,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
-       
+
         return functionConfs;
     }
 
@@ -1183,7 +1230,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Copying bootstrap script to host via scp...");
         ioHelper.sendFile(session, localFilename, remoteFilename);
         ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-        log.info("Running bootstrap script on host in screen, connect to the instance [" + user + "@" + host + "] and run 'screen -r' to see the progress");
+        log.info("Running bootstrap script on target host in screen, connect to the target host [" + user + "@" + host + "] and run 'screen -r' to see the progress");
         runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of(GREENGRASS_SESSION_NAME), true);
         session.disconnect();
         return true;
