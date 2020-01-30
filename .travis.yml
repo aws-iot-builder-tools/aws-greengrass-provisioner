@@ -1,1 +1,2 @@
-language: java
+script:
+  - ./gradlew check --debug
