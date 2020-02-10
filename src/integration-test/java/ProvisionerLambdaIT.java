@@ -5,7 +5,6 @@ import com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLam
 import com.awslabs.aws.greengrass.provisioner.lambda.LambdaInput;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -37,8 +36,8 @@ public class ProvisionerLambdaIT {
 
     @Before
     public void setup() {
-        iotHelper = AwsGreengrassProvisioner.getInjector().getInstance(IotHelper.class);
-        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+        iotHelper = AwsGreengrassProvisioner.getInjector().iotHelper();
+        ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
         awsGreengrassProvisionerLambda = new AwsGreengrassProvisionerLambda();
     }
 

@@ -24,9 +24,13 @@ public class AwsGreengrassProvisionerLambda implements RequestHandler<LambdaInpu
     @Inject
     JsonHelper jsonHelper;
 
+    @Inject
+    public AwsGreengrassProvisionerLambda() {
+    }
+
     @Override
     public Map handleRequest(LambdaInput lambdaInput, Context context) {
-        AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda = AwsGreengrassProvisioner.getInjector().getInstance(AwsGreengrassProvisionerLambda.class);
+        AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda = AwsGreengrassProvisioner.getInjector().awsGreengrassProvisionerLambda();
         return awsGreengrassProvisionerLambda.innerHandleRequest(lambdaInput, context);
     }
 

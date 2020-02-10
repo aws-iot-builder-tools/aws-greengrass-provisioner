@@ -23,7 +23,7 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     public void beforeTestSetup() throws IOException {
         greengrassITShared = new GreengrassITShared();
         GreengrassITShared.beforeTestSetup();
-        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+        ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
     }
 
     @After

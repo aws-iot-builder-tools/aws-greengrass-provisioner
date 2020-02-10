@@ -28,8 +28,8 @@ public class GreengrassUpdateWithoutDockerIT {
         greengrassITShared = new GreengrassITShared();
         GreengrassITShared.beforeTestSetup();
 
-        greengrassHelper = AwsGreengrassProvisioner.getInjector().getInstance(GreengrassHelper.class);
-        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+        greengrassHelper = AwsGreengrassProvisioner.getInjector().greengrassHelper();
+        ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
     }
 
     @After
