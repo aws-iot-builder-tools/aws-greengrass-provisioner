@@ -914,7 +914,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.ec2LinuxVersion != null) {
             log.info("Launching EC2 instance");
-            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort);
+            Set<Integer> openPorts = functionConfs.stream()
+                    .map(FunctionConf::getEnvironmentVariables)
+                    .map(environmentVariables -> Optional.ofNullable(environmentVariables.get("PORT")))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toSet());
+            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort, openPorts);
 
             if (!optionalInstanceId.isPresent()) {
                 // Something went wrong, bail out
@@ -1305,7 +1312,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         throw new RuntimeException(errorMessage);
     }
 
-    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion, int mqttPort) {
+    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion, int mqttPort, Set<Integer> openPorts) {
         String instanceTagName = String.join("-", GREENGRASS_EC2_INSTANCE_TAG_PREFIX, groupName);
 
         Optional<String> optionalAccountId = getAccountId(ec2LinuxVersion);
@@ -1345,29 +1352,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Image image = optionalImage.get();
 
-        IpPermission sshPermission = IpPermission.builder()
-                .fromPort(SSH_PORT)
-                .toPort(SSH_PORT)
-                .ipProtocol("tcp")
-                .ipRanges(ALL_IPS)
-                .build();
-
-        log.warn("Opening security group for inbound traffic on all IPs on port [" + mqttPort + "] for MQTT");
-
-        IpPermission mqttPermission = IpPermission.builder()
-                .fromPort(mqttPort)
-                .toPort(mqttPort)
-                .ipProtocol("tcp")
-                .ipRanges(ALL_IPS)
-                .build();
-
-        IpPermission moshPermission = IpPermission.builder()
-                .fromPort(MOSH_START_PORT)
-                .toPort(MOSH_END_PORT)
-                .ipProtocol("udp")
-                .ipRanges(ALL_IPS)
-                .build();
-
         String securityGroupName = String.join("-", instanceTagName, ioHelper.getUuid());
 
         CreateSecurityGroupRequest createSecurityGroupRequest = CreateSecurityGroupRequest.builder()
@@ -1385,9 +1369,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
                 .onRetriesExceeded(failure -> log.error("Security group never became visible. Cannot continue."));
 
+        List<IpPermission> ipPermissions = openPorts.stream()
+                .map(this::openTcpPortToWorld)
+                .collect(Collectors.toList());
+
+        IpPermission sshPermission = openTcpPortToWorld(SSH_PORT);
+        IpPermission mqttPermission = openTcpPortToWorld(mqttPort);
+        IpPermission moshPermission = openUdpRangeToWorld(MOSH_START_PORT, MOSH_END_PORT);
+
+        ipPermissions.add(sshPermission);
+        ipPermissions.add(moshPermission);
+        ipPermissions.add(mqttPermission);
+
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
-                .ipPermissions(sshPermission, moshPermission, mqttPermission)
+                .ipPermissions(ipPermissions)
                 .build();
 
         Failsafe.with(securityGroupRetryPolicy).get(() ->
@@ -1436,6 +1432,28 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
 
         return Optional.of(instanceId);
+    }
+
+    private IpPermission openTcpPortToWorld(int port) {
+        log.warn("Opening security group for inbound TCP traffic on all IPs on port [" + port + "]");
+
+        return IpPermission.builder()
+                .fromPort(port)
+                .toPort(port)
+                .ipProtocol("tcp")
+                .ipRanges(ALL_IPS)
+                .build();
+    }
+
+    private IpPermission openUdpRangeToWorld(int fromPort, int toPort) {
+        log.warn("Opening security group for inbound UDP traffic on all IPs from port [" + fromPort + "] to port [" + toPort + "]");
+
+        return IpPermission.builder()
+                .fromPort(fromPort)
+                .toPort(toPort)
+                .ipProtocol("udp")
+                .ipRanges(ALL_IPS)
+                .build();
     }
 
     @NotNull
