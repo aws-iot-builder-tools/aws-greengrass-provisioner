@@ -363,7 +363,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             lambdaClient.deleteAlias(deleteAliasRequest);
         }
 
-        loggingHelper.logInfoWithName(log, functionName, "Creating new alias");
+        loggingHelper.logInfoWithName(log, functionName, "Creating new alias [" + aliasName + "] for version [" + functionVersion + "]");
 
         CreateAliasRequest createAliasRequest = CreateAliasRequest.builder()
                 .functionName(functionName)
