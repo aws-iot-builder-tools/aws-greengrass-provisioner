@@ -38,6 +38,10 @@ public class BasicIoHelper implements IoHelper {
     @Inject
     GlobalDefaultHelper globalDefaultHelper;
 
+    @Inject
+    public BasicIoHelper() {
+    }
+   
     @Override
     public boolean isRunningInDocker() {
         String proc1CgroupContents = Try.of(() -> readFileAsString(new File("/proc/1/cgroup"))).getOrElse("");

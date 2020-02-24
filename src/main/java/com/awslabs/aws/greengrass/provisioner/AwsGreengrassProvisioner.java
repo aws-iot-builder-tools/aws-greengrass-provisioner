@@ -1,11 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.Operation;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.V2HelperModule;
 import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2SdkErrorHandler;
-import com.google.inject.Guice;
-import com.google.inject.Injector;
-import com.google.inject.ProvisionException;
 import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
@@ -36,11 +32,6 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     private static void handleProvisionerFailure(V2SdkErrorHandler sdkErrorHandler, Throwable throwable) {
-        // Sometimes dependency injection exceptions mask the actual SDK exception
-        if ((throwable instanceof ProvisionException) && (throwable.getCause() instanceof SdkClientException)) {
-            throwable = throwable.getCause();
-        }
-
         if (throwable instanceof SdkClientException) {
             sdkErrorHandler.handleSdkError((SdkClientException) throwable);
         }
@@ -66,16 +57,16 @@ public class AwsGreengrassProvisioner implements Runnable {
     }
 
     public static V2SdkErrorHandler getSdkErrorHandler() {
-        return getInjector().getInstance(V2SdkErrorHandler.class);
+        return getInjector().v2SdkErrorHandler();
     }
 
     public static AwsGreengrassProvisioner getAwsGreengrassProvisioner() {
-        return getInjector().getInstance(AwsGreengrassProvisioner.class);
+        return getInjector().awsGreengrassProvisioner();
     }
 
     public static Injector getInjector() {
         if (!optionalInjector.isPresent()) {
-            optionalInjector = Optional.of(Guice.createInjector(new AwsGreengrassProvisionerModule(), new V2HelperModule()));
+            optionalInjector = Optional.of(DaggerInjector.create());
         }
 
         return optionalInjector.get();

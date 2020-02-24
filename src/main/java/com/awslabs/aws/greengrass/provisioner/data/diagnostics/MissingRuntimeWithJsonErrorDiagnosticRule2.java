@@ -16,6 +16,10 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule2 implements MissingRuntim
     @Inject
     JsonHelper jsonHelper;
 
+    @Inject
+    public MissingRuntimeWithJsonErrorDiagnosticRule2() {
+    }
+
     @Override
     public Pattern getFindJsonPattern() {
         return findJsonPattern;

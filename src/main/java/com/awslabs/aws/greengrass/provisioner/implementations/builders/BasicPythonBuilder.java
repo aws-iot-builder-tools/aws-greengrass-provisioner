@@ -30,10 +30,6 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
     @Inject
     LoggingHelper loggingHelper;
 
-    @Inject
-    public BasicPythonBuilder() {
-    }
-
     private List<Path> getDirectorySnapshot(Path directory) {
         return Try.of(() -> Files.list(directory).collect(Collectors.toList())).get();
     }

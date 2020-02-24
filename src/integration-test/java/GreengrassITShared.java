@@ -50,8 +50,8 @@ class GreengrassITShared {
     static final String X86_64_SAMPLE_C_DEPLOYMENT = "X86_64SampleC.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
-    private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().ioHelper().getUuid();
+    private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
 
     static void cleanDirectories() throws IOException {
         FileUtils.deleteDirectory(TEMP_DEPLOYMENTS);
@@ -62,7 +62,7 @@ class GreengrassITShared {
     }
 
     static ThreadHelper getThreadHelper() {
-        return AwsGreengrassProvisioner.getInjector().getInstance(ThreadHelper.class);
+        return AwsGreengrassProvisioner.getInjector().threadHelper();
     }
 
     static void beforeTestSetup() throws IOException {

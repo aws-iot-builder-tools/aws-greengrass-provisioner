@@ -8,9 +8,6 @@ WORKDIR /build/
 # Run clean to at least fetch gradle
 RUN ./gradlew clean
 
-# Fetch dependencies
-RUN ./gradlew resolveDependencies
-
 # Fetch binaries
 RUN ./gradlew downloadAll
 

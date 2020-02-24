@@ -50,7 +50,7 @@ distZip.enabled = shadowDistZip.enabled = false
 distTar.enabled = shadowDistTar.enabled = false
 
 // Specify all of our dependency versions
-def guiceVersion = '4.2.2'
+def daggerVersion = '2.26'
 def configVersion = '1.4.0'
 def ztZipVersion = '1.14'
 def jcommanderVersion = '1.78'
@@ -76,7 +76,7 @@ def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.6.4'
+def resultsIteratorForAwsJavaSdkVersion = '0.6.6'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -159,12 +159,17 @@ task integrationTest(type: Test) {
 }
 
 dependencies {
+    // Dagger code generation
+    annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
+
+    // Immutables (requires annotation processing for code generation)
     annotationProcessor "org.immutables:value:$immutablesValueVersion"
     annotationProcessor "org.immutables:gson:$immutablesValueVersion"
     compile "org.immutables:value:$immutablesValueVersion"
     compile "org.immutables:gson:$immutablesValueVersion"
 
-    compile "com.google.inject:guice:$guiceVersion"
+    // Dependency injection with Dagger
+    compile "com.google.dagger:dagger:$daggerVersion"
 
     compile "com.typesafe:config:$configVersion"
     compile "org.zeroturnaround:zt-zip:$ztZipVersion"
