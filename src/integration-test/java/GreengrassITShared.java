@@ -72,9 +72,12 @@ class GreengrassITShared {
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FOUNDATION, GreengrassITShared.TEMP_FOUNDATION);
 
         IOFileFilter ignoreVenvDirectories = FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("venv"));
+        IOFileFilter ignoreNodeModulesDirectories = FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("node_modules"));
 
-        FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ignoreVenvDirectories);
-        FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ignoreVenvDirectories);
+        IOFileFilter ioFileFilter = FileFilterUtils.and(ignoreVenvDirectories, ignoreNodeModulesDirectories);
+
+        FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ioFileFilter);
+        FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ioFileFilter);
     }
 
     String getGroupName() {
