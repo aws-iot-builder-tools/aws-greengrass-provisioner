@@ -472,41 +472,45 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createDefaultLoggerDefinitionAndVersion() {
-        Logger lambdaLogger = Logger.builder()
+        List<Logger> loggers = new ArrayList<>();
+
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.LAMBDA)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.FILE_SYSTEM)
                 .space(DEFAULT_LOGGER_SPACE_IN_KB)
-                .build();
+                .build());
 
-        Logger systemLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.GREENGRASS_SYSTEM)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.FILE_SYSTEM)
                 .space(DEFAULT_LOGGER_SPACE_IN_KB)
-                .build();
+                .build());
 
-        Logger cloudwatchLambdaLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.LAMBDA)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.AWS_CLOUD_WATCH)
-                .build();
+                .build());
 
-        Logger cloudwatchSystemLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.GREENGRASS_SYSTEM)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.AWS_CLOUD_WATCH)
-                .build();
+                .build());
 
+        return createLoggerDefinitionAndVersion(loggers);
+    }
+
+    @Override
+    public String createLoggerDefinitionAndVersion(List<Logger> loggers) {
         LoggerDefinitionVersion loggerDefinitionVersion = LoggerDefinitionVersion.builder()
-                .loggers(lambdaLogger,
-                        systemLogger,
-                        cloudwatchLambdaLogger,
-                        cloudwatchSystemLogger)
+                .loggers(loggers)
                 .build();
 
         CreateLoggerDefinitionRequest createLoggerDefinitionRequest = CreateLoggerDefinitionRequest.builder()

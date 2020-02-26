@@ -196,11 +196,89 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Connector confs
         deploymentConfBuilder.connectors(config.getStringList("conf.connectors"));
 
+        // GGD confs
         deploymentConfBuilder.ggds(config.getStringList("conf.ggds"));
+
+        // Logger conf
+        deploymentConfBuilder.loggers(getLoggers(typeSafeConfigHelper, config, "conf.loggers"));
 
         setEnvironmentVariables(deploymentConfBuilder, config);
 
         return deploymentConfBuilder.build();
+    }
+
+    private Optional<List<software.amazon.awssdk.services.greengrass.model.Logger>> getLoggers(TypeSafeConfigHelper typeSafeConfigHelper, Config config, String prefix) {
+        String loggerPrefix = String.join(".", prefix);
+
+        try {
+            List<? extends ConfigObject> configObjects = config.getObjectList(loggerPrefix);
+
+            return Optional.of(configObjects.stream()
+                    .map(this::toLogger)
+                    .collect(Collectors.toList()));
+        } catch (ConfigException.Missing e) {
+            log.warn("Logger configuration missing");
+
+            return Optional.empty();
+        }
+    }
+
+    private software.amazon.awssdk.services.greengrass.model.Logger toLogger(ConfigObject configObject) {
+        Optional<String> componentString = Optional.ofNullable(configObject.get("component")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> loggerLevelString = Optional.ofNullable(configObject.get("loggerLevel")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> loggerTypeString = Optional.ofNullable(configObject.get("loggerType")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> spaceString = Optional.ofNullable(configObject.get("space")).map(value -> value.render(ConfigRenderOptions.concise()));
+
+        if (!componentString.isPresent()) {
+            throw new RuntimeException("Component value missing in logger configuration, can not continue");
+        }
+
+        LoggerComponent loggerComponent = LoggerComponent.fromValue(removeQuotes(componentString.get()));
+
+        if (loggerComponent == null) {
+            throw new RuntimeException("Failed to parse logger component [" + componentString.get() + "]");
+        }
+
+        if (!loggerLevelString.isPresent()) {
+            throw new RuntimeException("Logger level value missing in logger configuration, can not continue");
+        }
+
+        LoggerLevel loggerLevel = LoggerLevel.fromValue(removeQuotes(loggerLevelString.get()));
+
+        if (loggerLevel == null) {
+            throw new RuntimeException("Failed to parse logger level [" + loggerLevelString.get() + "]");
+        }
+
+        if (!loggerTypeString.isPresent()) {
+            throw new RuntimeException("Logger type value missing in logger configuration, can not continue");
+        }
+
+        LoggerType loggerType = LoggerType.fromValue(removeQuotes(loggerTypeString.get()));
+
+        if (loggerType == null) {
+            throw new RuntimeException("Failed to parse logger type [" + loggerTypeString.get() + "]");
+        }
+
+        if (loggerType.equals(LoggerType.FILE_SYSTEM) && !spaceString.isPresent()) {
+            throw new RuntimeException("Logger space value missing in logger configuration with a filesystem logger, can not continue");
+        } else if (loggerType.equals(LoggerType.AWS_CLOUD_WATCH) && spaceString.isPresent()) {
+            throw new RuntimeException("Logger space value present in logger configuration with a CloudWatch logger, can not continue");
+        }
+
+        Optional<Integer> optionalSpace = spaceString.map(this::removeQuotes).map(Integer::parseInt);
+
+        software.amazon.awssdk.services.greengrass.model.Logger.Builder builder = software.amazon.awssdk.services.greengrass.model.Logger.builder();
+        builder.id(ioHelper.getUuid());
+        builder.component(loggerComponent);
+        builder.level(loggerLevel);
+        builder.type(loggerType);
+        optionalSpace.ifPresent(builder::space);
+
+        return builder.build();
+    }
+
+    private String removeQuotes(String input) {
+        return input.replaceAll("\"", "");
     }
 
     private void setEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
@@ -230,7 +308,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private Config getFallbackConfig() {
-        return ConfigFactory.parseFile(ggConstants.getDeploymentDefaultsConf());
+        return ggConstants.getDeploymentDefaults();
     }
 
     /**
@@ -640,7 +718,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         //////////////////////////////////////////////
 
         log.info("Creating logger definition");
-        String loggerDefinitionVersionArn = greengrassHelper.createDefaultLoggerDefinitionAndVersion();
+        String loggerDefinitionVersionArn;
+
+        if (!deploymentConf.getLoggers().isPresent()) {
+            log.warn("No loggers section defined in configuration files, using default logger configuration");
+            loggerDefinitionVersionArn = greengrassHelper.createDefaultLoggerDefinitionAndVersion();
+        } else {
+            loggerDefinitionVersionArn = greengrassHelper.createLoggerDefinitionAndVersion(deploymentConf.getLoggers().get());
+        }
 
         //////////////////////////////////////////////
         // Create the Lambda role for the functions //

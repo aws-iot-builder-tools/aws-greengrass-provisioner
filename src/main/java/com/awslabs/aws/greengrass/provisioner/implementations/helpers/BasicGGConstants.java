@@ -2,6 +2,8 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.typesafe.config.Config;
+import com.typesafe.config.ConfigFactory;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionConfiguration;
 
@@ -107,6 +109,11 @@ public class BasicGGConstants implements GGConstants {
     @Override
     public File getDeploymentDefaultsConf() {
         return new File(String.join("/", DEPLOYMENTS_DIRECTORY, "deployment.defaults.conf"));
+    }
+
+    @Override
+    public Config getDeploymentDefaults() {
+        return ConfigFactory.parseFile(getDeploymentDefaultsConf());
     }
 
     @Override
