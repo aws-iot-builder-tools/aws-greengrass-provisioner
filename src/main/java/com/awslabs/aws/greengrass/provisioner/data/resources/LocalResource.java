@@ -18,5 +18,4 @@ public interface LocalResource {
                 .trim())
                 .orElseThrow(() -> new RuntimeException("Path cannot be empty"));
     }
-
 }
