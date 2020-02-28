@@ -7,57 +7,30 @@ import com.awslabs.aws.greengrass.provisioner.implementations.helpers.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.implementations.BasicGreengrassIdExtractor;
-import com.awslabs.aws.iot.resultsiterator.helpers.implementations.BasicJsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.GreengrassIdExtractor;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.implementations.BasicV2IamHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.implementations.BasicV2S3Helper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.implementations.BasicV2SdkErrorHandler;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.implementations.V2SafeProvider;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2S3Helper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2SdkErrorHandler;
+import com.awslabs.resultsiterator.v2.V2HelperModule;
+import com.awslabs.resultsiterator.v2.implementations.V2SafeProvider;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.spotify.docker.client.ProgressHandler;
 import dagger.Module;
 import dagger.Provides;
 import dagger.multibindings.ElementsIntoSet;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.regions.providers.AwsRegionProviderChain;
-import software.amazon.awssdk.regions.providers.DefaultAwsRegionProviderChain;
 import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
-import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.iot.IotClient;
 import software.amazon.awssdk.services.lambda.LambdaClient;
-import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
-import software.amazon.awssdk.services.sts.StsClient;
 
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-@Module
+@Module(includes = {V2HelperModule.class})
 public class AwsGreengrassProvisionerModule {
-    @Provides
-    public V2SdkErrorHandler v2SdkErrorHandler(BasicV2SdkErrorHandler basicV2SdkErrorHandler) {
-        return basicV2SdkErrorHandler;
-    }
-
     // Normal clients that need no special configuration
     // NOTE: Using this pattern allows us to wrap the creation of these clients in some error checking code that can give the user information on what to do in the case of a failure
-
-    @Provides
-    public IotClient provideIotClient() {
-        return new V2SafeProvider<>(IotClient::create).get();
-    }
 
     @Provides
     public Ec2Client provideEc2Client() {
@@ -90,27 +63,13 @@ public class AwsGreengrassProvisionerModule {
     }
 
     @Provides
+    public IotClient provideIotClient() {
+        return new V2SafeProvider<>(IotClient::create).get();
+    }
+
+    @Provides
     public SecretsManagerClient provideSecretsManagerClient() {
         return new V2SafeProvider<>(SecretsManagerClient::create).get();
-    }
-
-    @Provides
-    public S3Client provideS3Client() {
-        return new V2SafeProvider<>(S3Client::create).get();
-    }
-
-    @Provides
-    public IamClient provideIamClient() {
-        return new V2SafeProvider<>(this::innerProvideIamClient).get();
-    }
-
-    public IamClient innerProvideIamClient() {
-        return IamClient.builder().region(Region.AWS_GLOBAL).build();
-    }
-
-    @Provides
-    public StsClient provideStsClient() {
-        return new V2SafeProvider<>(StsClient::create).get();
     }
 
     @Provides
@@ -380,37 +339,7 @@ public class AwsGreengrassProvisionerModule {
     }
 
     @Provides
-    public JsonHelper provideJsonHelper(BasicJsonHelper basicJsonHelper) {
-        return basicJsonHelper;
-    }
-
-    @Provides
-    public AwsCredentialsProvider provideAwsCredentialsProvider() {
-        return DefaultCredentialsProvider.create();
-    }
-
-    @Provides
-    public V2S3Helper provideS3Helper(BasicV2S3Helper basicV2S3Helper) {
-        return basicV2S3Helper;
-    }
-
-    @Provides
-    public AwsRegionProviderChain provideAwsRegionProviderChain() {
-        return new DefaultAwsRegionProviderChain();
-    }
-
-    @Provides
     public ObjectMapper provideObjectMapper() {
         return new ObjectMapper();
-    }
-
-    @Provides
-    public GreengrassIdExtractor provideGreengrassIdExtractor(BasicGreengrassIdExtractor basicGreengrassIdExtractor) {
-        return basicGreengrassIdExtractor;
-    }
-
-    @Provides
-    public V2IamHelper provideIamHelper(BasicV2IamHelper basicV2IamHelper) {
-        return basicV2IamHelper;
     }
 }

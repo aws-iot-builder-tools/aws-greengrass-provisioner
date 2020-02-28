@@ -2,8 +2,8 @@ package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2SdkErrorHandler;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.resultsiterator.v2.interfaces.V2SdkErrorHandler;
 import dagger.Component;
 
 @Component(modules = AwsGreengrassProvisionerModule.class)

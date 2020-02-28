@@ -3,7 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import org.slf4j.Logger;

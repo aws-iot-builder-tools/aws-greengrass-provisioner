@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.Operation;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2SdkErrorHandler;
+import com.awslabs.resultsiterator.v2.interfaces.V2SdkErrorHandler;
 import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;

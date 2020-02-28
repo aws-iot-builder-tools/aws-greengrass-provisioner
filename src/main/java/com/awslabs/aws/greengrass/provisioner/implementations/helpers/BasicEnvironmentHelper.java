@@ -2,8 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.AwsHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.EnvironmentHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
-import com.typesafe.config.ConfigValueFactory;
+import com.awslabs.iam.helpers.interfaces.V2IamHelper;
 
 import javax.inject.Inject;
 import java.util.HashMap;
