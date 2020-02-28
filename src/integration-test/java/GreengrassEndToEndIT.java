@@ -1,8 +1,8 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;

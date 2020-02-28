@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data;
 
-import com.awslabs.aws.iot.resultsiterator.helpers.implementations.BasicJsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.implementations.BasicJsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;

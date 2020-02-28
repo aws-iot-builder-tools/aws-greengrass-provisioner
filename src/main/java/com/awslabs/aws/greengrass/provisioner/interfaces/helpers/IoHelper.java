@@ -2,7 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;

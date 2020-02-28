@@ -12,8 +12,8 @@ import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientP
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iam.helpers.interfaces.V2IamHelper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
