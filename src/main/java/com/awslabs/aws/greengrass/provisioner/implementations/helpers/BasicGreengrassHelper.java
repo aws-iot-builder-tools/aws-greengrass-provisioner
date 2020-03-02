@@ -260,9 +260,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
             functionConfigurationBuilder = functionConfigurationBuilder.memorySize(functionConf.getMemorySizeInKb());
         } else {
-            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER)
-                    .runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER);
         }
+
+        functionExecutionConfigBuilder.runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
 
         functionConfigurationEnvironmentBuilder.resourceAccessPolicies(resourceAccessPolicies);
 
