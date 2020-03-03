@@ -18,6 +18,10 @@ public class BasicTestArgumentHelper implements TestArgumentHelper {
     @Inject
     IoHelper ioHelper;
 
+    @Inject
+    public BasicTestArgumentHelper() {
+    }
+
     @Override
     public void displayUsage() {
         TestArguments testArguments = new TestArguments();

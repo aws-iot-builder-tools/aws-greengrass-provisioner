@@ -12,6 +12,7 @@ import org.apache.commons.lang.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.inject.Inject;
 import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Arrays;
@@ -65,6 +66,10 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
             DeviceTesterLogMessageType.COMMAND_ON_REMOTE_HOST_FAILED_TO_START,
             DeviceTesterLogMessageType.FAIL_TO_ADD_REMOTE_FILE_RESOURCE);
     private final Logger log = LoggerFactory.getLogger(BasicDeviceTesterHelper.class);
+
+    @Inject
+    public BasicDeviceTesterHelper() {
+    }
 
     @Override
     public DeviceTesterLogMessageType getLogMessageType(String logMessage) {

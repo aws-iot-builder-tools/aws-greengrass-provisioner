@@ -1,6 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data.diagnostics;
 
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 
 import javax.inject.Inject;
 import java.util.Collections;
@@ -15,6 +15,10 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule2 implements MissingRuntim
 
     @Inject
     JsonHelper jsonHelper;
+
+    @Inject
+    public MissingRuntimeWithJsonErrorDiagnosticRule2() {
+    }
 
     @Override
     public Pattern getFindJsonPattern() {

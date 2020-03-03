@@ -6,7 +6,7 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNecessaryException;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.GreengrassIdExtractor;
+import com.awslabs.iot.helpers.interfaces.GreengrassIdExtractor;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
@@ -214,50 +214,35 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public Function buildFunctionModel(String functionArn, FunctionConf functionConf) {
         List<ResourceAccessPolicy> resourceAccessPolicies = new ArrayList<>();
 
-        for (LocalDeviceResource localDeviceResource : functionConf.getLocalDeviceResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
-                    .resourceId(localDeviceResource.getName())
-                    .permission(localDeviceResource.isReadWrite() ? Permission.RW : Permission.RO)
-                    .build();
+        // Local devices and volumes could be either read-only or read-write
+        List<LocalReadOnlyOrReadWriteResource> readOnlyOrReadWriteResources = new ArrayList<>();
+        readOnlyOrReadWriteResources.addAll(functionConf.getLocalDeviceResources());
+        readOnlyOrReadWriteResources.addAll(functionConf.getLocalVolumeResources());
 
-            resourceAccessPolicies.add(resourceAccessPolicy);
+        // Only include local devices and volumes if the function is in the Greengrass container
+        if (functionConf.isGreengrassContainer()) {
+            resourceAccessPolicies.addAll(readOnlyOrReadWriteResources.stream()
+                    .map(this::getResourceAccessPolicy)
+                    .collect(Collectors.toList()));
         }
 
-        for (LocalVolumeResource localVolumeResource : functionConf.getLocalVolumeResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
-                    .resourceId(localVolumeResource.getName())
-                    .permission(localVolumeResource.isReadWrite() ? Permission.RW : Permission.RO)
-                    .build();
+        // S3 and SageMaker resources are always read-write
+        List<LocalResource> readWriteResources = new ArrayList<>();
+        readWriteResources.addAll(functionConf.getLocalS3Resources());
+        readWriteResources.addAll(functionConf.getLocalSageMakerResources());
 
-            resourceAccessPolicies.add(resourceAccessPolicy);
+        // Only include S3 and SageMaker resources if the function is in the Greengrass container
+        if (functionConf.isGreengrassContainer()) {
+            resourceAccessPolicies.addAll(readWriteResources.stream()
+                    .map(this::getReadWriteResourceAccessPolicy)
+                    .collect(Collectors.toList()));
         }
 
-        for (LocalS3Resource localS3Resource : functionConf.getLocalS3Resources()) {
-            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
-                    .resourceId(localS3Resource.getName())
-                    .permission(Permission.RW)
-                    .build();
-
-            resourceAccessPolicies.add(resourceAccessPolicy);
-        }
-
-        for (LocalSageMakerResource localSageMakerResource : functionConf.getLocalSageMakerResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
-                    .resourceId(localSageMakerResource.getName())
-                    .permission(Permission.RW)
-                    .build();
-
-            resourceAccessPolicies.add(resourceAccessPolicy);
-        }
-
-        for (LocalSecretsManagerResource localSecretsManagerResource : functionConf.getLocalSecretsManagerResources()) {
-            ResourceAccessPolicy resourceAccessPolicy = ResourceAccessPolicy.builder()
-                    .resourceId(localSecretsManagerResource.getResourceName())
-                    .permission(Permission.RO)
-                    .build();
-
-            resourceAccessPolicies.add(resourceAccessPolicy);
-        }
+        // Secrets manager resources are always read-only
+        // NOTE: These are included for all functions, even when not running in the Greengrass container
+        resourceAccessPolicies.addAll(functionConf.getLocalSecretsManagerResources().stream()
+                .map(this::getSecretManagerResourceAccessPolicy)
+                .collect(Collectors.toList()));
 
         FunctionConfigurationEnvironment.Builder functionConfigurationEnvironmentBuilder = FunctionConfigurationEnvironment.builder()
                 .variables(functionConf.getEnvironmentVariables());
@@ -271,14 +256,16 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         if (functionConf.isGreengrassContainer()) {
             functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.GREENGRASS_CONTAINER);
-            functionConfigurationEnvironmentBuilder.accessSysfs(functionConf.isAccessSysFs())
-                    .resourceAccessPolicies(resourceAccessPolicies);
+            functionConfigurationEnvironmentBuilder.accessSysfs(functionConf.isAccessSysFs());
 
             functionConfigurationBuilder = functionConfigurationBuilder.memorySize(functionConf.getMemorySizeInKb());
         } else {
-            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER)
-                    .runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+            functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER);
         }
+
+        functionExecutionConfigBuilder.runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+
+        functionConfigurationEnvironmentBuilder.resourceAccessPolicies(resourceAccessPolicies);
 
         functionConfigurationEnvironmentBuilder = functionConfigurationEnvironmentBuilder.execution(functionExecutionConfigBuilder.build());
 
@@ -291,6 +278,27 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .build();
 
         return function;
+    }
+
+    private ResourceAccessPolicy getSecretManagerResourceAccessPolicy(LocalSecretsManagerResource localSecretsManagerResource) {
+        return ResourceAccessPolicy.builder()
+                .resourceId(localSecretsManagerResource.getResourceName())
+                .permission(Permission.RO)
+                .build();
+    }
+
+    public ResourceAccessPolicy getResourceAccessPolicy(LocalReadOnlyOrReadWriteResource localReadOnlyOrReadWriteResource) {
+        return ResourceAccessPolicy.builder()
+                .resourceId(localReadOnlyOrReadWriteResource.getName())
+                .permission(localReadOnlyOrReadWriteResource.isReadWrite() ? Permission.RW : Permission.RO)
+                .build();
+    }
+
+    public ResourceAccessPolicy getReadWriteResourceAccessPolicy(LocalResource localResource) {
+        return ResourceAccessPolicy.builder()
+                .resourceId(localResource.getName())
+                .permission(Permission.RW)
+                .build();
     }
 
     @Override
@@ -472,41 +480,45 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createDefaultLoggerDefinitionAndVersion() {
-        Logger lambdaLogger = Logger.builder()
+        List<Logger> loggers = new ArrayList<>();
+
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.LAMBDA)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.FILE_SYSTEM)
                 .space(DEFAULT_LOGGER_SPACE_IN_KB)
-                .build();
+                .build());
 
-        Logger systemLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.GREENGRASS_SYSTEM)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.FILE_SYSTEM)
                 .space(DEFAULT_LOGGER_SPACE_IN_KB)
-                .build();
+                .build());
 
-        Logger cloudwatchLambdaLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.LAMBDA)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.AWS_CLOUD_WATCH)
-                .build();
+                .build());
 
-        Logger cloudwatchSystemLogger = Logger.builder()
+        loggers.add(Logger.builder()
                 .id(ioHelper.getUuid())
                 .component(LoggerComponent.GREENGRASS_SYSTEM)
                 .level(LoggerLevel.INFO)
                 .type(LoggerType.AWS_CLOUD_WATCH)
-                .build();
+                .build());
 
+        return createLoggerDefinitionAndVersion(loggers);
+    }
+
+    @Override
+    public String createLoggerDefinitionAndVersion(List<Logger> loggers) {
         LoggerDefinitionVersion loggerDefinitionVersion = LoggerDefinitionVersion.builder()
-                .loggers(lambdaLogger,
-                        systemLogger,
-                        cloudwatchLambdaLogger,
-                        cloudwatchSystemLogger)
+                .loggers(loggers)
                 .build();
 
         CreateLoggerDefinitionRequest createLoggerDefinitionRequest = CreateLoggerDefinitionRequest.builder()
@@ -742,7 +754,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         List<LocalVolumeResource> localVolumeResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalVolumeResources);
         List<LocalS3Resource> localS3Resources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalS3Resources);
         List<LocalSageMakerResource> localSageMakerResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalSageMakerResources);
-        List<LocalSecretsManagerResource> localSecretsManagerResources = greengrassResourceHelper.flatMapResources(functionsInGreengrassContainer, FunctionConf::getLocalSecretsManagerResources);
+
+        // Secrets from secrets manager work outside of the container so don't filter those
+        List<LocalSecretsManagerResource> localSecretsManagerResources = greengrassResourceHelper.flatMapResources(functionConfs, FunctionConf::getLocalSecretsManagerResources);
 
         return createResourceDefinition(localDeviceResources, localVolumeResources, localS3Resources, localSageMakerResources, localSecretsManagerResources);
     }

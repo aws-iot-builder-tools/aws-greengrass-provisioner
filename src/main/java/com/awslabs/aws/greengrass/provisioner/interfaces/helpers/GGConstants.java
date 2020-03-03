@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.typesafe.config.Config;
 import software.amazon.awssdk.services.greengrass.model.Function;
 
 import java.io.File;
@@ -57,6 +58,8 @@ public interface GGConstants {
     String getConfGreengrassContainer();
 
     File getDeploymentDefaultsConf();
+
+    Config getDeploymentDefaults();
 
     String getGgdDefaultsConf();
 }

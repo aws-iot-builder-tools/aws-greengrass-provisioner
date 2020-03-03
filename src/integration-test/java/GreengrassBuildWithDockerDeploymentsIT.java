@@ -52,7 +52,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         // This builds the Docker container for integration tests. It can take a few minutes if this is a fresh build.
         process.waitFor();
 
-        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+        ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
     }
 
     @Before
@@ -66,11 +66,11 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     }
 
     private String getHome() {
-        return AwsGreengrassProvisioner.getInjector().getInstance(GlobalDefaultHelper.class).getHomeDirectory().get();
+        return AwsGreengrassProvisioner.getInjector().globalDefaultHelper().getHomeDirectory().get();
     }
 
     private String getBranch() {
-        ProcessHelper processHelper = AwsGreengrassProvisioner.getInjector().getInstance(ProcessHelper.class);
+        ProcessHelper processHelper = AwsGreengrassProvisioner.getInjector().processHelper();
 
         List<String> programAndArguments = new ArrayList<>();
         programAndArguments.add("git");

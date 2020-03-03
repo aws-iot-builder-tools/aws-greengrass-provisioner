@@ -4,12 +4,17 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHe
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
+import javax.inject.Inject;
 import java.io.File;
 import java.util.Optional;
 
 public class BasicGlobalDefaultHelper implements GlobalDefaultHelper {
     public static final String USER_HOME = "user.home";
     public static final String GLOBAL_DEFAULTS_DIRECTORY = ".ggprovisioner";
+
+    @Inject
+    public BasicGlobalDefaultHelper() {
+    }
 
     @Override
     public Optional<Config> getGlobalDefaults(String filename) {

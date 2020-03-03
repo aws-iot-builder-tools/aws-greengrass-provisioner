@@ -1,7 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.PolicyHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 
 import javax.inject.Inject;
 import java.util.HashMap;

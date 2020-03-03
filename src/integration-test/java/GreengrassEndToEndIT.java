@@ -1,8 +1,8 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;
@@ -71,12 +71,12 @@ public class GreengrassEndToEndIT {
 
         replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
-        GGVariables ggVariables = AwsGreengrassProvisioner.getInjector().getInstance(GGVariables.class);
+        GGVariables ggVariables = AwsGreengrassProvisioner.getInjector().ggVariables();
         String groupName = greengrassITShared.getGroupName();
         oemArchiveName = new File(ggVariables.getOemArchiveName(groupName));
         coreName = greengrassITShared.getGroupName() + "_Core";
 
-        ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+        ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
 
         greengrassBuildWithoutDockerDeploymentsIT = new GreengrassBuildWithoutDockerDeploymentsIT();
         greengrassBuildWithoutDockerDeploymentsIT.greengrassITShared = greengrassITShared;
@@ -87,7 +87,7 @@ public class GreengrassEndToEndIT {
         mqttClient = basicMqttOverWebsocketsProvider.getMqttClient(clientId);
         mqttClient.connect();
 
-        jsonHelper = AwsGreengrassProvisioner.getInjector().getInstance(JsonHelper.class);
+        jsonHelper = AwsGreengrassProvisioner.getInjector().jsonHelper();
 
         flag = new AtomicBoolean(false);
 

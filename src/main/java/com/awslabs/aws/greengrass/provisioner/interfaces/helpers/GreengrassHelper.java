@@ -50,6 +50,8 @@ public interface GreengrassHelper {
 
     String createDeviceDefinitionAndVersion(String deviceDefinitionName, List<Device> devices);
 
+    String createLoggerDefinitionAndVersion(List<Logger> loggers);
+
     String createGroupVersion(String groupId, GroupVersion newGroupVersion);
 
     String createDeployment(String groupId, String groupVersionId);

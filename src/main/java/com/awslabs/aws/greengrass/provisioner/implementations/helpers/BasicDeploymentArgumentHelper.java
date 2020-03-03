@@ -4,7 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.docker.EcrDockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2S3Helper;
+import com.awslabs.s3.helpers.interfaces.V2S3Helper;
 import com.beust.jcommander.JCommander;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigException;

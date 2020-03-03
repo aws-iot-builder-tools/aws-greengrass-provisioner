@@ -5,7 +5,6 @@ import com.awslabs.aws.greengrass.provisioner.implementations.helpers.BasicDeplo
 import io.vavr.Tuple3;
 import org.hamcrest.MatcherAssert;
 import org.jetbrains.annotations.NotNull;
-import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import software.amazon.awssdk.services.ec2.model.Image;
@@ -23,7 +22,7 @@ public class GreengrassEC2ImagesIT {
 
     @Before
     public void setup() {
-        basicDeploymentHelper = AwsGreengrassProvisioner.getInjector().getInstance(BasicDeploymentHelper.class);
+        basicDeploymentHelper = (BasicDeploymentHelper) AwsGreengrassProvisioner.getInjector().deploymentHelper();
     }
 
     @Test

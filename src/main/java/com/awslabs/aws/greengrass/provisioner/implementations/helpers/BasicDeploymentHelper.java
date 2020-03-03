@@ -12,8 +12,8 @@ import com.awslabs.aws.greengrass.provisioner.docker.interfaces.EcrDockerClientP
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengrassImageDockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.v2.interfaces.V2IamHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iam.helpers.interfaces.V2IamHelper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -196,11 +196,89 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Connector confs
         deploymentConfBuilder.connectors(config.getStringList("conf.connectors"));
 
+        // GGD confs
         deploymentConfBuilder.ggds(config.getStringList("conf.ggds"));
+
+        // Logger conf
+        deploymentConfBuilder.loggers(getLoggers(typeSafeConfigHelper, config, "conf.loggers"));
 
         setEnvironmentVariables(deploymentConfBuilder, config);
 
         return deploymentConfBuilder.build();
+    }
+
+    private Optional<List<software.amazon.awssdk.services.greengrass.model.Logger>> getLoggers(TypeSafeConfigHelper typeSafeConfigHelper, Config config, String prefix) {
+        String loggerPrefix = String.join(".", prefix);
+
+        try {
+            List<? extends ConfigObject> configObjects = config.getObjectList(loggerPrefix);
+
+            return Optional.of(configObjects.stream()
+                    .map(this::toLogger)
+                    .collect(Collectors.toList()));
+        } catch (ConfigException.Missing e) {
+            log.warn("Logger configuration missing");
+
+            return Optional.empty();
+        }
+    }
+
+    private software.amazon.awssdk.services.greengrass.model.Logger toLogger(ConfigObject configObject) {
+        Optional<String> componentString = Optional.ofNullable(configObject.get("component")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> loggerLevelString = Optional.ofNullable(configObject.get("loggerLevel")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> loggerTypeString = Optional.ofNullable(configObject.get("loggerType")).map(value -> value.render(ConfigRenderOptions.concise()));
+        Optional<String> spaceString = Optional.ofNullable(configObject.get("space")).map(value -> value.render(ConfigRenderOptions.concise()));
+
+        if (!componentString.isPresent()) {
+            throw new RuntimeException("Component value missing in logger configuration, can not continue");
+        }
+
+        LoggerComponent loggerComponent = LoggerComponent.fromValue(removeQuotes(componentString.get()));
+
+        if (loggerComponent == null) {
+            throw new RuntimeException("Failed to parse logger component [" + componentString.get() + "]");
+        }
+
+        if (!loggerLevelString.isPresent()) {
+            throw new RuntimeException("Logger level value missing in logger configuration, can not continue");
+        }
+
+        LoggerLevel loggerLevel = LoggerLevel.fromValue(removeQuotes(loggerLevelString.get()));
+
+        if (loggerLevel == null) {
+            throw new RuntimeException("Failed to parse logger level [" + loggerLevelString.get() + "]");
+        }
+
+        if (!loggerTypeString.isPresent()) {
+            throw new RuntimeException("Logger type value missing in logger configuration, can not continue");
+        }
+
+        LoggerType loggerType = LoggerType.fromValue(removeQuotes(loggerTypeString.get()));
+
+        if (loggerType == null) {
+            throw new RuntimeException("Failed to parse logger type [" + loggerTypeString.get() + "]");
+        }
+
+        if (loggerType.equals(LoggerType.FILE_SYSTEM) && !spaceString.isPresent()) {
+            throw new RuntimeException("Logger space value missing in logger configuration with a filesystem logger, can not continue");
+        } else if (loggerType.equals(LoggerType.AWS_CLOUD_WATCH) && spaceString.isPresent()) {
+            throw new RuntimeException("Logger space value present in logger configuration with a CloudWatch logger, can not continue");
+        }
+
+        Optional<Integer> optionalSpace = spaceString.map(this::removeQuotes).map(Integer::parseInt);
+
+        software.amazon.awssdk.services.greengrass.model.Logger.Builder builder = software.amazon.awssdk.services.greengrass.model.Logger.builder();
+        builder.id(ioHelper.getUuid());
+        builder.component(loggerComponent);
+        builder.level(loggerLevel);
+        builder.type(loggerType);
+        optionalSpace.ifPresent(builder::space);
+
+        return builder.build();
+    }
+
+    private String removeQuotes(String input) {
+        return input.replaceAll("\"", "");
     }
 
     private void setEnvironmentVariables(ImmutableDeploymentConf.Builder deploymentConfBuilder, Config config) {
@@ -230,7 +308,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private Config getFallbackConfig() {
-        return ConfigFactory.parseFile(ggConstants.getDeploymentDefaultsConf());
+        return ggConstants.getDeploymentDefaults();
     }
 
     /**
@@ -640,7 +718,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         //////////////////////////////////////////////
 
         log.info("Creating logger definition");
-        String loggerDefinitionVersionArn = greengrassHelper.createDefaultLoggerDefinitionAndVersion();
+        String loggerDefinitionVersionArn;
+
+        if (!deploymentConf.getLoggers().isPresent()) {
+            log.warn("No loggers section defined in configuration files, using default logger configuration");
+            loggerDefinitionVersionArn = greengrassHelper.createDefaultLoggerDefinitionAndVersion();
+        } else {
+            loggerDefinitionVersionArn = greengrassHelper.createLoggerDefinitionAndVersion(deploymentConf.getLoggers().get());
+        }
 
         //////////////////////////////////////////////
         // Create the Lambda role for the functions //
@@ -669,23 +754,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////////////////////
 
         boolean functionsRunningAsRoot = functionConfs.stream()
-                .filter(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0))
-                .anyMatch(functionConf -> !functionConf.isGreengrassContainer());
+                .anyMatch(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0));
 
         if (functionsRunningAsRoot) {
-            log.warn("At least one function was detected that is configured to run outside of the Greengrass container as root");
-        }
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////
-        // Determine if any functions are specified to run as root but are still set to run in the container //
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-        boolean functionsWithRootUidOrGidInGreengrassContainer = functionConfs.stream()
-                .filter(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0))
-                .anyMatch(FunctionConf::isGreengrassContainer);
-
-        if (functionsWithRootUidOrGidInGreengrassContainer) {
-            log.warn("At least one function was detected that is configured to run as root but will run as the Greengrass user because it is set to run inside of the Greengrass container. If you need a function to run as root it must run outside of the Greengrass container.");
+            log.warn("At least one function was detected that is configured to run as root");
         }
 
         ////////////////////////////////////////////////////////////////////////////
@@ -914,7 +986,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.ec2LinuxVersion != null) {
             log.info("Launching EC2 instance");
-            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort);
+            Set<Integer> openPorts = functionConfs.stream()
+                    .map(FunctionConf::getEnvironmentVariables)
+                    .map(environmentVariables -> Optional.ofNullable(environmentVariables.get("PORT")))
+                    .filter(Optional::isPresent)
+                    .map(Optional::get)
+                    .map(Integer::parseInt)
+                    .collect(Collectors.toSet());
+            optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort, openPorts);
 
             if (!optionalInstanceId.isPresent()) {
                 // Something went wrong, bail out
@@ -1305,7 +1384,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         throw new RuntimeException(errorMessage);
     }
 
-    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion, int mqttPort) {
+    private Optional<String> launchEc2Instance(String groupName, Architecture architecture, EC2LinuxVersion ec2LinuxVersion, int mqttPort, Set<Integer> openPorts) {
         String instanceTagName = String.join("-", GREENGRASS_EC2_INSTANCE_TAG_PREFIX, groupName);
 
         Optional<String> optionalAccountId = getAccountId(ec2LinuxVersion);
@@ -1345,29 +1424,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         Image image = optionalImage.get();
 
-        IpPermission sshPermission = IpPermission.builder()
-                .fromPort(SSH_PORT)
-                .toPort(SSH_PORT)
-                .ipProtocol("tcp")
-                .ipRanges(ALL_IPS)
-                .build();
-
-        log.warn("Opening security group for inbound traffic on all IPs on port [" + mqttPort + "] for MQTT");
-
-        IpPermission mqttPermission = IpPermission.builder()
-                .fromPort(mqttPort)
-                .toPort(mqttPort)
-                .ipProtocol("tcp")
-                .ipRanges(ALL_IPS)
-                .build();
-
-        IpPermission moshPermission = IpPermission.builder()
-                .fromPort(MOSH_START_PORT)
-                .toPort(MOSH_END_PORT)
-                .ipProtocol("udp")
-                .ipRanges(ALL_IPS)
-                .build();
-
         String securityGroupName = String.join("-", instanceTagName, ioHelper.getUuid());
 
         CreateSecurityGroupRequest createSecurityGroupRequest = CreateSecurityGroupRequest.builder()
@@ -1385,9 +1441,21 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 .onRetry(failure -> log.warn("Waiting for security group to become visible..."))
                 .onRetriesExceeded(failure -> log.error("Security group never became visible. Cannot continue."));
 
+        List<IpPermission> ipPermissions = openPorts.stream()
+                .map(this::openTcpPortToWorld)
+                .collect(Collectors.toList());
+
+        IpPermission sshPermission = openTcpPortToWorld(SSH_PORT);
+        IpPermission mqttPermission = openTcpPortToWorld(mqttPort);
+        IpPermission moshPermission = openUdpRangeToWorld(MOSH_START_PORT, MOSH_END_PORT);
+
+        ipPermissions.add(sshPermission);
+        ipPermissions.add(moshPermission);
+        ipPermissions.add(mqttPermission);
+
         AuthorizeSecurityGroupIngressRequest authorizeSecurityGroupIngressRequest = AuthorizeSecurityGroupIngressRequest.builder()
                 .groupName(securityGroupName)
-                .ipPermissions(sshPermission, moshPermission, mqttPermission)
+                .ipPermissions(ipPermissions)
                 .build();
 
         Failsafe.with(securityGroupRetryPolicy).get(() ->
@@ -1436,6 +1504,28 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
 
         return Optional.of(instanceId);
+    }
+
+    private IpPermission openTcpPortToWorld(int port) {
+        log.warn("Opening security group for inbound TCP traffic on all IPs on port [" + port + "]");
+
+        return IpPermission.builder()
+                .fromPort(port)
+                .toPort(port)
+                .ipProtocol("tcp")
+                .ipRanges(ALL_IPS)
+                .build();
+    }
+
+    private IpPermission openUdpRangeToWorld(int fromPort, int toPort) {
+        log.warn("Opening security group for inbound UDP traffic on all IPs from port [" + fromPort + "] to port [" + toPort + "]");
+
+        return IpPermission.builder()
+                .fromPort(fromPort)
+                .toPort(toPort)
+                .ipProtocol("udp")
+                .ipRanges(ALL_IPS)
+                .build();
     }
 
     @NotNull

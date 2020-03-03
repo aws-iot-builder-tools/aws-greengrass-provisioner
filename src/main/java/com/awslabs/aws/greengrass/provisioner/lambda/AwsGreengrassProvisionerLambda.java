@@ -7,7 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.Arguments;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.DeploymentHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.iot.resultsiterator.helpers.interfaces.JsonHelper;
+import com.awslabs.general.helpers.interfaces.JsonHelper;
 import io.vavr.control.Try;
 
 import javax.inject.Inject;
@@ -24,9 +24,13 @@ public class AwsGreengrassProvisionerLambda implements RequestHandler<LambdaInpu
     @Inject
     JsonHelper jsonHelper;
 
+    @Inject
+    public AwsGreengrassProvisionerLambda() {
+    }
+
     @Override
     public Map handleRequest(LambdaInput lambdaInput, Context context) {
-        AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda = AwsGreengrassProvisioner.getInjector().getInstance(AwsGreengrassProvisionerLambda.class);
+        AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda = AwsGreengrassProvisioner.getInjector().awsGreengrassProvisionerLambda();
         return awsGreengrassProvisionerLambda.innerHandleRequest(lambdaInput, context);
     }
 

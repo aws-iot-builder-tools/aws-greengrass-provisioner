@@ -50,8 +50,8 @@ class GreengrassITShared {
     static final String X86_64_SAMPLE_C_DEPLOYMENT = "X86_64SampleC.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class).getUuid();
-    private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().getInstance(IoHelper.class);
+    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().ioHelper().getUuid();
+    private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
 
     static void cleanDirectories() throws IOException {
         FileUtils.deleteDirectory(TEMP_DEPLOYMENTS);
@@ -62,7 +62,7 @@ class GreengrassITShared {
     }
 
     static ThreadHelper getThreadHelper() {
-        return AwsGreengrassProvisioner.getInjector().getInstance(ThreadHelper.class);
+        return AwsGreengrassProvisioner.getInjector().threadHelper();
     }
 
     static void beforeTestSetup() throws IOException {
@@ -72,9 +72,12 @@ class GreengrassITShared {
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FOUNDATION, GreengrassITShared.TEMP_FOUNDATION);
 
         IOFileFilter ignoreVenvDirectories = FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("venv"));
+        IOFileFilter ignoreNodeModulesDirectories = FileFilterUtils.notFileFilter(FileFilterUtils.nameFileFilter("node_modules"));
 
-        FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ignoreVenvDirectories);
-        FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ignoreVenvDirectories);
+        IOFileFilter ioFileFilter = FileFilterUtils.and(ignoreVenvDirectories, ignoreNodeModulesDirectories);
+
+        FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ioFileFilter);
+        FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ioFileFilter);
     }
 
     String getGroupName() {

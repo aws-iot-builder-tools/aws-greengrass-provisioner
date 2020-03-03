@@ -24,7 +24,7 @@ public class DuplicateLocalResourceIT {
 
     @Before
     public void setup() {
-        basicGreengrassHelper = AwsGreengrassProvisioner.getInjector().getInstance(BasicGreengrassHelper.class);
+        basicGreengrassHelper = (BasicGreengrassHelper) AwsGreengrassProvisioner.getInjector().greengrassHelper();
     }
 
     @Test
