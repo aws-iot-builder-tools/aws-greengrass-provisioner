@@ -13,6 +13,30 @@ import java.util.Map;
 
 public class BasicConfigFileHelper implements ConfigFileHelper {
     public static final String CERTS_URI = "file://certs/";
+    public static final String USE_SYSTEMD = "useSystemd";
+    public static final String NO = "no";
+    public static final String YES = "yes";
+    public static final String THING_ARN = "thingArn";
+    public static final String IOT_HOST = "iotHost";
+    public static final String GG_HOST = "ggHost";
+    public static final String GG_MQTT_PORT = "ggMqttPort";
+    public static final String CGROUP = "cgroup";
+    public static final String ALLOW_FUNCTIONS_TO_RUN_AS_ROOT = "allowFunctionsToRunAsRoot";
+    public static final String PRINCIPALS = "principals";
+    public static final String CERTIFICATE_PATH = "certificatePath";
+    public static final String SECRETS_MANAGER = "SecretsManager";
+    public static final String IOT_CERTIFICATE = "IoTCertificate";
+    public static final String MQTT_SERVER_CERTIFICATE = "MQTTServerCertificate";
+    public static final String PRIVATE_KEY_PATH = "privateKeyPath";
+    public static final String P_11_PROVIDER = "P11Provider";
+    public static final String SLOT_LABEL = "slotLabel";
+    public static final String SLOT_USER_PIN = "slotUserPin";
+    public static final String PKCS_11 = "PKCS11";
+    public static final String CA_PATH = "caPath";
+    public static final String CORE_THING = "coreThing";
+    public static final String RUNTIME = "runtime";
+    public static final String MANAGED_RESPAWN = "managedRespawn";
+    public static final String CRYPTO = "crypto";
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -34,58 +58,58 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         Map<String, Object> MQTTServerCertificate = new HashMap<>();
         Map<String, Object> PKCS11Map = new HashMap<>();
 
-        coreThingMap.put("thingArn", coreThingArn);
-        coreThingMap.put("iotHost", iotHost);
-        coreThingMap.put("ggHost", ggVariables.getGgHost(region));
-        coreThingMap.put("ggMqttPort", deploymentArguments.mqttPort);
+        coreThingMap.put(THING_ARN, coreThingArn);
+        coreThingMap.put(IOT_HOST, iotHost);
+        coreThingMap.put(GG_HOST, ggVariables.getGgHost(region));
+        coreThingMap.put(GG_MQTT_PORT, deploymentArguments.mqttPort);
 
         if (deploymentArguments.noSystemD) {
-            cgroupMap.put("useSystemd", "no");
+            cgroupMap.put(USE_SYSTEMD, NO);
         } else {
-            cgroupMap.put("useSystemd", "yes");
+            cgroupMap.put(USE_SYSTEMD, YES);
         }
 
-        runtimeMap.put("cgroup", cgroupMap);
+        runtimeMap.put(CGROUP, cgroupMap);
 
         if (functionsRunningAsRoot) {
-            runtimeMap.put("allowFunctionsToRunAsRoot", "yes");
+            runtimeMap.put(ALLOW_FUNCTIONS_TO_RUN_AS_ROOT, YES);
         }
 
-        cryptoMap.put("principals", principalsMap);
+        cryptoMap.put(PRINCIPALS, principalsMap);
 
-        IoTCertificateMap.put("certificatePath", CERTS_URI + certPath);
+        IoTCertificateMap.put(CERTIFICATE_PATH, CERTS_URI + certPath);
 
-        principalsMap.put("SecretsManager", SecretsManagerMap);
-        principalsMap.put("IoTCertificate", IoTCertificateMap);
-        principalsMap.put("MQTTServerCertificate", MQTTServerCertificate);
+        principalsMap.put(SECRETS_MANAGER, SecretsManagerMap);
+        principalsMap.put(IOT_CERTIFICATE, IoTCertificateMap);
+        principalsMap.put(MQTT_SERVER_CERTIFICATE, MQTTServerCertificate);
 
         if (deploymentArguments.hsiParameters != null) {
             HsiParameters hsiParameters = deploymentArguments.hsiParameters;
 
-            SecretsManagerMap.put("privateKeyPath", hsiParameters.getPkcsPath());
-            IoTCertificateMap.put("privateKeyPath", hsiParameters.getPkcsPath());
-            MQTTServerCertificate.put("privateKeyPath", hsiParameters.getPkcsPath());
+            SecretsManagerMap.put(PRIVATE_KEY_PATH, hsiParameters.getPkcsPath());
+            IoTCertificateMap.put(PRIVATE_KEY_PATH, hsiParameters.getPkcsPath());
+            MQTTServerCertificate.put(PRIVATE_KEY_PATH, hsiParameters.getPkcsPath());
 
-            PKCS11Map.put("P11Provider", hsiParameters.getP11Provider());
-            PKCS11Map.put("slotLabel", hsiParameters.getSlotLabel());
-            PKCS11Map.put("slotUserPin", hsiParameters.getSlotUserPin());
+            PKCS11Map.put(P_11_PROVIDER, hsiParameters.getP11Provider());
+            PKCS11Map.put(SLOT_LABEL, hsiParameters.getSlotLabel());
+            PKCS11Map.put(SLOT_USER_PIN, hsiParameters.getSlotUserPin());
 
-            cryptoMap.put("PKCS11", PKCS11Map);
+            cryptoMap.put(PKCS_11, PKCS11Map);
         } else {
             // Avoids "private key for MqttCertificate is not set" error/warning
-            SecretsManagerMap.put("privateKeyPath", CERTS_URI + keyPath);
-            IoTCertificateMap.put("privateKeyPath", CERTS_URI + keyPath);
-            MQTTServerCertificate.put("privateKeyPath", CERTS_URI + keyPath);
+            SecretsManagerMap.put(PRIVATE_KEY_PATH, CERTS_URI + keyPath);
+            IoTCertificateMap.put(PRIVATE_KEY_PATH, CERTS_URI + keyPath);
+            MQTTServerCertificate.put(PRIVATE_KEY_PATH, CERTS_URI + keyPath);
         }
 
-        cryptoMap.put("caPath", CERTS_URI + caPath);
+        cryptoMap.put(CA_PATH, CERTS_URI + caPath);
 
         Map<String, Object> config = new HashMap<>();
 
-        config.put("coreThing", coreThingMap);
-        config.put("runtime", runtimeMap);
-        config.put("managedRespawn", false);
-        config.put("crypto", cryptoMap);
+        config.put(CORE_THING, coreThingMap);
+        config.put(RUNTIME, runtimeMap);
+        config.put(MANAGED_RESPAWN, false);
+        config.put(CRYPTO, cryptoMap);
 
         return jsonHelper.toJson(config);
     }
