@@ -15,11 +15,7 @@ import java.util.Set;
 public interface GreengrassHelper {
     void associateServiceRoleToAccount(Role role);
 
-    Optional<GroupInformation> getGroupInformation(String groupNameOrGroupId);
-
     String createGroupIfNecessary(String groupName);
-
-    boolean groupExists(String groupName);
 
     void associateRoleToGroup(String groupId, Role greengrassRole);
 
@@ -70,25 +66,7 @@ public interface GreengrassHelper {
 
     void disassociateRoleFromGroup(String groupId);
 
-    Optional<GroupVersion> getLatestGroupVersion(String groupId);
-
-    Optional<String> getCoreCertificateArn(String groupId);
-
-    GroupVersion getLatestGroupVersion(GroupInformation groupInformation);
-
-    String getGroupId(GroupInformation groupInformation);
-
-    List<Function> getFunctions(GroupInformation groupInformation);
+    Optional<String> createConnectorDefinitionVersion(List<ConnectorConf> connectors);
 
     FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation);
-
-    FunctionDefinitionVersion getFunctionDefinitionVersion(GroupInformation groupInformation);
-
-    List<Device> getDevices(GroupInformation groupInformation);
-
-    List<Subscription> getSubscriptions(GroupInformation groupInformation);
-
-    GetGroupCertificateAuthorityResponse getGroupCa(GroupInformation groupInformation);
-
-    Optional<String> createConnectorDefinitionVersion(List<ConnectorConf> connectors);
 }

@@ -14,6 +14,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -89,6 +90,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     V2IamHelper iamHelper;
     @Inject
     GreengrassHelper greengrassHelper;
+    @Inject
+    V2GreengrassHelper v2GreengrassHelper;
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -456,7 +459,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create an AWS Greengrass Group and get its ID //
         ///////////////////////////////////////////////////
 
-        if (greengrassHelper.groupExists(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
+        if (v2GreengrassHelper.groupExistsByName(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
             throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
         }
 
@@ -618,7 +621,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create or reuse certificates //
         //////////////////////////////////
 
-        Optional<GroupVersion> optionalGroupVersion = greengrassHelper.getLatestGroupVersion(groupId);
+        Optional<GroupVersion> optionalGroupVersion = v2GreengrassHelper.getLatestGroupVersionByNameOrId(groupId);
         Optional<KeysAndCertificate> optionalCoreKeysAndCertificate = Optional.empty();
 
         Optional<String> optionalCoreCertificateArn = Optional.empty();
