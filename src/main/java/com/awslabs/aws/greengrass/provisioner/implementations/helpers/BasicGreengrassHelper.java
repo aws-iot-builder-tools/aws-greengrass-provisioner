@@ -456,33 +456,25 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupVersion(String groupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(groupId).findFirst();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(groupId).findFirst()
+                // If the group exists but has no versions yet, don't use the group information
+                .filter(groupInformation -> groupInformation.latestVersion() != null);
 
-        GroupVersion currentGroupVersion = null;
-        GroupInformation groupInformation = null;
+        GroupVersion currentGroupVersion;
 
-        CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
-                .groupId(groupId)
-                .build();
-
-        if (optionalGroupInformation.isPresent()) {
-            groupInformation = optionalGroupInformation.get();
-
-            if (groupInformation.latestVersion() == null) {
-                // Group exists but has no versions yet, don't use the group information
-                groupInformation = null;
-            }
-        }
-
-        if (groupInformation == null) {
+        if (!optionalGroupInformation.isPresent()) {
             log.warn("Group [" + groupId + "] not found or has no previous versions, creating group version from scratch");
 
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
         } else {
-            currentGroupVersion = v2GreengrassHelper.getLatestGroupVersionByGroupInformation(groupInformation)
+            currentGroupVersion = v2GreengrassHelper.getLatestGroupVersionByGroupInformation(optionalGroupInformation.get())
                     .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
         }
+
+        CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
+                .groupId(groupId)
+                .build();
 
         // When an ARN in the new version is NULL we take it from the current version.  This allows us to do updates more easily.
         createGroupVersionRequest = mergeCurrentAndNewVersion(newGroupVersion, currentGroupVersion, createGroupVersionRequest.toBuilder());
