@@ -633,16 +633,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return shouldRedeploy(getDeploymentStatusResponse, Collections.singletonList(expectedPartialErrorString), logMessage);
     }
 
+    /**
+     * Checks to see if a deployment status error message matches all of the expected partial strings passed in
+     *
+     * @param getDeploymentStatusResponse
+     * @param expectedPartialErrorStrings
+     * @param logMessage
+     * @return true if all expected strings are found, false if one or more expected strings are not found
+     */
     protected boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, List<String> expectedPartialErrorStrings, String logMessage) {
         String errorMessage = getDeploymentStatusResponse.errorMessage();
 
-        // Look for any false results
-        Optional<Boolean> optionalBoolean = expectedPartialErrorStrings.stream()
-                .map(string -> !errorMessage.contains(string))
-                .filter(bool -> bool)
-                .findAny();
-
-        if (optionalBoolean.isPresent()) {
+        if (!expectedPartialErrorStrings.stream().allMatch(errorMessage::contains)) {
             // Didn't find one or more of the required matches, this is not a match
             return false;
         }
