@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -41,6 +42,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     @Inject
     GreengrassHelper greengrassHelper;
     @Inject
+    V2GreengrassHelper v2GreengrassHelper;
+    @Inject
     IoHelper ioHelper;
     @Inject
     JsonHelper jsonHelper;
@@ -69,7 +72,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             throw new RuntimeException("No query specified");
         }
 
-        Optional<GroupInformation> optionalGroupInformation = greengrassHelper.getGroupInformation(queryArguments.groupName);
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(queryArguments.groupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + queryArguments.groupName + "] not found");
@@ -78,13 +81,13 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         GroupInformation groupInformation = optionalGroupInformation.get();
 
         if (queryArguments.getGroupCa) {
-            GetGroupCertificateAuthorityResponse getGroupCertificateAuthorityResponse = greengrassHelper.getGroupCa(groupInformation);
+            Optional<GetGroupCertificateAuthorityResponse> optionalGetGroupCertificateAuthorityResponse = v2GreengrassHelper.getGroupCertificateAuthorityResponseByGroupInformation(groupInformation);
 
-            if (getGroupCertificateAuthorityResponse == null) {
+            if (!optionalGetGroupCertificateAuthorityResponse.isPresent()) {
                 throw new RuntimeException("Couldn't get the group CA");
             }
 
-            String pem = getGroupCertificateAuthorityResponse.pemEncodedCertificate();
+            String pem = optionalGetGroupCertificateAuthorityResponse.get().pemEncodedCertificate();
             log.info("Group CA for group [" + queryArguments.groupName + "]\n" + pem);
 
             String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_Core_CA.pem";
@@ -95,7 +98,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listSubscriptions) {
-            List<Subscription> subscriptions = greengrassHelper.getSubscriptions(groupInformation);
+            List<Subscription> subscriptions = v2GreengrassHelper.getSubscriptionsByGroupInformation(groupInformation)
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Subscriptions:");
             String output = jsonHelper.toJson(subscriptions);
@@ -109,7 +113,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listFunctions) {
-            List<Function> functions = greengrassHelper.getFunctions(groupInformation);
+            List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Functions:");
             String output = jsonHelper.toJson(functions);
@@ -123,7 +128,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listDevices) {
-            List<Device> devices = greengrassHelper.getDevices(groupInformation);
+            List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Devices:");
             String output = jsonHelper.toJson(devices);
@@ -266,7 +272,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 .map(Optional::get)
                 .collect(Collectors.toList());
 
-        List<Function> functions = greengrassHelper.getFunctions(groupInformation);
+        List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         List<LogGroup> functionLogGroups = functions.stream()
                 // Remove all internal functions (no region, no account number) since they won't have logs

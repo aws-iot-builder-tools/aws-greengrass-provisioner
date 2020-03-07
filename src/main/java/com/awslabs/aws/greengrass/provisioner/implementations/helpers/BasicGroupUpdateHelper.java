@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
@@ -22,6 +23,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     private final Logger log = LoggerFactory.getLogger(BasicGroupUpdateHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
+    @Inject
+    V2GreengrassHelper v2GreengrassHelper;
     @Inject
     SubscriptionHelper subscriptionHelper;
     @Inject
@@ -58,7 +61,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             throw new RuntimeException("No update specified");
         }
 
-        Optional<GroupInformation> optionalGroupInformation = greengrassHelper.getGroupInformation(updateArguments.groupName);
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(updateArguments.groupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + updateArguments.groupName + "] not found");
@@ -112,7 +115,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String deviceName = updateArguments.removeDevice;
         String groupId = groupInformation.id();
 
-        List<Device> devices = greengrassHelper.getDevices(groupInformation);
+        List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         Device deviceToRemove = greengrassHelper.getDevice(deviceName);
         String thingArn = deviceToRemove.thingArn();
@@ -174,7 +178,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         Device newDevice = greengrassHelper.getDevice(deviceName);
 
-        List<Device> devices = greengrassHelper.getDevices(groupInformation);
+        List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         String finalThingArn = thingArn;
 
@@ -246,7 +251,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 updateArguments.functionBinary ? EncodingType.BINARY : EncodingType.JSON,
                 updateArguments.functionPinned);
 
-        List<Function> functions = greengrassHelper.getFunctions(groupInformation);
+        List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         if (functions.stream()
                 .anyMatch(function -> function.functionArn().equals(aliasArn))) {
@@ -268,7 +274,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
     private void removeFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
         String groupId = groupInformation.id();
-        List<Function> functions = greengrassHelper.getFunctions(groupInformation);
+        List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         String functionArn = String.join(":", updateArguments.removeFunction, updateArguments.functionAlias);
 
@@ -307,7 +314,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     }
 
     private List<Subscription> removeSubscriptions(GroupInformation groupInformation, String thingOrFunctionArn) {
-        List<Subscription> subscriptions = greengrassHelper.getSubscriptions(groupInformation);
+        List<Subscription> subscriptions = v2GreengrassHelper.getSubscriptionsByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         Set<Subscription> subscriptionsToRemove = getMatchingSubscriptions(subscriptions, thingOrFunctionArn, true, Optional.empty());
 
@@ -320,7 +328,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     }
 
     private void addOrRemoveSubscription(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        List<Subscription> subscriptions = greengrassHelper.getSubscriptions(groupInformation);
+        List<Subscription> subscriptions = v2GreengrassHelper.getSubscriptionsByGroupInformation(groupInformation)
+                .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         String source = updateArguments.subscriptionSource;
         String target = updateArguments.subscriptionTarget;
@@ -328,8 +337,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String groupId = groupInformation.id();
 
         if (updateArguments.addSubscription) {
-            List<Function> functions = greengrassHelper.getFunctions(groupInformation);
-            List<Device> devices = greengrassHelper.getDevices(groupInformation);
+            List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
+            List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             // Is the source valid?
             Optional<String> validatedSource = validateSubscriptionSourceOrTarget(source, functions, devices);
