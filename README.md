@@ -6,7 +6,14 @@
 
 **Note: GGP expects to be used with Greengrass Core 1.10.0 only!**
 
+#### Just here for a quick way to get the Greengrass dependencies installed on Raspbian, Amazon Linux 2, CentOS, Debian, or Ubuntu?
+
+```bash
+curl https://raw.githubusercontent.com/awslabs/aws-greengrass-provisioner/master/src/main/resources/shell/update-dependencies.sh.in | sudo bash
+```
 Simplifies provisioning Greengrass Cores and building Greengrass Lambda functions.  GGP configures Greengrass so you don't have to.
+
+#### What is GGP?
 
 GGP creates the device for the core, Greengrass devices, subscriptions, functions, logger configurations, local resource
 definitions, and ML Inference definitions.

@@ -59,7 +59,7 @@ def jcabiVersion = '0.18.1'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.6'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.10.76'
+def awsSdk2Version = '2.10.79'
 def mavenInvokerVersion = '3.0.1'
 def commonsTextVersion = '1.8'
 def commonsLangVersion = '3.9'
@@ -76,7 +76,7 @@ def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.7.2'
+def resultsIteratorForAwsJavaSdkVersion = '0.7.9'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
