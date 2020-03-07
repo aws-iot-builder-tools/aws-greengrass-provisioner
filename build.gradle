@@ -76,7 +76,7 @@ def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.7.2'
+def resultsIteratorForAwsJavaSdkVersion = '0.7.9'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"

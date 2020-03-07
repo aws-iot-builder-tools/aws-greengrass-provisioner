@@ -7,6 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNe
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.iot.helpers.interfaces.GreengrassIdExtractor;
+import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
@@ -49,6 +50,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     GreengrassResourceHelper greengrassResourceHelper;
     @Inject
     ConnectorHelper connectorHelper;
+    @Inject
+    V2GreengrassHelper v2GreengrassHelper;
 
     @Inject
     public BasicGreengrassHelper() {
@@ -64,92 +67,13 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public Optional<GroupInformation> getGroupInformation(String groupNameOrGroupId) {
-        ListGroupsRequest listGroupsRequest = ListGroupsRequest.builder().build();
-
-        ListGroupsResponse listGroupsResponse;
-
-        do {
-            listGroupsResponse = greengrassClient.listGroups(listGroupsRequest);
-
-            for (GroupInformation groupInformation : listGroupsResponse.groups()) {
-                if (groupInformation.name().equals(groupNameOrGroupId)) {
-                    return Optional.ofNullable(groupInformation);
-                }
-
-                if (groupInformation.id().equals(groupNameOrGroupId)) {
-                    return Optional.ofNullable(groupInformation);
-                }
-            }
-
-            listGroupsRequest = ListGroupsRequest.builder().nextToken(listGroupsResponse.nextToken()).build();
-        } while (listGroupsResponse.nextToken() != null);
-
-        log.warn("No group was found with name or ID [" + groupNameOrGroupId + "]");
-        return Optional.empty();
-    }
-
-    private Optional<String> getGroupId(String groupName) {
-        Optional<GroupInformation> optionalGroupInformation = getGroupInformation(groupName);
-
-        return optionalGroupInformation.map(GroupInformation::id);
-    }
-
-    private String getCoreDefinitionId(String coreDefinitionName) {
-        ListCoreDefinitionsRequest listCoreDefinitionsRequest = ListCoreDefinitionsRequest.builder().build();
-
-        ListCoreDefinitionsResponse listCoreDefinitionsResponse;
-
-        do {
-            listCoreDefinitionsResponse = greengrassClient.listCoreDefinitions(listCoreDefinitionsRequest);
-
-            for (DefinitionInformation definitionInformation : listCoreDefinitionsResponse.definitions()) {
-                if (definitionInformation.name() == null) {
-                    continue;
-                }
-
-                if (definitionInformation.name().equals(coreDefinitionName)) {
-                    return definitionInformation.id();
-                }
-            }
-
-            listCoreDefinitionsRequest = ListCoreDefinitionsRequest.builder().nextToken(listCoreDefinitionsResponse.nextToken()).build();
-        } while (listCoreDefinitionsResponse.nextToken() != null);
-
-        return null;
-    }
-
-    private String getDeviceDefinitionId(String deviceDefinitionName) {
-        ListDeviceDefinitionsRequest listDeviceDefinitionsRequest = ListDeviceDefinitionsRequest.builder().build();
-
-        ListDeviceDefinitionsResponse listDeviceDefinitionsResponse;
-
-        do {
-            listDeviceDefinitionsResponse = greengrassClient.listDeviceDefinitions(listDeviceDefinitionsRequest);
-
-            for (DefinitionInformation definitionInformation : listDeviceDefinitionsResponse.definitions()) {
-                if (definitionInformation.name() == null) {
-                    continue;
-                }
-
-                if (definitionInformation.name().equals(deviceDefinitionName)) {
-                    return definitionInformation.id();
-                }
-            }
-
-            listDeviceDefinitionsRequest = ListDeviceDefinitionsRequest.builder().nextToken(listDeviceDefinitionsResponse.nextToken()).build();
-        } while (listDeviceDefinitionsResponse.nextToken() != null);
-
-        return null;
-    }
-
-    @Override
     public String createGroupIfNecessary(String groupName) {
-        Optional<String> optionalGroupId = getGroupId(groupName);
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(groupName)
+                .findFirst();
 
-        if (optionalGroupId.isPresent()) {
+        if (optionalGroupInformation.isPresent()) {
             log.info("Group already exists, not creating a new one");
-            return optionalGroupId.get();
+            return optionalGroupInformation.get().id();
         }
 
         log.info("Group does not exist, creating a new one");
@@ -160,13 +84,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         CreateGroupResponse createGroupResponse = greengrassClient.createGroup(createGroupRequest);
 
         return createGroupResponse.id();
-    }
-
-    @Override
-    public boolean groupExists(String groupName) {
-        Optional<String> optionalGroupId = getGroupId(groupName);
-
-        return optionalGroupId.isPresent();
     }
 
     @Override
@@ -183,15 +100,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     public String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn, boolean syncShadow) {
         String uuid = ioHelper.getUuid();
 
-        String coreDefinitionId = getCoreDefinitionId(coreDefinitionName);
+        Optional<String> optionalCoreDefinitionId = v2GreengrassHelper.getCoreDefinitionIdByName(coreDefinitionName);
+        String coreDefinitionId = null;
 
-        if (coreDefinitionId == null) {
+        if (!optionalCoreDefinitionId.isPresent()) {
             CreateCoreDefinitionRequest createCoreDefinitionRequest = CreateCoreDefinitionRequest.builder()
                     .name(coreDefinitionName)
                     .build();
 
             CreateCoreDefinitionResponse createCoreDefinitionResponse = greengrassClient.createCoreDefinition(createCoreDefinitionRequest);
             coreDefinitionId = createCoreDefinitionResponse.id();
+        } else {
+            coreDefinitionId = optionalCoreDefinitionId.get();
         }
 
         Core core = Core.builder()
@@ -443,15 +363,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createDeviceDefinitionAndVersion(String deviceDefinitionName, List<Device> devices) {
-        String deviceDefinitionId = getDeviceDefinitionId(deviceDefinitionName);
+        Optional<String> optionalDeviceDefinitionId = v2GreengrassHelper.getDeviceDefinitionIdByName(deviceDefinitionName);
+        String deviceDefinitionId = null;
 
-        if (deviceDefinitionId == null) {
+        if (!optionalDeviceDefinitionId.isPresent()) {
             CreateDeviceDefinitionRequest createDeviceDefinitionRequest = CreateDeviceDefinitionRequest.builder()
                     .name(deviceDefinitionName)
                     .build();
 
             CreateDeviceDefinitionResponse createDeviceDefinitionResponse = greengrassClient.createDeviceDefinition(createDeviceDefinitionRequest);
             deviceDefinitionId = createDeviceDefinitionResponse.id();
+        } else {
+            deviceDefinitionId = optionalDeviceDefinitionId.get();
         }
 
         CreateDeviceDefinitionVersionRequest createDeviceDefinitionVersionRequest = CreateDeviceDefinitionVersionRequest.builder()
@@ -533,31 +456,25 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupVersion(String groupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = getGroupInformation(groupId);
-        GroupVersion currentGroupVersion = null;
-        GroupInformation groupInformation = null;
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(groupId).findFirst()
+                // If the group exists but has no versions yet, don't use the group information
+                .filter(groupInformation -> groupInformation.latestVersion() != null);
 
-        CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
-                .groupId(groupId)
-                .build();
+        GroupVersion currentGroupVersion;
 
-        if (optionalGroupInformation.isPresent()) {
-            groupInformation = optionalGroupInformation.get();
-
-            if (groupInformation.latestVersion() == null) {
-                // Group exists but has no versions yet, don't use the group information
-                groupInformation = null;
-            }
-        }
-
-        if (groupInformation == null) {
+        if (!optionalGroupInformation.isPresent()) {
             log.warn("Group [" + groupId + "] not found or has no previous versions, creating group version from scratch");
 
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
         } else {
-            currentGroupVersion = getLatestGroupVersion(groupInformation);
+            currentGroupVersion = v2GreengrassHelper.getLatestGroupVersionByGroupInformation(optionalGroupInformation.get())
+                    .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
         }
+
+        CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
+                .groupId(groupId)
+                .build();
 
         // When an ARN in the new version is NULL we take it from the current version.  This allows us to do updates more easily.
         createGroupVersionRequest = mergeCurrentAndNewVersion(newGroupVersion, currentGroupVersion, createGroupVersionRequest.toBuilder());
@@ -986,182 +903,6 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public Optional<GroupVersion> getLatestGroupVersion(String groupId) {
-        Optional<GroupInformation> optionalGroupInformation = getGroupInformation(groupId);
-
-        if (!optionalGroupInformation.isPresent()) {
-            return Optional.empty();
-        }
-
-        GroupInformation groupInformation = optionalGroupInformation.get();
-
-        if (groupInformation.latestVersion() == null) {
-            // Can not get the latest version if the latest version field is NULL
-            return Optional.empty();
-        }
-
-        return Optional.of(getLatestGroupVersion(groupInformation));
-    }
-
-    @Override
-    public Optional<String> getCoreCertificateArn(String groupId) {
-        Optional<GroupVersion> optionalGroupVersion = getLatestGroupVersion(groupId);
-
-        if (!optionalGroupVersion.isPresent()) {
-            return Optional.empty();
-        }
-
-        GroupVersion groupVersion = optionalGroupVersion.get();
-
-        String coreDefinitionVersionArn = groupVersion.coreDefinitionVersionArn();
-        String coreDefinitionVersionId = idExtractor.extractVersionId(coreDefinitionVersionArn);
-        String coreDefinitionId = idExtractor.extractId(coreDefinitionVersionArn);
-
-        GetCoreDefinitionVersionRequest getCoreDefinitionVersionRequest = GetCoreDefinitionVersionRequest.builder()
-                .coreDefinitionVersionId(coreDefinitionVersionId)
-                .coreDefinitionId(coreDefinitionId)
-                .build();
-
-        GetCoreDefinitionVersionResponse coreDefinitionVersionResponse = greengrassClient.getCoreDefinitionVersion(getCoreDefinitionVersionRequest);
-
-        return Optional.ofNullable(coreDefinitionVersionResponse.definition())
-                .map(CoreDefinitionVersion::cores)
-                .filter(list -> list.size() != 0)
-                .map(list -> list.get(0))
-                .map(Core::certificateArn);
-    }
-
-    @Override
-    public GroupVersion getLatestGroupVersion(GroupInformation groupInformation) {
-        GetGroupVersionResponse groupVersionResponse = getGroupVersionResponse(groupInformation);
-
-        return groupVersionResponse.definition();
-    }
-
-    @Override
-    public String getGroupId(GroupInformation groupInformation) {
-        GetGroupVersionResponse groupVersionResponse = getGroupVersionResponse(groupInformation);
-
-        return groupVersionResponse.id();
-    }
-
-    private GetGroupVersionResponse getGroupVersionResponse(GroupInformation groupInformation) {
-        GetGroupVersionRequest getGroupVersionRequest = GetGroupVersionRequest.builder()
-                .groupId(groupInformation.id())
-                .groupVersionId(groupInformation.latestVersion())
-                .build();
-
-        return greengrassClient.getGroupVersion(getGroupVersionRequest);
-    }
-
-    @Override
-    public List<Function> getFunctions(GroupInformation groupInformation) {
-        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Function> functions = new ArrayList<>(functionDefinition.functions());
-
-        return functions;
-    }
-
-    @Override
-    public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
-        FunctionDefinitionVersion functionDefinition = getFunctionDefinitionVersion(groupInformation);
-
-        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = Optional.ofNullable(functionDefinition.defaultConfig())
-                .map(FunctionDefaultConfig::execution)
-                .map(FunctionDefaultExecutionConfig::isolationMode);
-
-        if (!optionalFunctionIsolationMode.isPresent()) {
-            log.warn("Default function isolation mode was not present, defaulting to Greengrass container");
-            return FunctionIsolationMode.GREENGRASS_CONTAINER;
-        }
-
-        return optionalFunctionIsolationMode.get();
-    }
-
-    @Override
-    public FunctionDefinitionVersion getFunctionDefinitionVersion(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
-
-        String functionDefinitionVersionArn = groupVersion.functionDefinitionVersionArn();
-
-        GetFunctionDefinitionVersionRequest getFunctionDefinitionVersionRequest = GetFunctionDefinitionVersionRequest.builder()
-                .functionDefinitionId(idExtractor.extractId(functionDefinitionVersionArn))
-                .functionDefinitionVersionId(idExtractor.extractVersionId(functionDefinitionVersionArn))
-                .build();
-
-        GetFunctionDefinitionVersionResponse getFunctionDefinitionVersionResponse = greengrassClient.getFunctionDefinitionVersion(getFunctionDefinitionVersionRequest);
-
-        return getFunctionDefinitionVersionResponse.definition();
-    }
-
-    @Override
-    public List<Device> getDevices(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
-
-        String deviceDefinitionVersionArn = groupVersion.deviceDefinitionVersionArn();
-
-        GetDeviceDefinitionVersionRequest getDeviceDefinitionVersionRequest = GetDeviceDefinitionVersionRequest.builder()
-                .deviceDefinitionId(idExtractor.extractId(deviceDefinitionVersionArn))
-                .deviceDefinitionVersionId(idExtractor.extractVersionId(deviceDefinitionVersionArn))
-                .build();
-
-        GetDeviceDefinitionVersionResponse getDeviceDefinitionVersionResponse = greengrassClient.getDeviceDefinitionVersion(getDeviceDefinitionVersionRequest);
-
-        DeviceDefinitionVersion deviceDefinition = getDeviceDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Device> devices = new ArrayList<>(deviceDefinition.devices());
-
-        return devices;
-    }
-
-    @Override
-    public List<Subscription> getSubscriptions(GroupInformation groupInformation) {
-        GroupVersion groupVersion = getLatestGroupVersion(groupInformation);
-
-        String subscriptionDefinitionVersionArn = groupVersion.subscriptionDefinitionVersionArn();
-
-        GetSubscriptionDefinitionVersionRequest getSubscriptionDefinitionVersionRequest = GetSubscriptionDefinitionVersionRequest.builder()
-                .subscriptionDefinitionId(idExtractor.extractId(subscriptionDefinitionVersionArn))
-                .subscriptionDefinitionVersionId(idExtractor.extractVersionId(subscriptionDefinitionVersionArn))
-                .build();
-
-        GetSubscriptionDefinitionVersionResponse getSubscriptionDefinitionVersionResponse = greengrassClient.getSubscriptionDefinitionVersion(getSubscriptionDefinitionVersionRequest);
-
-        SubscriptionDefinitionVersion subscriptionDefinition = getSubscriptionDefinitionVersionResponse.definition();
-
-        // The returned list is an unmodifiable list, copy it to an array list so callers can modify it
-        List<Subscription> subscriptions = new ArrayList<>(subscriptionDefinition.subscriptions());
-
-        return subscriptions;
-    }
-
-    @Override
-    public GetGroupCertificateAuthorityResponse getGroupCa(GroupInformation groupInformation) {
-        ListGroupCertificateAuthoritiesRequest listGroupCertificateAuthoritiesRequest = ListGroupCertificateAuthoritiesRequest.builder()
-                .groupId(groupInformation.id())
-                .build();
-
-        ListGroupCertificateAuthoritiesResponse listGroupCertificateAuthoritiesResponse = greengrassClient.listGroupCertificateAuthorities(listGroupCertificateAuthoritiesRequest);
-
-        if (listGroupCertificateAuthoritiesResponse.groupCertificateAuthorities().size() != 1) {
-            log.error("Currently we do not support multiple group CAs");
-            return null;
-        }
-
-        GetGroupCertificateAuthorityRequest getGroupCertificateAuthorityRequest = GetGroupCertificateAuthorityRequest.builder()
-                .groupId(groupInformation.id())
-                .certificateAuthorityId(listGroupCertificateAuthoritiesResponse.groupCertificateAuthorities().get(0).groupCertificateAuthorityId())
-                .build();
-
-        GetGroupCertificateAuthorityResponse getGroupCertificateAuthorityResponse = greengrassClient.getGroupCertificateAuthority(getGroupCertificateAuthorityRequest);
-
-        return getGroupCertificateAuthorityResponse;
-    }
-
-    @Override
     public Optional<String> createConnectorDefinitionVersion(List<ConnectorConf> connectorConfList) {
         if (connectorConfList.isEmpty()) {
             return Optional.empty();
@@ -1183,5 +924,17 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         CreateConnectorDefinitionResponse createConnectorDefinitionResponse = greengrassClient.createConnectorDefinition(createConnectorDefinitionRequest);
 
         return Optional.of(createConnectorDefinitionResponse.latestVersionArn());
+    }
+
+    @Override
+    public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
+        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = v2GreengrassHelper.getDefaultIsolationModeByGroupInformation(groupInformation);
+
+        if (optionalFunctionIsolationMode.isPresent()) {
+            return optionalFunctionIsolationMode.get();
+        }
+
+        log.warn("Default function isolation mode was not present, defaulting to Greengrass container");
+        return FunctionIsolationMode.GREENGRASS_CONTAINER;
     }
 }
