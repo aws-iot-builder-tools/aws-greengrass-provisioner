@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.iot.data.ThingName;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.model.FunctionConfiguration;
@@ -60,7 +61,7 @@ public interface GreengrassHelper {
 
     String createResourceDefinitionFromFunctionConfs(List<FunctionConf> functionConfs);
 
-    Device getDevice(String thingName);
+    Device getDevice(ThingName thingName);
 
     void disassociateServiceRoleFromAccount();
 

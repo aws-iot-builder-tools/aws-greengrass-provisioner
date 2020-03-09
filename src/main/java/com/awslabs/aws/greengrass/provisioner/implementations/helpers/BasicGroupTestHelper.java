@@ -6,7 +6,10 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.data.ImmutableThingName;
+import com.awslabs.iot.data.V2IotEndpointType;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.jcraft.jsch.Session;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -54,7 +57,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     @Inject
     V2GreengrassHelper v2GreengrassHelper;
     @Inject
-    IotHelper iotHelper;
+    V2IotHelper v2IotHelper;
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -529,10 +532,11 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
         String coreThingName = ggVariables.getCoreThingName(groupInformation.name());
 
-        Map<String, String> coreInfo = HashMap.of("ThingArn", iotHelper.getThingArn(coreThingName))
+        ImmutableThingName thingName = ImmutableThingName.builder().name(coreThingName).build();
+        Map<String, String> coreInfo = HashMap.of("ThingArn", v2IotHelper.getThingArn(thingName).get().getArn())
                 .put("ThingName", coreThingName)
-                .put("CertArn", iotHelper.getThingPrincipal(coreThingName))
-                .put("IotEndpoint", iotHelper.getEndpoint())
+                .put("CertArn", v2IotHelper.getThingPrincipals(thingName).get().get(0).getPrincipal())
+                .put("IotEndpoint", v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS))
                 .toJavaMap();
 
         Map<String, Object> outerMap = HashMap.of("CoreInfo", (Object) coreInfo)

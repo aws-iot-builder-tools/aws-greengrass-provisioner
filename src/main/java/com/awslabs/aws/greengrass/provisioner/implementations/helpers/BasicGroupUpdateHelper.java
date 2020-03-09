@@ -4,7 +4,12 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.ImmutableCertificateArn;
+import com.awslabs.iot.data.ImmutablePolicyDocument;
+import com.awslabs.iot.data.ImmutablePolicyName;
+import com.awslabs.iot.data.ImmutableThingName;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
@@ -31,6 +36,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     DeploymentHelper deploymentHelper;
     @Inject
     IotHelper iotHelper;
+    @Inject
+    V2IotHelper v2IotHelper;
     @Inject
     PolicyHelper policyHelper;
     @Inject
@@ -118,7 +125,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
-        Device deviceToRemove = greengrassHelper.getDevice(deviceName);
+        Device deviceToRemove = greengrassHelper.getDevice(ImmutableThingName.builder().name(deviceName).build());
         String thingArn = deviceToRemove.thingArn();
 
         if (devices.stream().noneMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
@@ -165,9 +172,12 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             String certificateArn = deviceKeysAndCertificate.getCertificateArn();
             thingArn = iotHelper.createThing(deviceName);
 
-            iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(thingArn));
-            iotHelper.attachPrincipalPolicy(ggdPolicyName, certificateArn);
-            iotHelper.attachThingPrincipal(deviceName, certificateArn);
+            v2IotHelper.createPolicyIfNecessary(ImmutablePolicyName.builder().name(ggdPolicyName).build(),
+                    ImmutablePolicyDocument.builder().document(policyHelper.buildDevicePolicyDocument(thingArn)).build());
+            v2IotHelper.attachPrincipalPolicy(ImmutablePolicyName.builder().name(ggdPolicyName).build(),
+                    ImmutableCertificateArn.builder().arn(certificateArn).build());
+            v2IotHelper.attachThingPrincipal(ImmutableThingName.builder().name(deviceName).build(),
+                    ImmutableCertificateArn.builder().arn(certificateArn).build());
         } else {
             // Device name looks like a thing ARN
             log.info("[" + deviceName + "] looks like a thing ARN, attempting to use existing device");
@@ -176,7 +186,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             log.info("Device name appears to be [" + deviceName + "]");
         }
 
-        Device newDevice = greengrassHelper.getDevice(deviceName);
+        Device newDevice = greengrassHelper.getDevice(ImmutableThingName.builder().name(deviceName).build());
 
         List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
