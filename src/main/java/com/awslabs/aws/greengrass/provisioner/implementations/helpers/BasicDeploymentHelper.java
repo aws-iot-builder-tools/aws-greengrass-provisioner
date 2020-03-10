@@ -14,7 +14,9 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -110,6 +112,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     EnvironmentHelper environmentHelper;
     @Inject
     IotHelper iotHelper;
+    @Inject
+    V2IotHelper v2IotHelper;
     @Inject
     CloudFormationHelper cloudFormationHelper;
     @Inject
@@ -615,7 +619,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new RuntimeException("No role alias specified for the Greengrass core role [" + deploymentConf.getCoreRoleConf().getName());
         }
 
-        optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(coreRole, deploymentConf.getCoreRoleConf().getAlias().get()));
+        optionalCreateRoleAliasResponse = Optional.of(v2IotHelper.forceCreateRoleAlias(coreRole, ImmutableRoleAlias.builder().name(deploymentConf.getCoreRoleConf().getAlias().get()).build()));
 
         //////////////////////////////////
         // Create or reuse certificates //
@@ -633,7 +637,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else if (deploymentArguments.csr != null) {
             // Sign the CSR supplied by the user, new or existing group
             log.info("Using user supplied CSR for core certificate");
-            optionalCoreCertificateArn = Optional.of(iotHelper.signCsrAndReturnCertificateArn(deploymentArguments.csr));
+            optionalCoreCertificateArn = Optional.of(v2IotHelper.signCsrAndReturnCertificateArn(ImmutableCertificateSigningRequest.builder().request(deploymentArguments.csr).build()));
         } else if (!optionalGroupVersion.isPresent()) {
             // New group, create new keys
             log.info("Group is new, no certificate ARN or CSR supplied, creating new keys");
@@ -685,7 +689,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             }
 
             log.info("Creating policy for core");
-            iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCoreRoleConf().getIotPolicy().get());
+            v2IotHelper.createPolicyIfNecessary(ImmutablePolicyName.builder().name(ggVariables.getCorePolicyName(deploymentArguments.groupName)).build(),
+                    ImmutablePolicyDocument.builder().document(deploymentConf.getCoreRoleConf().getIotPolicy().get()).build());
             corePolicyName = ggVariables.getCorePolicyName(deploymentArguments.groupName);
         } else {
             corePolicyName = deploymentArguments.corePolicyName;
@@ -695,13 +700,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Attach policy to certificate //
         //////////////////////////////////
 
-        iotHelper.attachPrincipalPolicy(corePolicyName, coreCertificateArn);
+        v2IotHelper.attachPrincipalPolicy(ImmutablePolicyName.builder().name(corePolicyName).build(),
+                ImmutableCertificateArn.builder().arn(coreCertificateArn).build());
 
         /////////////////////////////////
         // Attach thing to certificate //
         /////////////////////////////////
 
-        iotHelper.attachThingPrincipal(ggVariables.getCoreThingName(deploymentArguments.groupName), coreCertificateArn);
+        v2IotHelper.attachThingPrincipal(ImmutableThingName.builder().name(ggVariables.getCoreThingName(deploymentArguments.groupName)).build(),
+                ImmutableCertificateArn.builder().arn(coreCertificateArn).build());
 
         ////////////////////////////////////////////////
         // Associate the Greengrass role to the group //
@@ -862,9 +869,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
 
                 log.info("Creating and attaching policies to Greengrass device thing");
-                iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(deviceThingArn));
-                iotHelper.attachPrincipalPolicy(ggdPolicyName, deviceCertificateArn);
-                iotHelper.attachThingPrincipal(thingName, deviceCertificateArn);
+                v2IotHelper.createPolicyIfNecessary(ImmutablePolicyName.builder().name(ggdPolicyName).build(),
+                        ImmutablePolicyDocument.builder().document(policyHelper.buildDevicePolicyDocument(deviceThingArn)).build());
+                v2IotHelper.attachPrincipalPolicy(ImmutablePolicyName.builder().name(ggdPolicyName).build(),
+                        ImmutableCertificateArn.builder().arn(deviceCertificateArn).build());
+                v2IotHelper.attachThingPrincipal(ImmutableThingName.builder().name(thingName).build(),
+                        ImmutableCertificateArn.builder().arn(deviceCertificateArn).build());
             }
         }
 
@@ -901,13 +911,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             connectedShadowThings.addAll(ggdConf.getConnectedShadows());
         }
 
-        List<Device> devices = new ArrayList<>();
-
         thingNames.addAll(connectedShadowThings);
 
-        for (String thingName : thingNames) {
-            devices.add(greengrassHelper.getDevice(thingName));
-        }
+        List<Device> devices = thingNames.stream()
+                .map(thingName -> ImmutableThingName.builder().name(thingName).build())
+                .map(greengrassHelper::getDevice)
+                .collect(Collectors.toList());
 
         ////////////////////////////////////////////
         // Get a list of all GGD PIP dependencies //
@@ -922,7 +931,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ///////////////////////////////////////
 
         for (GGDConf ggdConf : ggdConfs) {
-            String deviceThingArn = iotHelper.getThingArn(ggdConf.getThingName());
+            String deviceThingArn = v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn();
             subscriptions.addAll(subscriptionHelper.createCloudSubscriptionsForArn(ggdConf.getFromCloudSubscriptions(), ggdConf.getToCloudSubscriptions(), deviceThingArn));
 
             for (String connectedShadow : ggdConf.getConnectedShadows()) {
@@ -1661,7 +1670,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else {
             log.info("- Adding only client certificate to archive");
 
-            String coreCertificatePEM = iotHelper.getCertificatePem(coreCertificateArn);
+            String coreCertificatePEM = v2IotHelper.getCertificatePem(ImmutableCertificateArn.builder().arn(coreCertificateArn).build()).get();
 
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
@@ -1691,7 +1700,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ggConstants.getCorePublicCertificateName(),
                 ggConstants.getCorePrivateKeyName(),
                 awsIotThingArn,
-                iotHelper.getEndpoint(),
+                v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS),
                 currentRegion,
                 deploymentArguments,
                 functionsRunningAsRoot);
@@ -1826,7 +1835,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, String groupId, String awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse, HsiParameters nullableHsiParameters) {
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), v2IotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions);

@@ -3,6 +3,9 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda;
 import com.awslabs.aws.greengrass.provisioner.lambda.LambdaInput;
+import com.awslabs.iot.data.ImmutablePolicyDocument;
+import com.awslabs.iot.data.ImmutablePolicyName;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;
 import org.junit.Before;
@@ -30,20 +33,21 @@ public class ProvisionerLambdaIT {
             "  \"Version\": \"2012-10-17\"\n" +
             "}";
     private static final String GREENGRASS_DEFAULT_POLICY_NAME = "GreengrassDefaultPolicy";
-    private IotHelper iotHelper;
+    private V2IotHelper v2IotHelper;
     private AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda;
     private IoHelper ioHelper;
 
     @Before
     public void setup() {
-        iotHelper = AwsGreengrassProvisioner.getInjector().iotHelper();
+        v2IotHelper = AwsGreengrassProvisioner.getInjector().v2IotHelper();
         ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
         awsGreengrassProvisionerLambda = new AwsGreengrassProvisionerLambda();
     }
 
     @Test
     public void shouldReturnAllExpectedKeysAndSupportPrivateKeyLocationSubstitution() {
-        iotHelper.createPolicyIfNecessary(GREENGRASS_DEFAULT_POLICY_NAME, GREENGRASS_DEFAULT_POLICY);
+        v2IotHelper.createPolicyIfNecessary(ImmutablePolicyName.builder().name(GREENGRASS_DEFAULT_POLICY_NAME).build(),
+                ImmutablePolicyDocument.builder().document(GREENGRASS_DEFAULT_POLICY).build());
         LambdaInput lambdaInput = new LambdaInput();
         lambdaInput.GroupName = ioHelper.getUuid();
         lambdaInput.CoreRoleName = "Greengrass_CoreRole";

@@ -6,10 +6,13 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNecessaryException;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.iot.data.ThingArn;
+import com.awslabs.iot.data.ThingName;
+import com.awslabs.iot.data.ThingPrincipal;
 import com.awslabs.iot.helpers.interfaces.GreengrassIdExtractor;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.google.common.collect.ImmutableSet;
-import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
@@ -18,7 +21,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
-import software.amazon.awssdk.services.iot.model.ResourceNotFoundException;
 
 import javax.inject.Inject;
 import java.time.Duration;
@@ -42,6 +44,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     IoHelper ioHelper;
     @Inject
     IotHelper iotHelper;
+    @Inject
+    V2IotHelper v2IotHelper;
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -863,22 +867,34 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public Device getDevice(String thingName) {
-        Try.of(() -> iotHelper.getThingArn(thingName))
-                .recover(ResourceNotFoundException.class, throwable -> rethrowResourceNotFoundException(thingName))
-                .get();
+    public Device getDevice(ThingName thingName) {
+        Optional<ThingArn> optionalThingArn = v2IotHelper.getThingArn(thingName);
 
-        String certificateArn = iotHelper.getThingPrincipal(thingName);
-
-        if (certificateArn == null) {
-            throw new RuntimeException("Thing [" + thingName + "] does not have a certificate attached");
+        if (!optionalThingArn.isPresent()) {
+            rethrowResourceNotFoundException(thingName.getName());
         }
+
+        String thingArn = optionalThingArn.get().getArn();
+
+        Optional<List<ThingPrincipal>> optionalThingPrincipals = v2IotHelper.getThingPrincipals(thingName);
+
+        if (!optionalThingPrincipals.isPresent()) {
+            rethrowResourceNotFoundException(thingName.getName());
+        }
+
+        List<ThingPrincipal> thingPrincipals = optionalThingPrincipals.get();
+
+        if (thingPrincipals.size() != 1) {
+            throw new RuntimeException("More than one principal found for [" + thingName + "], can not continue");
+        }
+
+        String certificateArn = thingPrincipals.get(0).getPrincipal();
 
         return Device.builder()
                 .certificateArn(certificateArn)
                 .id(ioHelper.getUuid())
                 .syncShadow(true)
-                .thingArn(iotHelper.getThingArn(thingName))
+                .thingArn(thingArn)
                 .build();
     }
 

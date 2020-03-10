@@ -5,6 +5,8 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ScriptHelper;
+import com.awslabs.iot.data.V2IotEndpointType;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.google.common.collect.ImmutableMap;
 
 import javax.inject.Inject;
@@ -29,7 +31,7 @@ public class BasicScriptHelper implements ScriptHelper {
     @Inject
     GGConstants ggConstants;
     @Inject
-    IotHelper iotHelper;
+    V2IotHelper v2IotHelper;
     @Inject
     JavaResourceHelper javaResourceHelper;
 
@@ -149,7 +151,7 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     private void addNormalVariables(ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
-        variables.put("ENDPOINT", iotHelper.getEndpoint());
+        variables.put("ENDPOINT", v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS));
         variables.put("START_SCRIPT", getStartScriptName());
         variables.put("STOP_SCRIPT", getStopScriptName());
         variables.put("CLEAN_SCRIPT", getCleanScriptName());

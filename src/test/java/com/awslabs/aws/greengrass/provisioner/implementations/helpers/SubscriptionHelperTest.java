@@ -8,6 +8,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
@@ -29,13 +30,13 @@ public class SubscriptionHelperTest {
     @Before
     public void setup() {
         IoHelper ioHelper = mock(IoHelper.class);
-        IotHelper iotHelper = mock(IotHelper.class);
+        V2IotHelper v2IotHelper = mock(V2IotHelper.class);
         GGVariables ggVariables = mock(GGVariables.class);
         GGConstants ggConstants = mock(GGConstants.class);
 
         basicSubscriptionHelper = new BasicSubscriptionHelper();
         basicSubscriptionHelper.ioHelper = ioHelper;
-        basicSubscriptionHelper.iotHelper = iotHelper;
+        basicSubscriptionHelper.v2IotHelper = v2IotHelper;
         basicSubscriptionHelper.ggConstants = ggConstants;
         basicSubscriptionHelper.ggVariables = ggVariables;
 
