@@ -7,6 +7,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SubscriptionHelper;
 import com.awslabs.iot.data.ImmutableThingName;
+import com.awslabs.iot.data.ThingName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
@@ -253,7 +254,8 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
             FunctionConf functionConf = entry.getValue();
 
             for (String deviceName : functionConf.getConnectedShadows()) {
-                subscriptions.addAll(createShadowSubscriptions(functionArn, deviceName));
+                ThingName thingName = ImmutableThingName.builder().name(deviceName).build();
+                subscriptions.addAll(createShadowSubscriptions(functionArn, thingName));
             }
         }
 
@@ -298,7 +300,7 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     }
 
     @Override
-    public List<Subscription> createShadowSubscriptions(String deviceOrFunctionArn, String deviceThingName) {
+    public List<Subscription> createShadowSubscriptions(String deviceOrFunctionArn, ThingName deviceThingName) {
         List<Subscription> subscriptions = new ArrayList<>();
 
         Subscription shadowServiceTargetSubscription = Subscription.builder()

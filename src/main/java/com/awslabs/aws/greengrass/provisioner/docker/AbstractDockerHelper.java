@@ -4,6 +4,7 @@ import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerClientProvider;
 import com.awslabs.aws.greengrass.provisioner.docker.interfaces.DockerHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
@@ -158,7 +159,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     }
 
     @Override
-    public Optional<String> createContainer(String tag, String groupName) {
+    public Optional<String> createContainer(String tag, GreengrassGroupName greengrassGroupName) {
         Optional<Image> optionalImage = getImageFromTag(tag);
 
         if (!optionalImage.isPresent()) {
@@ -170,15 +171,15 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         try (DockerClient dockerClient = getDockerClient()) {
             return Optional.of(dockerClient.createContainer(ContainerConfig.builder()
                     .image(image.id())
-                    .build(), groupName).id());
+                    .build(), greengrassGroupName.getGroupName()).id());
         } catch (DockerException | InterruptedException e) {
             log.error("Couldn't create container [" + e.getMessage() + "]");
             throw new RuntimeException(e);
         }
     }
 
-    public void createAndStartContainer(String tag, String groupName) {
-        Optional<String> optionalContainerId = createContainer(tag, groupName);
+    public void createAndStartContainer(String tag, GreengrassGroupName greengrassGroupName) {
+        Optional<String> optionalContainerId = createContainer(tag, greengrassGroupName);
 
         if (!optionalContainerId.isPresent()) {
             log.warn("Container [" + tag + "] not started because it couldn't be created");
@@ -188,7 +189,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         String containerId = optionalContainerId.get();
 
         try (DockerClient dockerClient = getDockerClient()) {
-            if (!isContainerRunning(groupName, dockerClient)) {
+            if (!isContainerRunning(greengrassGroupName, dockerClient)) {
                 dockerClient.startContainer(containerId);
             } else {
                 log.info("The Docker container for this core is already running locally, the core should be redeploying now");
@@ -199,19 +200,19 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         }
     }
 
-    protected Optional<Container> getContainerByName(String groupName, DockerClient dockerClient) throws DockerException, InterruptedException {
+    protected Optional<Container> getContainerByName(GreengrassGroupName greengrassGroupName, DockerClient dockerClient) throws DockerException, InterruptedException {
         return dockerClient.listContainers(DockerClient.ListContainersParam.allContainers(true)).stream()
-                .filter(getContainerPredicate(groupName))
+                .filter(getContainerPredicate(greengrassGroupName))
                 .findFirst();
     }
 
-    protected boolean isContainerRunning(String groupName, DockerClient dockerClient) throws DockerException, InterruptedException {
+    protected boolean isContainerRunning(GreengrassGroupName greengrassGroupName, DockerClient dockerClient) throws DockerException, InterruptedException {
         return dockerClient.listContainers(DockerClient.ListContainersParam.withStatusRunning()).stream()
-                .anyMatch(getContainerPredicate(groupName));
+                .anyMatch(getContainerPredicate(greengrassGroupName));
     }
 
-    protected Predicate<Container> getContainerPredicate(String groupName) {
-        String dockerContainerName = String.join("", "/", groupName);
+    protected Predicate<Container> getContainerPredicate(GreengrassGroupName greengrassGroupName) {
+        String dockerContainerName = String.join("", "/", greengrassGroupName.getGroupName());
         return container -> container.names().contains(dockerContainerName);
     }
 

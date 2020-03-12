@@ -2,9 +2,9 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ScriptHelper;
+import com.awslabs.iot.data.ThingName;
 import com.awslabs.iot.data.V2IotEndpointType;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.google.common.collect.ImmutableMap;
@@ -115,7 +115,7 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     @Override
-    public String generateRunScript(Optional<Architecture> architecture, String scriptName, String thingName) {
+    public String generateRunScript(Optional<Architecture> architecture, String scriptName, ThingName thingName) {
         return innerGenerateRunScript(shellPath + "run-python.sh.in", architecture, Optional.of(scriptName), Optional.of(thingName), Optional.empty());
     }
 
@@ -140,14 +140,14 @@ public class BasicScriptHelper implements ScriptHelper {
         variables.put("GG_SH", name);
     }
 
-    private void addThingNameVariables(ImmutableMap.Builder<String, String> variables, Optional<String> thingName) {
+    private void addThingNameVariables(ImmutableMap.Builder<String, String> variables, Optional<ThingName> thingName) {
         thingName.ifPresent(name -> putThingNameCertAndPrivateKey(variables, name));
     }
 
-    private void putThingNameCertAndPrivateKey(ImmutableMap.Builder<String, String> variables, String name) {
-        variables.put("DEVICE_THING_NAME", name);
-        variables.put("DEVICE_PUBLIC_CERTIFICATE", ggConstants.getDevicePublicCertificateName(name));
-        variables.put("DEVICE_PRIVATE_KEY", ggConstants.getDevicePrivateKeyName(name));
+    private void putThingNameCertAndPrivateKey(ImmutableMap.Builder<String, String> variables, ThingName thingName) {
+        variables.put("DEVICE_THING_NAME", thingName.getName());
+        variables.put("DEVICE_PUBLIC_CERTIFICATE", ggConstants.getDevicePublicCertificateName(thingName));
+        variables.put("DEVICE_PRIVATE_KEY", ggConstants.getDevicePrivateKeyName(thingName));
     }
 
     private void addNormalVariables(ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
@@ -165,7 +165,7 @@ public class BasicScriptHelper implements ScriptHelper {
         architecture.ifPresent(arch -> variables.put("GG_BITS", arch.getFilename()));
     }
 
-    private String innerGenerateRunScript(String path, Optional<Architecture> architecture, Optional<String> scriptName, Optional<String> thingName, Optional<Set<String>> ggdPipDependencies) {
+    private String innerGenerateRunScript(String path, Optional<Architecture> architecture, Optional<String> scriptName, Optional<ThingName> thingName, Optional<Set<String>> ggdPipDependencies) {
         String input = javaResourceHelper.resourceToString(path);
 
         ImmutableMap.Builder<String, String> variablesBuilder = new ImmutableMap.Builder<>();

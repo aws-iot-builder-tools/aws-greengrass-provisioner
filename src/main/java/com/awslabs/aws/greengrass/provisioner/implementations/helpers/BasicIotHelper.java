@@ -6,13 +6,15 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.GreengrassGroupId;
 import com.awslabs.iot.data.ImmutableCertificateId;
+import com.awslabs.iot.data.ImmutableThingName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
-import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.iot.IotClient;
-import software.amazon.awssdk.services.iot.model.*;
+import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateRequest;
+import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -40,45 +42,21 @@ public class BasicIotHelper implements IotHelper {
     public BasicIotHelper() {
     }
 
-    @Override
-    public String createThing(String name) {
-        CreateThingRequest createThingRequest = CreateThingRequest.builder()
-                .thingName(name)
-                .build();
-
-        return Try.of(() -> iotClient.createThing(createThingRequest).thingArn())
-                .recover(ResourceAlreadyExistsException.class, throwable -> recoverFromResourceAlreadyExistsException(name, throwable))
-                .get();
+    private String credentialDirectoryForGroupId(GreengrassGroupId greengrassGroupId) {
+        return CREDENTIALS + greengrassGroupId.getGroupId();
     }
 
-    private String recoverFromResourceAlreadyExistsException(String name, ResourceAlreadyExistsException throwable) {
-        if (throwable.getMessage().contains("with different attributes")) {
-            log.info("The thing [" + name + "] already exists with different tags/attributes (e.g. immutable or other attributes)");
-
-            DescribeThingRequest describeThingRequest = DescribeThingRequest.builder()
-                    .thingName(name)
-                    .build();
-            return iotClient.describeThing(describeThingRequest).thingArn();
-        }
-
-        throw new RuntimeException(throwable);
-    }
-
-    private String credentialDirectoryForGroupId(String groupId) {
-        return CREDENTIALS + groupId;
-    }
-
-    private String createKeysandCertificateFilenameForGroupId(String groupId, String subName) {
-        return credentialDirectoryForGroupId(groupId) + "/" + subName + ".createKeysAndCertificate.serialized";
+    private String createKeysandCertificateFilenameForGroupId(GreengrassGroupId greengrassGroupId, String subName) {
+        return credentialDirectoryForGroupId(greengrassGroupId) + "/" + subName + ".createKeysAndCertificate.serialized";
     }
 
     @Override
-    public Optional<KeysAndCertificate> loadKeysAndCertificate(String groupId, String subName) {
-        String credentialsDirectory = credentialDirectoryForGroupId(groupId);
+    public Optional<KeysAndCertificate> loadKeysAndCertificate(GreengrassGroupId greengrassGroupId, String subName) {
+        String credentialsDirectory = credentialDirectoryForGroupId(greengrassGroupId);
 
         ioHelper.createDirectoryIfNecessary(credentialsDirectory);
 
-        String createKeysAndCertificateFilename = createKeysandCertificateFilenameForGroupId(groupId, subName);
+        String createKeysAndCertificateFilename = createKeysandCertificateFilenameForGroupId(greengrassGroupId, subName);
 
         if (ioHelper.exists(createKeysAndCertificateFilename)) {
             log.info("- Attempting to reuse existing keys.");
@@ -99,12 +77,12 @@ public class BasicIotHelper implements IotHelper {
     }
 
     @Override
-    public KeysAndCertificate createKeysAndCertificate(String groupId, String subName) {
-        String credentialsDirectory = credentialDirectoryForGroupId(groupId);
+    public KeysAndCertificate createKeysAndCertificate(GreengrassGroupId greengrassGroupId, String subName) {
+        String credentialsDirectory = credentialDirectoryForGroupId(greengrassGroupId);
 
         ioHelper.createDirectoryIfNecessary(credentialsDirectory);
 
-        String createKeysAndCertificateFilename = createKeysandCertificateFilenameForGroupId(groupId, subName);
+        String createKeysAndCertificateFilename = createKeysandCertificateFilenameForGroupId(greengrassGroupId, subName);
 
         // Let them know that they'll need to re-run the bootstrap script because the core's keys changed
         boolean isCore = subName.equals(DeploymentHelper.CORE_SUB_NAME);
@@ -118,7 +96,7 @@ public class BasicIotHelper implements IotHelper {
 
         ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeKeys(createKeysAndCertificateResponse, jsonHelper).getBytes());
 
-        String deviceName = isCore ? groupId : ggConstants.trimGgdPrefix(subName);
+        String deviceName = isCore ? greengrassGroupId.getGroupId() : ggConstants.trimGgdPrefix(ImmutableThingName.builder().name(subName).build());
         String privateKeyFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, KEY);
         String publicSignedCertificateFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, CRT);
 

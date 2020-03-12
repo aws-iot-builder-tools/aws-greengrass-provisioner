@@ -10,7 +10,13 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.lambda.data.FunctionAliasArn;
+import com.awslabs.lambda.data.ImmutableFunctionAlias;
+import com.awslabs.lambda.data.ImmutableFunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionVersion;
+import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
 import com.typesafe.config.*;
+import io.vavr.Tuple3;
 import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
@@ -47,6 +53,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     GreengrassHelper greengrassHelper;
     @Inject
     LambdaHelper lambdaHelper;
+    @Inject
+    V2LambdaHelper v2LambdaHelper;
     @Inject
     GradleBuilder gradleBuilder;
     @Inject
@@ -801,6 +809,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Publish all of the built functions to Lambda
         List<LambdaFunctionArnInfo> builtFunctionLambdaInfo = builtFunctions.stream()
                 .map(FunctionConf::getGroupFunctionName)
+                .map(functionName -> ImmutableFunctionName.builder().name(functionName).build())
                 .map(lambdaHelper::publishLambdaFunctionVersion)
                 .collect(Collectors.toList());
 
@@ -808,8 +817,11 @@ public class BasicFunctionHelper implements FunctionHelper {
         Map<LambdaFunctionArnInfo, FunctionConf> builtLambdaFunctionArnToFunctionConfMap = getLambdaFunctionArnToFunctionConfMap(builtFunctionLambdaInfo, builtFunctions);
 
         // Create aliases for all of the built functions in Lambda
-        List<String> aliases = builtLambdaFunctionArnToFunctionConfMap.entrySet().stream()
-                .map(entry -> lambdaHelper.createAlias(entry.getValue(), entry.getKey().getQualifier()))
+        List<FunctionAliasArn> aliases = builtLambdaFunctionArnToFunctionConfMap.entrySet().stream()
+                .map(entry -> new Tuple3<>(ImmutableFunctionName.builder().name(entry.getValue().getGroupFunctionName()).build(),
+                        ImmutableFunctionVersion.builder().version(entry.getKey().getQualifier()).build(),
+                        ImmutableFunctionAlias.builder().alias(entry.getValue().getAliasName()).build()))
+                .map(tuple3 -> v2LambdaHelper.createAlias(tuple3._1, tuple3._2, tuple3._3))
                 .collect(Collectors.toList());
 
         builtLambdaFunctionArnToFunctionConfMap = addAliasesToMap(builtLambdaFunctionArnToFunctionConfMap, aliases);
@@ -817,14 +829,15 @@ public class BasicFunctionHelper implements FunctionHelper {
         return builtLambdaFunctionArnToFunctionConfMap;
     }
 
-    private Map<LambdaFunctionArnInfo, FunctionConf> addAliasesToMap(Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap, List<String> aliases) {
+    private Map<LambdaFunctionArnInfo, FunctionConf> addAliasesToMap(Map<LambdaFunctionArnInfo, FunctionConf> lambdaFunctionArnToFunctionConfMap, List<FunctionAliasArn> aliases) {
         return lambdaFunctionArnToFunctionConfMap.entrySet().stream()
                 .map(entry -> addAliasToMap(entry, aliases))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
 
-    private Map.Entry<LambdaFunctionArnInfo, FunctionConf> addAliasToMap(Map.Entry<LambdaFunctionArnInfo, FunctionConf> entry, List<String> aliases) {
-        String alias = findStringThatStartsWith(aliases, entry.getKey().getBaseArn());
+    private Map.Entry<LambdaFunctionArnInfo, FunctionConf> addAliasToMap(Map.Entry<LambdaFunctionArnInfo, FunctionConf> entry, List<FunctionAliasArn> aliases) {
+        List<String> aliasStrings = aliases.stream().map(FunctionAliasArn::getAliasArn).collect(Collectors.toList());
+        String alias = findStringThatStartsWith(aliasStrings, entry.getKey().getBaseArn());
 
         LambdaFunctionArnInfo updatedLambdaFunctionArnInfo = ImmutableLambdaFunctionArnInfo.builder().from(entry.getKey())
                 .aliasArn(alias)

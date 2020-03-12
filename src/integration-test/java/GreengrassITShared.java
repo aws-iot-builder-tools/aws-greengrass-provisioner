@@ -4,6 +4,10 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ThreadHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.ImmutableGreengrassGroupName;
+import com.awslabs.lambda.data.FunctionAlias;
+import com.awslabs.lambda.data.FunctionName;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -50,7 +54,7 @@ class GreengrassITShared {
     static final String X86_64_SAMPLE_C_DEPLOYMENT = "X86_64SampleC.conf";
     static final String ALL_HELLO_WORLD_DEPLOYMENT = "all-hello-world.conf";
     static final String FAIL_DEPLOYMENT = "FAKE";
-    private final String GROUP_NAME = AwsGreengrassProvisioner.getInjector().ioHelper().getUuid();
+    private final GreengrassGroupName GROUP_NAME = ImmutableGreengrassGroupName.builder().groupName(AwsGreengrassProvisioner.getInjector().ioHelper().getUuid()).build();
     private final IoHelper ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
 
     static void cleanDirectories() throws IOException {
@@ -80,76 +84,76 @@ class GreengrassITShared {
         FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ioFileFilter);
     }
 
-    String getGroupName() {
+    GreengrassGroupName getGroupName() {
         return GROUP_NAME;
     }
 
-    private String getGroupOption(Optional<String> groupName) {
-        return String.join(" ", "-g", groupName.orElse(GROUP_NAME));
+    private String getGroupOption(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join(" ", "-g", greengrassGroupName.orElse(GROUP_NAME).getGroupName());
     }
 
-    String getCddSkeletonDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getCddSkeletonDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, CDD_SKELETON_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getFailDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getFailDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, FAIL_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getAddFunctionCommand(String groupName, String functionName, String functionAlias) {
+    String getAddFunctionCommand(GreengrassGroupName greengrassGroupName, FunctionName functionName, FunctionAlias functionAlias) {
         return String.join(" ",
-                getGroupOption(Optional.of(groupName)),
+                getGroupOption(Optional.of(greengrassGroupName)),
                 UpdateArguments.LONG_UPDATE_GROUP_OPTION,
-                UpdateArguments.LONG_ADD_FUNCTION_OPTION, functionName,
-                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
+                UpdateArguments.LONG_ADD_FUNCTION_OPTION, functionName.getName(),
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias.getAlias());
     }
 
-    String getRemoveFunctionCommand(String groupName, String functionName, String functionAlias) {
+    String getRemoveFunctionCommand(GreengrassGroupName greengrassGroupName, FunctionName functionName, FunctionAlias functionAlias) {
         return String.join(" ",
-                getGroupOption(Optional.of(groupName)),
+                getGroupOption(Optional.of(greengrassGroupName)),
                 UpdateArguments.LONG_UPDATE_GROUP_OPTION,
-                UpdateArguments.LONG_REMOVE_FUNCTION_OPTION, functionName,
-                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias);
+                UpdateArguments.LONG_REMOVE_FUNCTION_OPTION, functionName.getName(),
+                UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias.getAlias());
     }
 
-    String getPython2HelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getPython2HelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getPython3HelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getPython3HelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getBenchmarkDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, BENCHMARK_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getBenchmarkDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, BENCHMARK_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional<String> groupName) {
-        return String.join("", DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", DEPLOYMENT_OPTION, PYTHON3_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getLifxDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getLifxDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, LIFX_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getNodeWebserverDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getNodeWebserverDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_WEBSERVER_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getNodeHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getNodeHelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getX86_64SampleCDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, X86_64_SAMPLE_C_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getX86_64SampleCDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, X86_64_SAMPLE_C_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getAllHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName));
+    String getAllHelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, ALL_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
-    String getEc2Arm32NodeHelloWorldDeploymentCommand(Optional<String> groupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(groupName), " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
+    String getEc2Arm32NodeHelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
+        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, NODE_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName), " ", ARM32_OPTION, " ", EC2_LAUNCH_OPTION);
     }
 
     String[] split(String input) {
@@ -157,14 +161,14 @@ class GreengrassITShared {
     }
 
     @NotNull
-    private String getReusedFunctionDeploymentConfContents(String partialFunctionName, String groupName) {
-        String functionToReuse = String.join("-", groupName, partialFunctionName);
+    private String getReusedFunctionDeploymentConfContents(String partialFunctionName, GreengrassGroupName greengrassGroupName) {
+        String functionToReuse = String.join("-", greengrassGroupName.getGroupName(), partialFunctionName);
         return "conf { functions = [\"" + functionToReuse + "\"] }";
     }
 
     @NotNull
-    File setupReusedFunctionDeploymentConf(Optional<String> optionalDirectoryPrefix, String partialFunctionName, String groupName) throws IOException {
-        String tempDeploymentConfContents = getReusedFunctionDeploymentConfContents(partialFunctionName, groupName);
+    File setupReusedFunctionDeploymentConf(Optional<String> optionalDirectoryPrefix, String partialFunctionName, GreengrassGroupName greengrassGroupName) throws IOException {
+        String tempDeploymentConfContents = getReusedFunctionDeploymentConfContents(partialFunctionName, greengrassGroupName);
         return writeTempDeploymentConfFile(optionalDirectoryPrefix, tempDeploymentConfContents);
     }
 

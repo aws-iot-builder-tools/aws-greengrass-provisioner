@@ -9,8 +9,10 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LambdaHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
+import com.awslabs.lambda.data.FunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionName;
+import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
 import io.vavr.control.Either;
-import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.text.StringEscapeUtils;
@@ -41,6 +43,8 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Inject
     LambdaClient lambdaClient;
     @Inject
+    V2LambdaHelper v2LambdaHelper;
+    @Inject
     IoHelper ioHelper;
     @Inject
     GradleBuilder gradleBuilder;
@@ -57,16 +61,6 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Inject
     public BasicLambdaHelper() {
-    }
-
-    private boolean functionExists(String functionName) {
-        GetFunctionRequest getFunctionRequest = GetFunctionRequest.builder()
-                .functionName(functionName)
-                .build();
-
-        return Try.of(() -> lambdaClient.getFunction(getFunctionRequest) != null)
-                .recover(ResourceNotFoundException.class, throwable -> false)
-                .get();
     }
 
     @Override
@@ -216,7 +210,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
-        if (functionExists(groupFunctionName)) {
+        if (v2LambdaHelper.functionExists(ImmutableFunctionName.builder().name(groupFunctionName).build())) {
             // Update the function
             return Either.right(updateExistingLambdaFunction(functionConf, role, baseFunctionName, groupFunctionName, functionCode, runtime, lambdaIamRoleRetryPolicy));
         }
@@ -226,8 +220,8 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(String functionName) {
-        PublishVersionResponse publishVersionResponse = publishFunctionVersion(functionName);
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
@@ -330,69 +324,6 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public PublishVersionResponse publishFunctionVersion(String functionName) {
-        PublishVersionRequest publishVersionRequest = PublishVersionRequest.builder()
-                .functionName(functionName)
-                .build();
-
-        return lambdaClient.publishVersion(publishVersionRequest);
-    }
-
-    @Override
-    public boolean aliasExists(String functionName, String aliasName) {
-        GetAliasRequest getAliasRequest = GetAliasRequest.builder()
-                .functionName(functionName)
-                .name(aliasName)
-                .build();
-
-        return Try.of(() -> lambdaClient.getAlias(getAliasRequest) != null)
-                .recover(ResourceNotFoundException.class, throwable -> false)
-                .get();
-    }
-
-    @Override
-    public String createAlias(String functionName, String functionVersion, String aliasName) {
-        if (aliasExists(functionName, aliasName)) {
-            loggingHelper.logInfoWithName(log, functionName, "Deleting existing alias");
-
-            DeleteAliasRequest deleteAliasRequest = DeleteAliasRequest.builder()
-                    .functionName(functionName)
-                    .name(aliasName)
-                    .build();
-
-            lambdaClient.deleteAlias(deleteAliasRequest);
-        }
-
-        loggingHelper.logInfoWithName(log, functionName, "Creating new alias [" + aliasName + "] for version [" + functionVersion + "]");
-
-        CreateAliasRequest createAliasRequest = CreateAliasRequest.builder()
-                .functionName(functionName)
-                .name(aliasName)
-                .functionVersion(functionVersion)
-                .build();
-
-        CreateAliasResponse createAliasResponse = lambdaClient.createAlias(createAliasRequest);
-
-        return createAliasResponse.aliasArn();
-    }
-
-    @Override
-    public String createAlias(FunctionConf functionConf, String functionVersion) {
-        return createAlias(functionConf.getGroupFunctionName(), functionVersion, functionConf.getAliasName());
-    }
-
-    @Override
-    public Optional<GetFunctionResponse> getFunction(String functionName) {
-        GetFunctionRequest getFunctionRequest = GetFunctionRequest.builder()
-                .functionName(functionName)
-                .build();
-
-        return Try.of(() -> Optional.of(lambdaClient.getFunction(getFunctionRequest)))
-                .recover(ResourceNotFoundException.class, throwable -> Optional.empty())
-                .get();
-    }
-
-    @Override
     public void deleteAlias(String functionArn) {
         String temp = functionArn.substring(0, functionArn.lastIndexOf(":"));
         String aliasName = functionArn.substring(functionArn.lastIndexOf(":") + 1);
@@ -447,7 +378,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         if (optionalFunctionArn.isPresent()) {
             String fullFunctionArn = optionalFunctionArn.get() + ":" + alias;
 
-            if (!functionExists(fullFunctionArn)) {
+            if (!v2LambdaHelper.functionExists(ImmutableFunctionName.builder().name(fullFunctionArn).build())) {
                 throw new RuntimeException("The specified Lambda ARN [" + fullFunctionArn + "] does not exist");
             }
 
