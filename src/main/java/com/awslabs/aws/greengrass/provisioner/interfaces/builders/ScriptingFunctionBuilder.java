@@ -17,7 +17,8 @@ public interface ScriptingFunctionBuilder extends FunctionBuilder {
     }
 
     default String getArchivePath(FunctionConf functionConf) {
-        return String.join("/", functionConf.getBuildDirectory().get().toString(), functionConf.getFunctionName() + ".zip");
+        return String.join("/", functionConf.getBuildDirectory().get().toString(),
+                String.join(".", functionConf.getFunctionName().getName(), "zip"));
     }
 
     boolean hasDependencies(Path buildDirectory);

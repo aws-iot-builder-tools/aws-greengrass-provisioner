@@ -1,5 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.lambda.data.FunctionName;
 import org.immutables.value.Value;
 import software.amazon.awssdk.services.greengrass.model.Logger;
 
@@ -11,9 +13,15 @@ import java.util.Optional;
 public abstract class DeploymentConf {
     public abstract String getName();
 
-    public abstract String getGroupName();
+    public abstract GreengrassGroupName getGroupName();
 
-    public abstract List<String> getFunctions();
+    /**
+     * This is the list of the functions in the deployment configuration file. Even though it is a list of
+     * FunctionName objects they may not be Lambda function names. They can be either a function name, a URL
+     * to a Github repo, or an existing Lambda function alias
+     * @return
+     */
+    public abstract List<FunctionName> getFunctions();
 
     public abstract RoleConf getCoreRoleConf();
 

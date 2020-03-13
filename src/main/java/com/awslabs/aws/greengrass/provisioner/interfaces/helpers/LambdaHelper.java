@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.lambda.data.FunctionAliasArn;
 import com.awslabs.lambda.data.FunctionName;
 import io.vavr.control.Either;
 import software.amazon.awssdk.services.iam.model.Role;
@@ -29,11 +30,7 @@ public interface LambdaHelper {
 
     LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName);
 
-    Map<String, String> getFunctionEnvironment(String functionName);
-
-    GetFunctionConfigurationResponse getFunctionConfigurationByName(String functionName);
-
     void deleteAlias(String functionArn);
 
-    String findFullFunctionArnByPartialName(String substring);
+    FunctionAliasArn findFullFunctionArnByPartialName(String substring);
 }

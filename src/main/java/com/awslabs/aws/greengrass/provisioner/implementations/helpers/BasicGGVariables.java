@@ -20,32 +20,32 @@ public class BasicGGVariables implements GGVariables {
 
     @Override
     public ThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
-        return ImmutableThingName.builder().name(greengrassGroupName.getGroupName() + "_Core").build();
+        return ImmutableThingName.builder().name(String.join("_", greengrassGroupName.getGroupName(), "Core")).build();
     }
 
     @Override
     public String getCoreDefinitionName(GreengrassGroupName greengrassGroupName) {
-        return getCoreThingName(greengrassGroupName) + "_Definition";
+        return String.join("_", getCoreThingName(greengrassGroupName).getName(), "Definition");
     }
 
     @Override
     public PolicyName getCorePolicyName(GreengrassGroupName greengrassGroupName) {
-        return ImmutablePolicyName.builder().name(getCoreThingName(greengrassGroupName).getName() + "_Policy").build();
+        return ImmutablePolicyName.builder().name(String.join("_", getCoreThingName(greengrassGroupName).getName(), "Policy")).build();
     }
 
     @Override
     public String getDeviceShadowTopicFilterName(ThingName thingName) {
-        return "$aws/things/" + thingName.getName() + "/shadow/#";
+        return String.join("", "$aws/things/", thingName.getName(), "/shadow/#");
     }
 
     @Override
     public String getGgHost(Region region) {
-        return "greengrass-ats.iot." + region.toString() + ".amazonaws.com";
+        return String.join("", "greengrass-ats.iot.", region.toString(), ".amazonaws.com");
     }
 
     @Override
     public String getDeviceDefinitionName(GreengrassGroupName greengrassGroupName) {
-        return greengrassGroupName.getGroupName() + "_DeviceDefinition";
+        return String.join("_", greengrassGroupName.getGroupName(), "DeviceDefinition");
     }
 
     @Override

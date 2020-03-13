@@ -36,13 +36,13 @@ public class BasicNodeBuilder implements NodeBuilder {
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         if (hasDependencies(functionConf.getBuildDirectory().get())) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Installing Node dependencies");
 
             // Install all of the dependencies for this function
             installDependencies(functionConf);
         }
 
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Packaging function for AWS Lambda");
 
         File tempFile = Try.of(() -> ioHelper.getTempFile("node-lambda-build", "zip")).get();
 
@@ -58,7 +58,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependencies");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Retrieving Node dependencies");
         List<String> programAndArguments = new ArrayList<>();
         programAndArguments.add("npm");
         programAndArguments.add("install");

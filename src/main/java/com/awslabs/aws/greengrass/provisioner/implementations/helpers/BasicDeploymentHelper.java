@@ -17,6 +17,8 @@ import com.awslabs.iam.helpers.interfaces.V2IamHelper;
 import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import com.awslabs.lambda.data.FunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionName;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -178,9 +180,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         String trimmedDeploymentName = deploymentConfigFilename.replaceAll(".conf$", "").replaceAll("^.*/", "");
         deploymentConfBuilder.name(trimmedDeploymentName);
-        deploymentConfBuilder.functions(config.getStringList("conf.functions"));
+        List<FunctionName> functionNames = config.getStringList("conf.functions")
+                .stream().map(name -> ImmutableFunctionName.builder().name(name).build())
+                .collect(Collectors.toList());
+        deploymentConfBuilder.functions(functionNames);
 
-        deploymentConfBuilder.groupName(greengrassGroupName.getGroupName());
+        deploymentConfBuilder.groupName(greengrassGroupName);
 
         try {
             deploymentConfBuilder.isSyncShadow(config.getBoolean("conf.core.syncShadow"));
@@ -456,7 +461,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         DeploymentConf deploymentConf;
 
         if (isEmptyDeployment(deploymentArguments)) {
-            deploymentConf = getEmptyDeploymentConf(deploymentArguments);
+            deploymentConf = getEmptyDeploymentConf(deploymentArguments, greengrassGroupName);
         } else {
             deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments.deploymentConfigFilename, greengrassGroupName)).get();
         }
@@ -775,7 +780,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Determine if any functions are running inside the Greengrass container //
         ////////////////////////////////////////////////////////////////////////////
 
-        List<String> functionsRunningInGreengrassContainer = functionConfs.stream()
+        List<FunctionName> functionsRunningInGreengrassContainer = functionConfs.stream()
                 .filter(FunctionConf::isGreengrassContainer)
                 .map(FunctionConf::getFunctionName)
                 .collect(Collectors.toList());
@@ -1235,6 +1240,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Python functions do not have a Python version specified, this should never happen!");
             legacyPythonFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1250,6 +1256,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Node functions do not have a Node version specified, this should never happen!");
             legacyNodeFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1265,6 +1272,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Java functions do not have a Java version specified, this should never happen!");
             legacyJavaFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1284,7 +1292,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return deploymentArguments.deploymentConfigFilename.equals(EMPTY);
     }
 
-    private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
+    private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName) {
         String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
 
         RoleConf coreRoleConf = ImmutableRoleConf.builder()
@@ -1296,7 +1304,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return ImmutableDeploymentConf.builder()
                 .isSyncShadow(true)
                 .name(EMPTY)
-                .groupName(deploymentArguments.groupName)
+                .groupName(greengrassGroupName)
                 .coreRoleConf(coreRoleConf)
                 .functions(new ArrayList<>())
                 .build();

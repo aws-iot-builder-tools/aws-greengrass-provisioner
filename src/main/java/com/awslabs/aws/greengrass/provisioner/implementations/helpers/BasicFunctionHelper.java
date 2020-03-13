@@ -10,10 +10,7 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
-import com.awslabs.lambda.data.FunctionAliasArn;
-import com.awslabs.lambda.data.ImmutableFunctionAlias;
-import com.awslabs.lambda.data.ImmutableFunctionName;
-import com.awslabs.lambda.data.ImmutableFunctionVersion;
+import com.awslabs.lambda.data.*;
 import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
 import com.typesafe.config.*;
 import io.vavr.Tuple3;
@@ -78,27 +75,23 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionConf.toPath().getParent();
     }
 
-    private Either<String, File> getFunctionConfPathOrArn(String functionName) {
-        return Try.of(() -> innerGetFunctionConfPathOrArn(functionName)).get();
-    }
-
-    private Either<String, File> innerGetFunctionConfPathOrArn(String functionName) throws IOException {
-        if (functionName.contains(EXISTING_LAMBDA_FUNCTION_WILDCARD)) {
-            if (functionName.matches(ENDS_WITH_ALIAS_REGEX)) {
-                return Either.left(lambdaHelper.findFullFunctionArnByPartialName(functionName));
+    private Either<FunctionAliasArn, File> getFunctionAliasArnOrFunctionConfPath(String pathOrUrlOrArn) throws IOException {
+        if (pathOrUrlOrArn.contains(EXISTING_LAMBDA_FUNCTION_WILDCARD)) {
+            if (pathOrUrlOrArn.matches(ENDS_WITH_ALIAS_REGEX)) {
+                return Either.left(lambdaHelper.findFullFunctionArnByPartialName(pathOrUrlOrArn));
             } else {
-                throw new RuntimeException("Lambda function reference [" + functionName + "] does not include an alias. Append a colon and the alias to the partial name and try again.");
+                throw new RuntimeException("Lambda function reference [" + pathOrUrlOrArn + "] does not include an alias. Append a colon and the alias to the partial name and try again.");
             }
         }
 
-        if (functionName.startsWith(HTTPS)) {
-            return Either.right(getGitFunctionConfFile(functionName));
-        } else if (functionName.matches(ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX + ".*$")) {
-            throwExceptionIfLambdaArnIsIncomplete(functionName);
+        if (pathOrUrlOrArn.startsWith(HTTPS)) {
+            return Either.right(getGitFunctionConfFile(pathOrUrlOrArn));
+        } else if (pathOrUrlOrArn.matches(ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX + ".*$")) {
+            throwExceptionIfLambdaArnIsIncomplete(pathOrUrlOrArn);
 
-            return Either.left(functionName);
+            return Either.left(ImmutableFunctionAliasArn.builder().aliasArn(pathOrUrlOrArn).build());
         } else {
-            return Either.right(getLocalFunctionConfFile(functionName));
+            return Either.right(getLocalFunctionConfFile(pathOrUrlOrArn));
         }
     }
 
@@ -108,8 +101,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private String getLambdaFunctionConf(String functionName) {
-        Map<String, String> existingEnvironment = lambdaHelper.getFunctionEnvironment(functionName);
+    private String getLambdaFunctionConf(FunctionAliasArn functionAliasArn) {
+        Map<String, String> existingEnvironment = v2LambdaHelper.getFunctionEnvironment(functionAliasArn);
 
         Optional<String> optionalFunctionConfString = Optional.ofNullable(existingEnvironment.get(LambdaHelper.GGP_FUNCTION_CONF));
 
@@ -251,7 +244,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     @Override
     public List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Get each enabled function conf file OR the ARN of an existing function
-        List<Either<String, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
+        List<Either<FunctionAliasArn, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
 
         warnAboutMissingDefaultsIfNecessary();
 
@@ -264,17 +257,17 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private List<FunctionConf> getFunctionConfs(Config defaultConfig, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfs(Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Find any functions with missing config files
         ioHelper.detectMissingConfigs(log, "function", enabledFunctionConfs);
 
         return getFunctionConfObjects(defaultConfig, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, List<Either<String, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
-        for (Either<String, File> enabledFunctionConf : enabledFunctionConfs) {
+        for (Either<FunctionAliasArn, File> enabledFunctionConf : enabledFunctionConfs) {
             FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultConfig, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
 
             enabledFunctionConfObjects.add(functionConf);
@@ -283,7 +276,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         if (enabledFunctionConfObjects.size() > 0) {
             log.info("Enabled functions: ");
             enabledFunctionConfObjects
-                    .forEach(functionConf -> log.info("  " + functionConf.getFunctionName()));
+                    .forEach(functionConf -> log.info("  " + functionConf.getFunctionName().getName()));
         } else {
             log.warn("NO FUNCTIONS ENABLED");
         }
@@ -291,7 +284,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Config defaultConfig, DeploymentConf deploymentConf, Either<String, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private FunctionConf getFunctionConf(Config defaultConfig, DeploymentConf deploymentConf, Either<FunctionAliasArn, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
         Config config;
@@ -301,10 +294,10 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         if (functionConf.isLeft()) {
             // We have the function conf in Lambda
-            String functionArn = functionConf.getLeft();
-            functionConfBuilder.existingArn(functionArn);
+            FunctionAliasArn functionAliasArn = functionConf.getLeft();
+            functionConfBuilder.existingArn(functionAliasArn.getAliasArn());
 
-            String functionConfFromLambda = getLambdaFunctionConf(functionArn);
+            String functionConfFromLambda = getLambdaFunctionConf(functionAliasArn);
             functionConfBuilder.rawConfig(functionConfFromLambda);
 
             config = ConfigFactory.parseString(functionConfFromLambda);
@@ -351,10 +344,10 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         functionConfBuilder.language(language);
         functionConfBuilder.encodingType(EncodingType.fromValue(config.getString("conf.encodingType").toLowerCase()));
-        functionConfBuilder.functionName(config.getString("conf.functionName"));
+        functionConfBuilder.functionName(ImmutableFunctionName.builder().name(config.getString("conf.functionName")).build());
         functionConfBuilder.groupName(deploymentConf.getGroupName());
         functionConfBuilder.handlerName(config.getString("conf.handlerName"));
-        functionConfBuilder.aliasName(config.getString("conf.aliasName"));
+        functionConfBuilder.aliasName(ImmutableFunctionAlias.builder().alias(config.getString("conf.aliasName")).build());
         functionConfBuilder.memorySizeInKb(config.getInt("conf.memorySizeInKb"));
         functionConfBuilder.isPinned(config.getBoolean("conf.pinned"));
         functionConfBuilder.timeoutInSeconds(config.getInt("conf.timeoutInSeconds"));
@@ -415,10 +408,11 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .forEach(index -> functionConfBuilder.putEnvironmentVariables("SECRET_" + index, secretNames.get(index)));
     }
 
-    private List<Either<String, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
+    private List<Either<FunctionAliasArn, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
         // Get all of the functions they've requested
         return deploymentConf.getFunctions().stream()
-                .map(this::getFunctionConfPathOrArn)
+                .map(FunctionName::getName)
+                .map(pathOrUrlOrArn -> Try.of(() -> getFunctionAliasArnOrFunctionConfPath(pathOrUrlOrArn)).get())
                 .collect(Collectors.toList());
     }
 
@@ -426,7 +420,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<String> connectedShadows = config.getStringList("conf.connectedShadows");
 
         if (connectedShadows.size() == 0) {
-            log.debug("No connected shadows specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No connected shadows specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
             return new ArrayList<>();
         }
 
@@ -437,7 +431,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localDeviceResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local device resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local device resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
             return;
         }
 
@@ -458,7 +452,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localVolumeResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local volume resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local volume resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
             return;
         }
 
@@ -484,7 +478,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localS3Resources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local S3 resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local S3 resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
             return;
         }
 
@@ -506,7 +500,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localSageMakerResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local SageMaker resources specified for [" + functionConfBuilder.build().getFunctionName() + "] function");
+            log.debug("No local SageMaker resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
             return;
         }
 
@@ -552,10 +546,10 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<String> idList = config.getStringList("conf.localSecretsManagerResources");
 
-        String functionName = functionConfBuilder.build().getFunctionName();
+        String functionNameString = functionConfBuilder.build().getFunctionName().getName();
 
         if (idList.size() == 0) {
-            log.debug("No local secrets manager resources specified for [" + functionName + "] function");
+            log.debug("No local secrets manager resources specified for [" + functionNameString + "] function");
 
             return secretNames;
         }
@@ -597,7 +591,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .resourceName(resourceName)
                     .build();
 
-            log.info("Adding secret resource [" + resourceName + "] with name [" + secretName + "] to function [" + functionName + "]");
+            log.info("Adding secret resource [" + resourceName + "] with name [" + secretName + "] to function [" + functionNameString + "]");
 
             functionConfBuilder.addLocalSecretsManagerResources(localSecretsManagerResource);
         }
@@ -673,7 +667,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         log.error("The following function(s) are not buildable:");
 
         functionsNotBuilt
-                .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName()));
+                .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName().getName()));
 
         throw new RuntimeException("This is a bug, cannot continue");
     }
@@ -809,7 +803,6 @@ public class BasicFunctionHelper implements FunctionHelper {
         // Publish all of the built functions to Lambda
         List<LambdaFunctionArnInfo> builtFunctionLambdaInfo = builtFunctions.stream()
                 .map(FunctionConf::getGroupFunctionName)
-                .map(functionName -> ImmutableFunctionName.builder().name(functionName).build())
                 .map(lambdaHelper::publishLambdaFunctionVersion)
                 .collect(Collectors.toList());
 
@@ -818,9 +811,9 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         // Create aliases for all of the built functions in Lambda
         List<FunctionAliasArn> aliases = builtLambdaFunctionArnToFunctionConfMap.entrySet().stream()
-                .map(entry -> new Tuple3<>(ImmutableFunctionName.builder().name(entry.getValue().getGroupFunctionName()).build(),
+                .map(entry -> new Tuple3<>(entry.getValue().getGroupFunctionName(),
                         ImmutableFunctionVersion.builder().version(entry.getKey().getQualifier()).build(),
-                        ImmutableFunctionAlias.builder().alias(entry.getValue().getAliasName()).build()))
+                        entry.getValue().getAliasName()))
                 .map(tuple3 -> v2LambdaHelper.createAlias(tuple3._1, tuple3._2, tuple3._3))
                 .collect(Collectors.toList());
 
@@ -849,13 +842,13 @@ public class BasicFunctionHelper implements FunctionHelper {
     @NotNull
     private Map<String, FunctionConf> getFunctionArnToFunctionConfMap(List<FunctionConf> functionConfList, List<String> functionArns) {
         return functionConfList.stream()
-                .collect(Collectors.toMap(functionConf -> findStringThatEndsWith(functionArns, functionConf.getGroupFunctionName()), functionConf -> functionConf));
+                .collect(Collectors.toMap(functionConf -> findStringThatEndsWith(functionArns, functionConf.getGroupFunctionName().getName()), functionConf -> functionConf));
     }
 
     @NotNull
     private Map<LambdaFunctionArnInfo, FunctionConf> getLambdaFunctionArnToFunctionConfMap(List<LambdaFunctionArnInfo> lambdaFunctionArnInfoList, List<FunctionConf> functionConfList) {
         return functionConfList.stream()
-                .collect(Collectors.toMap(functionConf -> findLambdaFunctionArnInfoThatEndsWith(lambdaFunctionArnInfoList, functionConf.getGroupFunctionName()), functionConf -> functionConf));
+                .collect(Collectors.toMap(functionConf -> findLambdaFunctionArnInfoThatEndsWith(lambdaFunctionArnInfoList, functionConf.getGroupFunctionName().getName()), functionConf -> functionConf));
     }
 
     private String findStringThatEndsWith(List<String> strings, String endsWithString) {
@@ -908,14 +901,14 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(FunctionConf functionConf, String functionArn) {
-        String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
-        String aliasArn = String.join(":", functionArn, functionConf.getAliasName());
+        String nameInEnvironment = String.join("", LOCAL_LAMBDA, functionConf.getFunctionName().getName());
+        String aliasArn = String.join(":", functionArn, functionConf.getAliasName().getAlias());
 
         return new AbstractMap.SimpleEntry<>(nameInEnvironment, aliasArn);
     }
 
     private AbstractMap.SimpleEntry<String, String> getNameToAliasEntry(FunctionConf functionConf) {
-        String nameInEnvironment = LOCAL_LAMBDA + functionConf.getFunctionName();
+        String nameInEnvironment = String.join("", LOCAL_LAMBDA, functionConf.getFunctionName().getName());
 
         return new AbstractMap.SimpleEntry<>(nameInEnvironment, functionConf.getExistingArn().get());
     }
