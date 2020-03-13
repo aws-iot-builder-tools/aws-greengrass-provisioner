@@ -6,6 +6,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
 import com.spotify.docker.client.DockerClient;
 import com.spotify.docker.client.ProgressHandler;
 import com.spotify.docker.client.exceptions.DockerException;
@@ -79,7 +80,7 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
     }
 
     @Override
-    public Optional<String> createContainer(String tag, String groupName) {
+    public Optional<String> createContainer(String tag, GreengrassGroupName greengrassGroupName) {
         Optional<Image> optionalImage = getImageFromTag(tag);
 
         if (!optionalImage.isPresent()) {
@@ -91,12 +92,12 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
         String absoluteCertsPath = String.join("/", "", "greengrass", ggConstants.getCertsDirectoryPrefix());
         String absoluteConfigPath = String.join("/", "", "greengrass", ggConstants.getConfigDirectoryPrefix());
 
-        Path tempDirectory = Try.of(() -> getAndPopulateTempDirectory(groupName))
+        Path tempDirectory = Try.of(() -> getAndPopulateTempDirectory(greengrassGroupName))
                 .onFailure(this::printCouldNotCreateTemporaryCredentialsAndThrow)
                 .get();
 
         return Try.withResources(this::getDockerClient)
-                .of(dockerClient -> getOrCreateContainer(groupName, image, absoluteCertsPath, absoluteConfigPath, tempDirectory, dockerClient))
+                .of(dockerClient -> getOrCreateContainer(greengrassGroupName, image, absoluteCertsPath, absoluteConfigPath, tempDirectory, dockerClient))
                 .onFailure(throwable -> Match(throwable).of(
                         Case($(instanceOf(DockerException.class)), this::printCouldNotCreateContainerAndThrow),
                         Case($(instanceOf(InterruptedException.class)), this::printCouldNotCreateContainerAndThrow),
@@ -105,9 +106,9 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
                 .get();
     }
 
-    public Optional<String> getOrCreateContainer(String groupName, Image image, String absoluteCertsPath, String absoluteConfigPath, Path tempDirectory, DockerClient dockerClient) throws DockerException, InterruptedException, IOException {
+    public Optional<String> getOrCreateContainer(GreengrassGroupName greengrassGroupName, Image image, String absoluteCertsPath, String absoluteConfigPath, Path tempDirectory, DockerClient dockerClient) throws DockerException, InterruptedException, IOException {
         // Is there any existing container with the group name?
-        Optional<Container> optionalContainer = getContainerByName(groupName, dockerClient);
+        Optional<Container> optionalContainer = getContainerByName(greengrassGroupName, dockerClient);
 
         if (optionalContainer.isPresent()) {
             Container container = optionalContainer.get();
@@ -120,7 +121,7 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
                 .image(image.id())
                 .entrypoint("/greengrass-entrypoint.sh")
                 .exposedPorts("8883")
-                .build(), groupName);
+                .build(), greengrassGroupName.getGroupName());
 
         // Copy the certs to the container
         dockerClient.copyToContainer(tempDirectory.resolve(ggConstants.getCertsDirectoryPrefix()),
@@ -135,8 +136,8 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
         return Optional.of(containerCreation.id());
     }
 
-    public Path getAndPopulateTempDirectory(String groupName) throws IOException {
-        Path innerTempDirectory = Files.createTempDirectory(groupName);
+    public Path getAndPopulateTempDirectory(GreengrassGroupName greengrassGroupName) throws IOException {
+        Path innerTempDirectory = Files.createTempDirectory(greengrassGroupName.getGroupName());
 
         Path localCertsPath = innerTempDirectory.resolve(ggConstants.getCertsDirectoryPrefix());
         Path localConfigPath = innerTempDirectory.resolve(ggConstants.getConfigDirectoryPrefix());
@@ -159,10 +160,12 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
                 ggConstants.getConfigDirectoryPrefix(),
                 ggConstants.getConfigFileName());
 
-        Optional<InputStream> coreCertStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreCertFilename);
-        Optional<InputStream> coreKeyStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), coreKeyFilename);
-        Optional<InputStream> rootCaStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), rootCaFilename);
-        Optional<InputStream> configJsonStream = ioHelper.extractTar(ggVariables.getOemArchiveName(groupName), configJsonFilename);
+        String oemArchiveName = ggVariables.getOemArchiveName(greengrassGroupName);
+
+        Optional<InputStream> coreCertStream = ioHelper.extractTar(oemArchiveName, coreCertFilename);
+        Optional<InputStream> coreKeyStream = ioHelper.extractTar(oemArchiveName, coreKeyFilename);
+        Optional<InputStream> rootCaStream = ioHelper.extractTar(oemArchiveName, rootCaFilename);
+        Optional<InputStream> configJsonStream = ioHelper.extractTar(oemArchiveName, configJsonFilename);
 
         List<String> errors = new ArrayList<>();
 

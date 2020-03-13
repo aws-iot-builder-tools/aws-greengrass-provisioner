@@ -1,6 +1,5 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda;
 import com.awslabs.aws.greengrass.provisioner.lambda.LambdaInput;
 import com.awslabs.iot.data.ImmutablePolicyDocument;

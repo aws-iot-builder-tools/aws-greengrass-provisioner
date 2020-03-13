@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.iot.data.ThingName;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import software.amazon.awssdk.services.greengrass.model.Function;
@@ -136,18 +137,18 @@ public class BasicGGConstants implements GGConstants {
     }
 
     @Override
-    public String trimGgdPrefix(String thingName) {
-        return thingName.replaceFirst(getGgdPrefix() + "-", "");
+    public String trimGgdPrefix(ThingName thingName) {
+        return thingName.getName().replaceFirst(getGgdPrefix() + "-", "");
     }
 
     @Override
-    public String getDevicePublicCertificateName(String thingName) {
-        return String.join(".", getGgdPrefix(), thingName, DEVICE_CRT);
+    public String getDevicePublicCertificateName(ThingName thingName) {
+        return String.join(".", getGgdPrefix(), thingName.getName(), DEVICE_CRT);
     }
 
     @Override
-    public String getDevicePrivateKeyName(String thingName) {
-        return String.join(".", getGgdPrefix(), thingName, DEVICE_KEY);
+    public String getDevicePrivateKeyName(ThingName thingName) {
+        return String.join(".", getGgdPrefix(), thingName.getName(), DEVICE_KEY);
     }
 
     @Override

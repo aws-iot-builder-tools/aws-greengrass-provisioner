@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.awslabs.iot.data.ThingName;
 import com.typesafe.config.Config;
 import software.amazon.awssdk.services.greengrass.model.Function;
 
@@ -23,11 +24,11 @@ public interface GGConstants {
 
     String getCorePrivateKeyName();
 
-    String trimGgdPrefix(String thingName);
+    String trimGgdPrefix(ThingName thingName);
 
-    String getDevicePublicCertificateName(String thingName);
+    String getDevicePublicCertificateName(ThingName thingName);
 
-    String getDevicePrivateKeyName(String thingName);
+    String getDevicePrivateKeyName(ThingName thingName);
 
     String getGgIpDetectorArn();
 

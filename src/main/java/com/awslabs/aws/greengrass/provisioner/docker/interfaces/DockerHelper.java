@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.docker.interfaces;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
+import com.awslabs.iot.data.GreengrassGroupName;
 import com.spotify.docker.client.messages.Container;
 import com.spotify.docker.client.messages.Image;
 
@@ -28,10 +29,10 @@ public interface DockerHelper {
      * Creates a container, if necessary, and returns the container ID
      *
      * @param tag
-     * @param groupName
+     * @param greengrassGroupName
      * @return the container ID or empty if the container could not be created or found
      */
-    Optional<String> createContainer(String tag, String groupName);
+    Optional<String> createContainer(String tag, GreengrassGroupName greengrassGroupName);
 
     Optional<Container> getContainerFromImage(String imageId);
 

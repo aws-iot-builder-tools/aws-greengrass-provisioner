@@ -1,29 +1,32 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.PolicyName;
+import com.awslabs.iot.data.ThingName;
 import com.typesafe.config.Config;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 
 public interface GGVariables {
-    String getCoreThingName(String groupName);
+    ThingName getCoreThingName(GreengrassGroupName greengrassGroupName);
 
-    String getCoreDefinitionName(String groupName);
+    String getCoreDefinitionName(GreengrassGroupName greengrassGroupName);
 
-    String getCorePolicyName(String groupName);
+    PolicyName getCorePolicyName(GreengrassGroupName greengrassGroupName);
 
-    String getDeviceShadowTopicFilterName(String deviceThingName);
+    String getDeviceShadowTopicFilterName(ThingName thingName);
 
     String getGgHost(Region region);
 
-    String getDeviceDefinitionName(String groupName);
+    String getDeviceDefinitionName(GreengrassGroupName greengrassGroupName);
 
-    String getGgdArchiveName(String groupName);
+    String getGgdArchiveName(GreengrassGroupName greengrassGroupName);
 
-    String getOemArchiveName(String groupName);
+    String getOemArchiveName(GreengrassGroupName greengrassGroupName);
 
-    String getGgShScriptName(String groupName);
+    String getGgShScriptName(GreengrassGroupName greengrassGroupName);
 
-    String getBaseGgScriptName(String groupName);
+    String getBaseGgScriptName(GreengrassGroupName greengrassGroupName);
 
     Config getFunctionDefaults();
 

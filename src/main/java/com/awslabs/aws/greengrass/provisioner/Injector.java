@@ -11,17 +11,30 @@ import dagger.Component;
 @Component(modules = AwsGreengrassProvisionerModule.class)
 public interface Injector {
     AwsGreengrassProvisioner awsGreengrassProvisioner();
+
     V2SdkErrorHandler v2SdkErrorHandler();
+
     AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda();
+
     IoHelper ioHelper();
+
     ThreadHelper threadHelper();
+
     GlobalDefaultHelper globalDefaultHelper();
+
     ProcessHelper processHelper();
+
     GreengrassHelper greengrassHelper();
+
     V2GreengrassHelper v2GreengrassHelper();
+
     V2IotHelper v2IotHelper();
+
     DeploymentHelper deploymentHelper();
+
     GGVariables ggVariables();
+
     JsonHelper jsonHelper();
+
     IotHelper iotHelper();
 }

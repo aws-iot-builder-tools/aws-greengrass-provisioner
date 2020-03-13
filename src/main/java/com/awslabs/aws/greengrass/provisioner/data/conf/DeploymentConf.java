@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import org.immutables.value.Value;
-import software.amazon.awssdk.services.greengrass.model.Connector;
 import software.amazon.awssdk.services.greengrass.model.Logger;
 
 import java.util.List;

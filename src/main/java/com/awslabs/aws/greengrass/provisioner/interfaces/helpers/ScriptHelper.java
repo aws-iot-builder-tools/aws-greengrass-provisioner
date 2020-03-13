@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Architecture;
+import com.awslabs.iot.data.ThingName;
 
 import java.util.Optional;
 import java.util.Set;
@@ -36,5 +37,5 @@ public interface ScriptHelper {
 
     String generateSystemdScript();
 
-    String generateRunScript(Optional<Architecture> architecture, String filename, String thingName);
+    String generateRunScript(Optional<Architecture> architecture, String filename, ThingName thingName);
 }

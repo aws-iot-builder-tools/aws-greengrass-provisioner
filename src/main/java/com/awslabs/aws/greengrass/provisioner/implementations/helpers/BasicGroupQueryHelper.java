@@ -3,6 +3,9 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.QueryArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.ImmutableGreengrassGroupName;
+import com.awslabs.iot.data.ThingName;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import io.vavr.Tuple;
 import io.vavr.Tuple2;
@@ -72,7 +75,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             throw new RuntimeException("No query specified");
         }
 
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(queryArguments.groupName).findFirst();
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(queryArguments.groupName).build();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + queryArguments.groupName + "] not found");
@@ -143,7 +147,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.downloadLogs) {
-            Stream<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation);
+            Stream<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(greengrassGroupName, groupInformation);
 
             File directory = cleanAndCreateDirectory(queryArguments.groupName);
 
@@ -160,7 +164,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.watchLogs) {
-            Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
+            Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(greengrassGroupName, groupInformation);
 
             Stream<Tuple3<LogGroup, LogStream, String>> logGroupStreamAndForwardTokens = logEvents
                     .map(this::getNextForwardTokenForEvents);
@@ -184,7 +188,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.diagnose) {
-            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(queryArguments, groupInformation)
+            List<Tuple3<LogGroup, LogStream, String>> logs = getLatestLogMessagesForGroup(greengrassGroupName, groupInformation)
                     .collect(Collectors.toList());
 
             if (!topLevelLogsPresent(logs)) {
@@ -209,17 +213,17 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         return presentLogGroups.containsAll(greengrassTopLevelLogNames);
     }
 
-    private Stream<Tuple3<LogGroup, LogStream, String>> getLatestLogMessagesForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
-        Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(queryArguments, groupInformation);
+    private Stream<Tuple3<LogGroup, LogStream, String>> getLatestLogMessagesForGroup(GreengrassGroupName greengrassGroupName, GroupInformation groupInformation) {
+        Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> logEvents = getLatestLogEventsForGroup(greengrassGroupName, groupInformation);
 
         return logEvents
                 .map(this::formatLogEvents);
     }
 
-    private Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLatestLogEventsForGroup(QueryArguments queryArguments, GroupInformation groupInformation) {
+    private Stream<Tuple3<LogGroup, LogStream, GetLogEventsResponse>> getLatestLogEventsForGroup(GreengrassGroupName greengrassGroupName, GroupInformation groupInformation) {
         List<LogGroup> allLogGroups = getAllLogGroupsForGreengrassGroup(groupInformation);
 
-        List<Tuple2<LogGroup, LogStream>> allLogStreams = getAllLogStreamsForGreengrassGroup(queryArguments, allLogGroups);
+        List<Tuple2<LogGroup, LogStream>> allLogStreams = getAllLogStreamsForGreengrassGroup(greengrassGroupName, allLogGroups);
 
         return getLogEventsForLogStreams(allLogStreams);
     }
@@ -254,8 +258,8 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     }
 
     @NotNull
-    private List<Tuple2<LogGroup, LogStream>> getAllLogStreamsForGreengrassGroup(QueryArguments queryArguments, List<LogGroup> allLogGroups) {
-        String topLevelCloudWatchLogsGroupRegex = getTopLevelCloudWatchLogsGroupRegex(queryArguments.groupName);
+    private List<Tuple2<LogGroup, LogStream>> getAllLogStreamsForGreengrassGroup(GreengrassGroupName greengrassGroupName, List<LogGroup> allLogGroups) {
+        String topLevelCloudWatchLogsGroupRegex = getTopLevelCloudWatchLogsGroupRegex(greengrassGroupName);
 
         return allLogGroups.stream()
                 .map(logGroup -> getLatestLogStreamForLogGroup(logGroup, topLevelCloudWatchLogsGroupRegex))
@@ -378,10 +382,10 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         return new QueryArguments();
     }
 
-    private String getTopLevelCloudWatchLogsGroupRegex(String groupName) {
-        String coreThingName = ggVariables.getCoreThingName(groupName);
+    private String getTopLevelCloudWatchLogsGroupRegex(GreengrassGroupName greengrassGroupName) {
+        ThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
 
-        return String.join("", ".*/", coreThingName, "$");
+        return String.join("", ".*/", coreThingName.getName(), "$");
     }
 
     private void writeToFile(QueryArguments queryArguments, String output, String outputFilename) {

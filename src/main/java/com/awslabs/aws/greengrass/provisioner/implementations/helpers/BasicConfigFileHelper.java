@@ -5,6 +5,7 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.HsiParameters;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ConfigFileHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.ThingArn;
 import software.amazon.awssdk.regions.Region;
 
 import javax.inject.Inject;
@@ -47,7 +48,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
     }
 
     @Override
-    public String generateConfigJson(String caPath, String certPath, String keyPath, String coreThingArn, String iotHost, Region region, DeploymentArguments deploymentArguments, boolean functionsRunningAsRoot) {
+    public String generateConfigJson(String caPath, String certPath, String keyPath, ThingArn coreThingArn, String iotHost, Region region, DeploymentArguments deploymentArguments, boolean functionsRunningAsRoot) {
         Map<String, Object> coreThingMap = new HashMap<>();
         Map<String, Object> runtimeMap = new HashMap<>();
         Map<String, Object> cgroupMap = new HashMap<>();
@@ -58,7 +59,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
         Map<String, Object> MQTTServerCertificate = new HashMap<>();
         Map<String, Object> PKCS11Map = new HashMap<>();
 
-        coreThingMap.put(THING_ARN, coreThingArn);
+        coreThingMap.put(THING_ARN, coreThingArn.getArn());
         coreThingMap.put(IOT_HOST, iotHost);
         coreThingMap.put(GG_HOST, ggVariables.getGgHost(region));
         coreThingMap.put(GG_MQTT_PORT, deploymentArguments.mqttPort);

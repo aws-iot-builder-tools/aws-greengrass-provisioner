@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
+import com.awslabs.iot.data.*;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import software.amazon.awssdk.regions.Region;
@@ -18,23 +19,23 @@ public class BasicGGVariables implements GGVariables {
     }
 
     @Override
-    public String getCoreThingName(String groupName) {
-        return groupName + "_Core";
+    public ThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
+        return ImmutableThingName.builder().name(greengrassGroupName.getGroupName() + "_Core").build();
     }
 
     @Override
-    public String getCoreDefinitionName(String groupName) {
-        return getCoreThingName(groupName) + "_Definition";
+    public String getCoreDefinitionName(GreengrassGroupName greengrassGroupName) {
+        return getCoreThingName(greengrassGroupName) + "_Definition";
     }
 
     @Override
-    public String getCorePolicyName(String groupName) {
-        return getCoreThingName(groupName) + "_Policy";
+    public PolicyName getCorePolicyName(GreengrassGroupName greengrassGroupName) {
+        return ImmutablePolicyName.builder().name(getCoreThingName(greengrassGroupName).getName() + "_Policy").build();
     }
 
     @Override
-    public String getDeviceShadowTopicFilterName(String deviceThingName) {
-        return "$aws/things/" + deviceThingName + "/shadow/#";
+    public String getDeviceShadowTopicFilterName(ThingName thingName) {
+        return "$aws/things/" + thingName.getName() + "/shadow/#";
     }
 
     @Override
@@ -43,28 +44,28 @@ public class BasicGGVariables implements GGVariables {
     }
 
     @Override
-    public String getDeviceDefinitionName(String groupName) {
-        return groupName + "_DeviceDefinition";
+    public String getDeviceDefinitionName(GreengrassGroupName greengrassGroupName) {
+        return greengrassGroupName.getGroupName() + "_DeviceDefinition";
     }
 
     @Override
-    public String getGgdArchiveName(String groupName) {
-        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "ggd", groupName, "tar"));
+    public String getGgdArchiveName(GreengrassGroupName greengrassGroupName) {
+        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "ggd", greengrassGroupName.getGroupName(), "tar"));
     }
 
     @Override
-    public String getOemArchiveName(String groupName) {
-        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "oem", groupName, "tar"));
+    public String getOemArchiveName(GreengrassGroupName greengrassGroupName) {
+        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "oem", greengrassGroupName.getGroupName(), "tar"));
     }
 
     @Override
-    public String getGgShScriptName(String groupName) {
-        return String.join("/", ggConstants.getBuildDirectory(), getBaseGgScriptName(groupName));
+    public String getGgShScriptName(GreengrassGroupName greengrassGroupName) {
+        return String.join("/", ggConstants.getBuildDirectory(), getBaseGgScriptName(greengrassGroupName));
     }
 
     @Override
-    public String getBaseGgScriptName(String groupName) {
-        return String.join(".", "gg", groupName, "sh");
+    public String getBaseGgScriptName(GreengrassGroupName greengrassGroupName) {
+        return String.join(".", "gg", greengrassGroupName.getGroupName(), "sh");
     }
 
     @Override
@@ -83,6 +84,4 @@ public class BasicGGVariables implements GGVariables {
 
         return (greengrassContainer ? FunctionIsolationMode.GREENGRASS_CONTAINER : FunctionIsolationMode.NO_CONTAINER);
     }
-
 }
-
