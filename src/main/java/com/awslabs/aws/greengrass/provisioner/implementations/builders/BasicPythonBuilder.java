@@ -52,14 +52,13 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
-        String functionName = functionConf.getFunctionName();
         File baseDirectory = functionConf.getBuildDirectory().get().toFile();
 
         // Determine the absolute path of the package directory
         File absolutePackageDirectory = new File(String.join("/", baseDirectory.getAbsolutePath(), PACKAGE_DIRECTORY));
 
         // Determine what the output ZIP file name will be
-        String zipFileName = String.join(".", functionName, "zip");
+        String zipFileName = String.join(".", functionConf.getFunctionName().getName(), "zip");
         Path zipFilePath = baseDirectory.toPath().resolve(zipFileName);
 
         // Delete any existing package directory
@@ -72,7 +71,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         List<Path> filesToCopyToPackageDirectory = getDirectorySnapshot(baseDirectory.toPath());
 
         if (hasDependencies(baseDirectory.toPath())) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Python dependencies");
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Retrieving Python dependencies");
 
             // Install the requirements in a package directory
             List<String> programAndArguments = new ArrayList<>();
@@ -93,7 +92,7 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
             checkPipStatus(exitVal, stdoutStrings, stderrStrings);
         } else {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "No Python dependencies to install");
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "No Python dependencies to install");
         }
 
         // Now the dependencies are in the directory, copy the rest of the necessary files in

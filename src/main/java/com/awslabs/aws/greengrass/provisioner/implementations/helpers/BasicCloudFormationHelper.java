@@ -37,7 +37,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
         }
 
         // Determine a unique stack name for this Greengrass group to avoid conflicts
-        String stackName = String.join("-", groupName, functionConf.getFunctionName());
+        String stackName = String.join("-", groupName, functionConf.getFunctionName().getName());
         stackName = stackName.replaceAll("[^-a-zA-Z0-9]", "-");
 
         // NOTE: CloudFormation parameters cannot have underscores in them so we strip them below
@@ -49,7 +49,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                         .build())
                 .collect(Collectors.toList());
 
-        log.info("Launching CloudFormation template for [" + functionConf.getFunctionName() + "], stack name [" + stackName + "]");
+        log.info("Launching CloudFormation template for [" + functionConf.getFunctionName().getName() + "], stack name [" + stackName + "]");
         CreateStackRequest createStackRequest = CreateStackRequest.builder()
                 .stackName(stackName)
                 .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)

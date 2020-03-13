@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
+import com.awslabs.lambda.data.FunctionName;
 import io.vavr.control.Try;
 import org.gradle.tooling.BuildLauncher;
 import org.gradle.tooling.GradleConnector;
@@ -22,7 +23,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public String getArchivePath(FunctionConf functionConf) {
         // The gradle build output is expected in the /build/libs directory in an artifact that ends with "-1.0-SNAPSHOT-all.jar"
-        return functionConf.getBuildDirectory().get().toString() + "/build/libs/" + functionConf.getFunctionName() + "-1.0-SNAPSHOT-all.jar";
+        return functionConf.getBuildDirectory().get().toString() + "/build/libs/" + functionConf.getFunctionName().getName() + "-1.0-SNAPSHOT-all.jar";
     }
 
     @Override
@@ -47,7 +48,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     }
 
     @Override
-    public void runGradle(Optional<File> gradleBuildPath, Optional<String> functionName) {
+    public void runGradle(Optional<File> gradleBuildPath, Optional<FunctionName> functionName) {
         if (!gradleBuildPath.isPresent()) {
             throw new RuntimeException("gradle build path is not present.  This is a bug.");
         }

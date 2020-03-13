@@ -7,8 +7,10 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
+import com.awslabs.iot.data.ImmutableGreengrassGroupName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import com.awslabs.lambda.data.ImmutableFunctionAlias;
+import com.awslabs.lambda.data.ImmutableFunctionName;
 import org.hamcrest.MatcherAssert;
 import org.junit.Assert;
 import org.junit.Before;
@@ -44,10 +46,10 @@ public class SubscriptionHelperTest {
                 .language(Language.EXECUTABLE)
                 .encodingType(EncodingType.BINARY)
                 .buildDirectory(new File(".").toPath())
-                .groupName("test-group")
-                .functionName("test-function")
+                .groupName(ImmutableGreengrassGroupName.builder().groupName("test-group").build())
+                .functionName(ImmutableFunctionName.builder().name("test-function").build())
                 .handlerName("test-handler")
-                .aliasName("test-alias")
+                .aliasName(ImmutableFunctionAlias.builder().alias("test-alias").build())
                 .memorySizeInKb(1024)
                 .isPinned(false)
                 .timeoutInSeconds(10)
