@@ -914,7 +914,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private void logErrorInLambdaFunction(ZipFilePathAndFunctionConf error) {
-        log.error("- Function [" + error.getFunctionConf().getFunctionName() + "]");
+        log.error("- Function [" + error.getFunctionConf().getFunctionName().getName() + "]");
         log.error("  Error [" + error.getError().get() + "]");
     }
 
