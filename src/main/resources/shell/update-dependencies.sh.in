@@ -46,7 +46,7 @@ else
   INSTALLER=apt-get
   # Avoid preinst and postinst tasks from asking questions
   export DEBIAN_FRONTEND=noninteractive
-  INSTALLER_SPECIFIC_PACKAGES="openjdk-8-jre-headless libsm6 iproute2"
+  INSTALLER_SPECIFIC_PACKAGES="openjdk-11-jre-headless libsm6 iproute2"
 fi
 
 UNAME=$(uname -a)
