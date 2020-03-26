@@ -3,6 +3,7 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.lambda.data.FunctionAliasArn;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -268,7 +269,7 @@ public interface IoHelper {
 
     void sendFile(Session session, String localFilename, String remoteFilename) throws JSchException, IOException;
 
-    default void detectMissingConfigs(Logger log, String type, List<Either<String, File>> confFilesAndArns) {
+    default void detectMissingConfigs(Logger log, String type, List<Either<FunctionAliasArn, File>> confFilesAndArns) {
         List<File> confFiles = confFilesAndArns.stream()
                 .filter(Either::isRight)
                 .map(Either::get)

@@ -2,6 +2,7 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.PolicyHelper;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.ThingArn;
 
 import javax.inject.Inject;
 import java.util.HashMap;
@@ -16,7 +17,7 @@ public class BasicPolicyHelper implements PolicyHelper {
     }
 
     @Override
-    public String buildDevicePolicyDocument(String deviceThingArn) {
+    public String buildDevicePolicyDocument(ThingArn deviceThingArn) {
         Map<String, Object> map = new HashMap();
         map.put("Version", "2012-10-17");
 
@@ -32,7 +33,7 @@ public class BasicPolicyHelper implements PolicyHelper {
         Map ggStatementMap = new HashMap();
         ggStatementMap.put("Action", ggActions);
         ggStatementMap.put("Effect", "Allow");
-        ggStatementMap.put("Resource", new String[]{deviceThingArn});
+        ggStatementMap.put("Resource", new String[]{deviceThingArn.getArn()});
 
         Map[] statements = new Map[]{iotStatementMap, ggStatementMap};
 

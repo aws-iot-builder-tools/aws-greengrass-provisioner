@@ -2,7 +2,13 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.SubscriptionHelper;
+import com.awslabs.iot.data.ImmutableThingName;
+import com.awslabs.iot.data.ThingName;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import io.vavr.Tuple2;
 import io.vavr.Tuple3;
 import org.slf4j.Logger;
@@ -18,7 +24,7 @@ import java.util.stream.Stream;
 public class BasicSubscriptionHelper implements SubscriptionHelper {
     private final Logger log = LoggerFactory.getLogger(BasicSubscriptionHelper.class);
     @Inject
-    IotHelper iotHelper;
+    V2IotHelper v2IotHelper;
     @Inject
     IoHelper ioHelper;
     @Inject
@@ -44,13 +50,13 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
 
         // Gather up the list of output topics and each thing ARN (GGD) that uses them
         Map<String, List<String>> outputTopicAndThingArnList = ggdConfs.stream()
-                .map(ggdConf -> new Tuple2<>(iotHelper.getThingArn(ggdConf.getThingName()), ggdConf))
+                .map(ggdConf -> new Tuple2<>(v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn(), ggdConf))
                 .flatMap(tuple -> tuple._2.getOutputTopics().stream().map(topic -> new Tuple2<>(topic, tuple._1)))
                 .collect(Collectors.groupingBy(tuple -> tuple._1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
 
         // Gather up the list of input topics and each thing ARN (GGD) that uses them
         Map<String, List<String>> inputTopicAndThingArnList = ggdConfs.stream()
-                .map(ggdConf -> new Tuple2<>(iotHelper.getThingArn(ggdConf.getThingName()), ggdConf))
+                .map(ggdConf -> new Tuple2<>(v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn(), ggdConf))
                 .flatMap(tuple -> tuple._2.getInputTopics().stream().map(topic -> new Tuple2<>(topic, tuple._1)))
                 .collect(Collectors.groupingBy(tuple -> tuple._1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
 
@@ -248,7 +254,8 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
             FunctionConf functionConf = entry.getValue();
 
             for (String deviceName : functionConf.getConnectedShadows()) {
-                subscriptions.addAll(createShadowSubscriptions(functionArn, deviceName));
+                ThingName thingName = ImmutableThingName.builder().name(deviceName).build();
+                subscriptions.addAll(createShadowSubscriptions(functionArn, thingName));
             }
         }
 
@@ -293,7 +300,7 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     }
 
     @Override
-    public List<Subscription> createShadowSubscriptions(String deviceOrFunctionArn, String deviceThingName) {
+    public List<Subscription> createShadowSubscriptions(String deviceOrFunctionArn, ThingName deviceThingName) {
         List<Subscription> subscriptions = new ArrayList<>();
 
         Subscription shadowServiceTargetSubscription = Subscription.builder()

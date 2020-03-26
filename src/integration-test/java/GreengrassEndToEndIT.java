@@ -3,6 +3,7 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
 import org.eclipse.paho.client.mqttv3.*;
 import org.hamcrest.MatcherAssert;
 import org.hamcrest.collection.IsMapContaining;
@@ -72,9 +73,9 @@ public class GreengrassEndToEndIT {
         replaceStringInFunctionDefaults("greengrassContainer\\s*=\\strue", "greengrassContainer = false");
 
         GGVariables ggVariables = AwsGreengrassProvisioner.getInjector().ggVariables();
-        String groupName = greengrassITShared.getGroupName();
+        GreengrassGroupName groupName = greengrassITShared.getGroupName();
         oemArchiveName = new File(ggVariables.getOemArchiveName(groupName));
-        coreName = greengrassITShared.getGroupName() + "_Core";
+        coreName = String.join("_", greengrassITShared.getGroupName().getGroupName(), "Core");
 
         ioHelper = AwsGreengrassProvisioner.getInjector().ioHelper();
 
@@ -178,7 +179,6 @@ public class GreengrassEndToEndIT {
         mqttClient.setCallback(new MqttCallback() {
             @Override
             public void connectionLost(Throwable cause) {
-
             }
 
             @Override
@@ -192,7 +192,6 @@ public class GreengrassEndToEndIT {
 
             @Override
             public void deliveryComplete(IMqttDeliveryToken token) {
-
             }
         });
 

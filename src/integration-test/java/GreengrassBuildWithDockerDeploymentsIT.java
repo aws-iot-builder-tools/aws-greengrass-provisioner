@@ -1,7 +1,8 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GlobalDefaultHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.ImmutableGreengrassGroupName;
 import org.hamcrest.Matcher;
 import org.hamcrest.MatcherAssert;
 import org.junit.*;
@@ -207,7 +208,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
     @Test
     public void shouldFailToRedeployWithoutCreatingNewKeysWithPython3FunctionWithDocker() {
         // Make sure we have a fresh group, not one reused from another test
-        Optional<String> name = Optional.of(ioHelper.getUuid());
+        Optional<GreengrassGroupName> name = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
 
         // Expect that the first container does not return an error
         GenericContainer genericContainer = runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_ZERO);

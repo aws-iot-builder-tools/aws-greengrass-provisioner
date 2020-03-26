@@ -1,5 +1,10 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
+import com.awslabs.iot.data.GreengrassGroupId;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.ThingArn;
+import com.awslabs.iot.data.ThingName;
+
 import java.util.Map;
 
 public interface EnvironmentHelper {
@@ -10,5 +15,5 @@ public interface EnvironmentHelper {
     String REGION = "REGION";
     String ACCOUNT_ID = "ACCOUNT_ID";
 
-    Map<String, String> getDefaultEnvironment(String groupId, String coreThingName, String coreThingArn, String groupName);
+    Map<String, String> getDefaultEnvironment(GreengrassGroupId greengrassGroupId, ThingName coreThingName, ThingArn coreThingArn, GreengrassGroupName greengrassGroupName);
 }

@@ -6,10 +6,12 @@ import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.exceptions.IamReassociationNecessaryException;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
+import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.GreengrassIdExtractor;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import com.awslabs.lambda.data.FunctionAliasArn;
 import com.google.common.collect.ImmutableSet;
-import io.vavr.control.Try;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
 import net.jodah.failsafe.RetryPolicy;
@@ -18,7 +20,6 @@ import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.GreengrassClient;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
-import software.amazon.awssdk.services.iot.model.ResourceNotFoundException;
 
 import javax.inject.Inject;
 import java.time.Duration;
@@ -42,6 +43,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     IoHelper ioHelper;
     @Inject
     IotHelper iotHelper;
+    @Inject
+    V2IotHelper v2IotHelper;
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -67,8 +70,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createGroupIfNecessary(String groupName) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(groupName)
+    public String createGroupIfNecessary(GreengrassGroupName greengrassGroupName) {
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName)
                 .findFirst();
 
         if (optionalGroupInformation.isPresent()) {
@@ -78,7 +81,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         log.info("Group does not exist, creating a new one");
         CreateGroupRequest createGroupRequest = CreateGroupRequest.builder()
-                .name(groupName)
+                .name(greengrassGroupName.getGroupName())
                 .build();
 
         CreateGroupResponse createGroupResponse = greengrassClient.createGroup(createGroupRequest);
@@ -87,9 +90,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public void associateRoleToGroup(String groupId, Role greengrassRole) {
+    public void associateRoleToGroup(GreengrassGroupId greengrassGroupId, Role greengrassRole) {
         AssociateRoleToGroupRequest associateRoleToGroupRequest = AssociateRoleToGroupRequest.builder()
-                .groupId(groupId)
+                .groupId(greengrassGroupId.getGroupId())
                 .roleArn(greengrassRole.arn())
                 .build();
 
@@ -97,7 +100,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn, boolean syncShadow) {
+    public String createCoreDefinitionAndVersion(String coreDefinitionName, CertificateArn coreCertificateArn, ThingArn coreThingArn, boolean syncShadow) {
         String uuid = ioHelper.getUuid();
 
         Optional<String> optionalCoreDefinitionId = v2GreengrassHelper.getCoreDefinitionIdByName(coreDefinitionName);
@@ -115,10 +118,10 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         }
 
         Core core = Core.builder()
-                .certificateArn(coreCertificateArn)
+                .certificateArn(coreCertificateArn.getArn())
                 .id(uuid)
                 .syncShadow(syncShadow)
-                .thingArn(coreThingArn)
+                .thingArn(coreThingArn.getArn())
                 .build();
 
         CreateCoreDefinitionVersionRequest createCoreDefinitionVersionRequest = CreateCoreDefinitionVersionRequest.builder()
@@ -222,7 +225,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public Function buildFunctionModel(String functionArn,
+    public Function buildFunctionModel(FunctionAliasArn functionAliasArn,
                                        software.amazon.awssdk.services.lambda.model.FunctionConfiguration lambdaFunctionConfiguration,
                                        Map<String, String> defaultEnvironment,
                                        EncodingType encodingType,
@@ -241,7 +244,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 .build();
 
         Function function = Function.builder()
-                .functionArn(functionArn)
+                .functionArn(functionAliasArn.getAliasArn())
                 .id(ioHelper.getUuid())
                 .functionConfiguration(functionConfiguration)
                 .build();
@@ -455,15 +458,15 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createGroupVersion(String groupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(groupId).findFirst()
+    public String createGroupVersion(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion) {
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId).findFirst()
                 // If the group exists but has no versions yet, don't use the group information
                 .filter(groupInformation -> groupInformation.latestVersion() != null);
 
         GroupVersion currentGroupVersion;
 
         if (!optionalGroupInformation.isPresent()) {
-            log.warn("Group [" + groupId + "] not found or has no previous versions, creating group version from scratch");
+            log.warn("Group [" + greengrassGroupId.getGroupId() + "] not found or has no previous versions, creating group version from scratch");
 
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
@@ -473,7 +476,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         }
 
         CreateGroupVersionRequest createGroupVersionRequest = CreateGroupVersionRequest.builder()
-                .groupId(groupId)
+                .groupId(greengrassGroupId.getGroupId())
                 .build();
 
         // When an ARN in the new version is NULL we take it from the current version.  This allows us to do updates more easily.
@@ -531,9 +534,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public String createDeployment(String groupId, String groupVersionId) {
+    public String createDeployment(GreengrassGroupId greengrassGroupId, String groupVersionId) {
         CreateDeploymentRequest createDeploymentRequest = CreateDeploymentRequest.builder()
-                .groupId(groupId)
+                .groupId(greengrassGroupId.getGroupId())
                 .groupVersionId(groupVersionId)
                 .deploymentType(DeploymentType.NEW_DEPLOYMENT)
                 .build();
@@ -543,9 +546,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public DeploymentStatus waitForDeploymentStatusToChange(String groupId, String deploymentId) {
+    public DeploymentStatus waitForDeploymentStatusToChange(GreengrassGroupId greengrassGroupId, String deploymentId) {
         GetDeploymentStatusRequest getDeploymentStatusRequest = GetDeploymentStatusRequest.builder()
-                .groupId(groupId)
+                .groupId(greengrassGroupId.getGroupId())
                 .deploymentId(deploymentId)
                 .build();
 
@@ -633,16 +636,18 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         return shouldRedeploy(getDeploymentStatusResponse, Collections.singletonList(expectedPartialErrorString), logMessage);
     }
 
+    /**
+     * Checks to see if a deployment status error message matches all of the expected partial strings passed in
+     *
+     * @param getDeploymentStatusResponse
+     * @param expectedPartialErrorStrings
+     * @param logMessage
+     * @return true if all expected strings are found, false if one or more expected strings are not found
+     */
     protected boolean shouldRedeploy(GetDeploymentStatusResponse getDeploymentStatusResponse, List<String> expectedPartialErrorStrings, String logMessage) {
         String errorMessage = getDeploymentStatusResponse.errorMessage();
 
-        // Look for any false results
-        Optional<Boolean> optionalBoolean = expectedPartialErrorStrings.stream()
-                .map(string -> !errorMessage.contains(string))
-                .filter(bool -> bool)
-                .findAny();
-
-        if (optionalBoolean.isPresent()) {
+        if (!expectedPartialErrorStrings.stream().allMatch(errorMessage::contains)) {
             // Didn't find one or more of the required matches, this is not a match
             return false;
         }
@@ -861,22 +866,34 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public Device getDevice(String thingName) {
-        Try.of(() -> iotHelper.getThingArn(thingName))
-                .recover(ResourceNotFoundException.class, throwable -> rethrowResourceNotFoundException(thingName))
-                .get();
+    public Device getDevice(ThingName thingName) {
+        Optional<ThingArn> optionalThingArn = v2IotHelper.getThingArn(thingName);
 
-        String certificateArn = iotHelper.getThingPrincipal(thingName);
-
-        if (certificateArn == null) {
-            throw new RuntimeException("Thing [" + thingName + "] does not have a certificate attached");
+        if (!optionalThingArn.isPresent()) {
+            rethrowResourceNotFoundException(thingName.getName());
         }
+
+        String thingArn = optionalThingArn.get().getArn();
+
+        Optional<List<ThingPrincipal>> optionalThingPrincipals = v2IotHelper.getThingPrincipals(thingName);
+
+        if (!optionalThingPrincipals.isPresent()) {
+            rethrowResourceNotFoundException(thingName.getName());
+        }
+
+        List<ThingPrincipal> thingPrincipals = optionalThingPrincipals.get();
+
+        if (thingPrincipals.size() != 1) {
+            throw new RuntimeException("More than one principal found for [" + thingName + "], can not continue");
+        }
+
+        String certificateArn = thingPrincipals.get(0).getPrincipal();
 
         return Device.builder()
                 .certificateArn(certificateArn)
                 .id(ioHelper.getUuid())
                 .syncShadow(true)
-                .thingArn(iotHelper.getThingArn(thingName))
+                .thingArn(thingArn)
                 .build();
     }
 
@@ -896,9 +913,9 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     @Override
-    public void disassociateRoleFromGroup(String groupId) {
+    public void disassociateRoleFromGroup(GreengrassGroupId greengrassGroupId) {
         greengrassClient.disassociateRoleFromGroup(DisassociateRoleFromGroupRequest.builder()
-                .groupId(groupId)
+                .groupId(greengrassGroupId.getGroupId())
                 .build());
     }
 

@@ -4,7 +4,11 @@ import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.arguments.UpdateArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import com.awslabs.lambda.data.*;
+import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
 import com.google.common.collect.ImmutableSet;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
@@ -32,6 +36,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     @Inject
     IotHelper iotHelper;
     @Inject
+    V2IotHelper v2IotHelper;
+    @Inject
     PolicyHelper policyHelper;
     @Inject
     GGVariables ggVariables;
@@ -39,6 +45,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     IoHelper ioHelper;
     @Inject
     LambdaHelper lambdaHelper;
+    @Inject
+    V2LambdaHelper v2LambdaHelper;
     @Inject
     EnvironmentHelper environmentHelper;
     @Inject
@@ -61,7 +69,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             throw new RuntimeException("No update specified");
         }
 
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(updateArguments.groupName).findFirst();
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(updateArguments.groupName).build();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + updateArguments.groupName + "] not found");
@@ -111,14 +120,14 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     }
 
     private void removeDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupName = updateArguments.groupName;
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(updateArguments.groupName).build();
         String deviceName = updateArguments.removeDevice;
         String groupId = groupInformation.id();
 
         List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
-        Device deviceToRemove = greengrassHelper.getDevice(deviceName);
+        Device deviceToRemove = greengrassHelper.getDevice(ImmutableThingName.builder().name(deviceName).build());
         String thingArn = deviceToRemove.thingArn();
 
         if (devices.stream().noneMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
@@ -137,7 +146,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         List<Subscription> subscriptions = removeSubscriptions(groupInformation, thingArn);
 
-        String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
+        String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(greengrassGroupName), devices);
         String newSubscriptionDefinitionVersionArn = greengrassHelper.createSubscriptionDefinitionAndVersion(subscriptions);
 
         GroupVersion newGroupVersion = GroupVersion.builder()
@@ -145,53 +154,57 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .subscriptionDefinitionVersionArn(newSubscriptionDefinitionVersionArn)
                 .build();
 
-        createAndWaitForDeployment(groupId, newGroupVersion);
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupId).build();
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion);
     }
 
     private void addDevice(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupName = updateArguments.groupName;
-        String deviceName = updateArguments.addDevice;
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(updateArguments.groupName).build();
+        String addDeviceString = updateArguments.addDevice;
         String groupId = groupInformation.id();
-        String thingArn = null;
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupId).build();
+        ThingArn thingArn = null;
+        ThingName thingName = null;
 
-        boolean isThingArn = deviceName.contains("/");
+        boolean isThingArn = addDeviceString.contains("/");
 
         if (!isThingArn) {
-            log.info("No thing ARN specified for device [" + deviceName + "], will re-use keys if possible");
+            thingName = ImmutableThingName.builder().name(addDeviceString).build();
+            log.info("No thing ARN specified for device [" + thingName.getName() + "], will re-use keys if possible");
 
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupName, deviceName);
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, thingName.getName());
 
-            String ggdPolicyName = String.join("_", deviceName, "Policy");
-            String certificateArn = deviceKeysAndCertificate.getCertificateArn();
-            thingArn = iotHelper.createThing(deviceName);
+            ImmutablePolicyName ggdPolicyName = ImmutablePolicyName.builder().name(String.join("_", thingName.getName(), "Policy")).build();
+            CertificateArn certificateArn = ImmutableCertificateArn.builder().arn(deviceKeysAndCertificate.getCertificateArn()).build();
+            thingArn = v2IotHelper.createThing(thingName);
 
-            iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(thingArn));
-            iotHelper.attachPrincipalPolicy(ggdPolicyName, certificateArn);
-            iotHelper.attachThingPrincipal(deviceName, certificateArn);
+            v2IotHelper.createPolicyIfNecessary(ggdPolicyName,
+                    ImmutablePolicyDocument.builder().document(policyHelper.buildDevicePolicyDocument(thingArn)).build());
+            v2IotHelper.attachPrincipalPolicy(ggdPolicyName, certificateArn);
+            v2IotHelper.attachThingPrincipal(thingName, certificateArn);
         } else {
             // Device name looks like a thing ARN
-            log.info("[" + deviceName + "] looks like a thing ARN, attempting to use existing device");
-            thingArn = deviceName;
-            deviceName = thingArn.substring(thingArn.lastIndexOf('/') + 1);
-            log.info("Device name appears to be [" + deviceName + "]");
+            log.info("[" + addDeviceString + "] looks like a thing ARN, attempting to use existing device");
+            thingArn = ImmutableThingArn.builder().arn(addDeviceString).build();
+            thingName = ImmutableThingName.builder().name(thingArn.getArn().substring(thingArn.getArn().lastIndexOf('/') + 1)).build();
+            log.info("Device name appears to be [" + thingName.getName() + "]");
         }
 
-        Device newDevice = greengrassHelper.getDevice(deviceName);
+        Device newDevice = greengrassHelper.getDevice(thingName);
 
         List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
-        String finalThingArn = thingArn;
+        ThingArn finalThingArn = thingArn;
 
         if (devices.stream()
-                .anyMatch(device -> device.thingArn().equals(finalThingArn))) {
+                .anyMatch(device -> device.thingArn().equals(finalThingArn.getArn()))) {
             throw new RuntimeException("Device with thing ARN [" + thingArn + "] is already part of this Greengrass Group.  Nothing to do.");
         }
 
         devices.add(newDevice);
 
-        String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(groupName), devices);
-
+        String newDeviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(greengrassGroupName), devices);
 
         GroupVersion newGroupVersion = GroupVersion.builder()
                 .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
@@ -199,39 +212,39 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Device added [" + newDevice.thingArn() + ", " + newDevice.certificateArn() + "]");
 
-        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion, successHandler);
     }
 
-    private void createAndWaitForDeployment(String groupId, GroupVersion newGroupVersion) {
-        createAndWaitForDeployment(groupId, newGroupVersion, null);
+    private void createAndWaitForDeployment(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion) {
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion, null);
     }
 
-    private void createAndWaitForDeployment(String groupId, GroupVersion newGroupVersion, Consumer<? super Void> successHandler) {
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, newGroupVersion);
+    private void createAndWaitForDeployment(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion, Consumer<? super Void> successHandler) {
+        String groupVersionId = greengrassHelper.createGroupVersion(greengrassGroupId, newGroupVersion);
 
         if (successHandler == null) {
             successHandler = (Consumer<Void>) aVoid -> {
             };
         }
 
-        Try.run(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), groupId, groupVersionId))
+        Try.run(() -> deploymentHelper.createAndWaitForDeployment(Optional.empty(), Optional.empty(), greengrassGroupId, groupVersionId))
                 .onSuccess(successHandler)
                 .get();
     }
 
     private void addFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupId = groupInformation.id();
-        String groupName = updateArguments.groupName;
-        String coreThingName = ggVariables.getCoreThingName(groupName);
-        String functionName = updateArguments.addFunction;
-        String coreThingArn = iotHelper.createThing(coreThingName);
-        String functionAlias = updateArguments.functionAlias;
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupInformation.id()).build();
+        GreengrassGroupName groupName = ImmutableGreengrassGroupName.builder().groupName(updateArguments.groupName).build();
+        ThingName coreThingName = ggVariables.getCoreThingName(groupName);
+        FunctionName functionName = ImmutableFunctionName.builder().name(updateArguments.addFunction).build();
+        ThingArn coreThingArn = v2IotHelper.createThing(coreThingName);
+        FunctionAlias functionAlias = ImmutableFunctionAlias.builder().alias(updateArguments.functionAlias).build();
 
-        if (lambdaHelper.aliasExists(functionName, functionAlias)) {
+        if (v2LambdaHelper.aliasExists(functionName, functionAlias)) {
             throw new RuntimeException("The specified alias [" + functionAlias + "] already exists.  You must specify a new alias for an ad-hoc add function so other group configurations are not affected.");
         }
 
-        Optional<GetFunctionResponse> optionalGetFunctionResponse = lambdaHelper.getFunction(functionName);
+        Optional<GetFunctionResponse> optionalGetFunctionResponse = v2LambdaHelper.getFunction(functionName);
 
         if (!optionalGetFunctionResponse.isPresent()) {
             throw new RuntimeException("Function [" + functionName + "] not found.  Make sure only the function name is specified without an alias or version number.");
@@ -239,13 +252,14 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         GetFunctionResponse getFunctionResponse = optionalGetFunctionResponse.get();
 
-        PublishVersionResponse publishVersionResponse = lambdaHelper.publishFunctionVersion(functionName);
+        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
-        String aliasArn = lambdaHelper.createAlias(functionName, publishVersionResponse.version(), functionAlias);
+        FunctionVersion functionVersion = ImmutableFunctionVersion.builder().version(publishVersionResponse.version()).build();
+        FunctionAliasArn functionAliasArn = v2LambdaHelper.createAlias(functionName, functionVersion, functionAlias);
 
-        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, groupName);
+        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(greengrassGroupId, coreThingName, coreThingArn, groupName);
 
-        Function newFunction = greengrassHelper.buildFunctionModel(aliasArn,
+        Function newFunction = greengrassHelper.buildFunctionModel(functionAliasArn,
                 getFunctionResponse.configuration(),
                 defaultEnvironment,
                 updateArguments.functionBinary ? EncodingType.BINARY : EncodingType.JSON,
@@ -255,8 +269,8 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         if (functions.stream()
-                .anyMatch(function -> function.functionArn().equals(aliasArn))) {
-            throw new RuntimeException("Function with ARN [" + aliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
+                .anyMatch(function -> function.functionArn().equals(functionAliasArn))) {
+            throw new RuntimeException("Function with ARN [" + functionAliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
         }
 
         functions.add(newFunction);
@@ -269,11 +283,11 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Function added [" + newFunction.functionArn() + "]");
 
-        createAndWaitForDeployment(groupId, newGroupVersion, successHandler);
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion, successHandler);
     }
 
     private void removeFunction(UpdateArguments updateArguments, GroupInformation groupInformation) {
-        String groupId = groupInformation.id();
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupInformation.id()).build();
         List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
@@ -305,7 +319,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
                 .build();
 
-        createAndWaitForDeployment(groupId, newGroupVersion, nothing -> logFunctionRemovedAndDeleteLambdaAlias(functionToDelete, functionToDeleteArn));
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion, nothing -> logFunctionRemovedAndDeleteLambdaAlias(functionToDelete, functionToDeleteArn));
     }
 
     private void logFunctionRemovedAndDeleteLambdaAlias(Function functionToDelete, String functionToDeleteArn) {
@@ -334,7 +348,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String source = updateArguments.subscriptionSource;
         String target = updateArguments.subscriptionTarget;
         String subject = updateArguments.subscriptionSubject;
-        String groupId = groupInformation.id();
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupInformation.id()).build();
 
         if (updateArguments.addSubscription) {
             List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
@@ -397,7 +411,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .build();
 
         // Do nothing extra if successful
-        createAndWaitForDeployment(groupId, newGroupVersion);
+        createAndWaitForDeployment(greengrassGroupId, newGroupVersion);
     }
 
     /**

@@ -1,7 +1,13 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GreengrassHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.iot.data.ImmutableGreengrassGroupName;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.lambda.data.FunctionAlias;
+import com.awslabs.lambda.data.FunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionAlias;
+import com.awslabs.lambda.data.ImmutableFunctionName;
 import org.jetbrains.annotations.NotNull;
 import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
@@ -44,14 +50,14 @@ public class GreengrassUpdateWithoutDockerIT {
     @Test
     public void shouldAddNodeFunctionToGroup() {
         // Create two groups with different names so we can do the update later
-        Optional<String> optionalGroup1Name = Optional.of(ioHelper.getUuid());
-        Optional<String> optionalGroup2Name = Optional.of(ioHelper.getUuid());
+        Optional<GreengrassGroupName> optionalGroup1Name = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
+        Optional<GreengrassGroupName> optionalGroup2Name = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
 
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroup1Name)));
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getNodeHelloWorldDeploymentCommand(optionalGroup2Name)));
 
-        String group1Name = optionalGroup1Name.get();
-        String group2Name = optionalGroup2Name.get();
+        GreengrassGroupName group1Name = optionalGroup1Name.get();
+        GreengrassGroupName group2Name = optionalGroup2Name.get();
 
         // Get the information for group 2 so we can pull the Hello World function out of it
         GroupInformation group2Information = v2GreengrassHelper.getGroupInformationByName(group2Name).findFirst()
@@ -65,8 +71,8 @@ public class GreengrassUpdateWithoutDockerIT {
 
         // Get the function information, extract the short name, and create a new alias
         Function helloWorldNodeFunction = optionalGroup2HelloWorldNodeFunction.get();
-        String helloWorldNodeFunctionName = extractFunctionName(helloWorldNodeFunction);
-        String functionAlias = ioHelper.getUuid();
+        FunctionName helloWorldNodeFunctionName = extractFunctionName(helloWorldNodeFunction);
+        FunctionAlias functionAlias = ImmutableFunctionAlias.builder().alias(ioHelper.getUuid()).build();
 
         // Make sure the function isn't present in group 1 before the update
         GroupInformation group1InformationBeforeUpdate = v2GreengrassHelper.getGroupInformationByName(group1Name).findFirst()
@@ -92,11 +98,11 @@ public class GreengrassUpdateWithoutDockerIT {
     @Test
     public void shouldRemovePythonFunctionFromGroup() {
         // Create one group with a known name
-        Optional<String> optionalGroupName = Optional.of(ioHelper.getUuid());
+        Optional<GreengrassGroupName> optionalGroupName = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
 
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroupName)));
 
-        String groupName = optionalGroupName.get();
+        GreengrassGroupName groupName = optionalGroupName.get();
 
         // Get the information for the group so we can pull the Hello World function out of it
         GroupInformation groupInformation = v2GreengrassHelper.getGroupInformationByName(groupName).findFirst()
@@ -110,8 +116,8 @@ public class GreengrassUpdateWithoutDockerIT {
 
         // Get the function information, extract the short name, and create a new alias
         Function helloWorldPythonFunction = optionalGroupHelloWorldPythonFunction.get();
-        String helloWorldPythonFunctionName = extractFunctionName(helloWorldPythonFunction);
-        String helloWorldPythonFunctionAlias = extractFunctionAlias(helloWorldPythonFunction);
+        FunctionName helloWorldPythonFunctionName = extractFunctionName(helloWorldPythonFunction);
+        FunctionAlias helloWorldPythonFunctionAlias = extractFunctionAlias(helloWorldPythonFunction);
 
         // Remove the function from the group
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getRemoveFunctionCommand(groupName, helloWorldPythonFunctionName, helloWorldPythonFunctionAlias)));
@@ -135,17 +141,17 @@ public class GreengrassUpdateWithoutDockerIT {
                 .findFirst();
     }
 
-    private String extractFunctionName(Function function) {
+    private FunctionName extractFunctionName(Function function) {
         String returnValue = function.functionArn().replaceAll("^.*:function:", "");
         returnValue = returnValue.replaceAll(":.*$", "");
 
-        return returnValue;
+        return ImmutableFunctionName.builder().name(returnValue).build();
     }
 
-    private String extractFunctionAlias(Function function) {
+    private FunctionAlias extractFunctionAlias(Function function) {
         String returnValue = function.functionArn().replaceAll("^.*:function:", "");
         returnValue = returnValue.replaceAll("^.*:", "");
 
-        return returnValue;
+        return ImmutableFunctionAlias.builder().alias(returnValue).build();
     }
 }

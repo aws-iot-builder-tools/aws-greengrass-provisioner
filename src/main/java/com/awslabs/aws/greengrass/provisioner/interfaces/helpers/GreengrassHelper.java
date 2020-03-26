@@ -3,6 +3,8 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.DeploymentStatus;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.iot.data.*;
+import com.awslabs.lambda.data.FunctionAliasArn;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.model.FunctionConfiguration;
@@ -15,11 +17,11 @@ import java.util.Set;
 public interface GreengrassHelper {
     void associateServiceRoleToAccount(Role role);
 
-    String createGroupIfNecessary(String groupName);
+    String createGroupIfNecessary(GreengrassGroupName greengrassGroupName);
 
-    void associateRoleToGroup(String groupId, Role greengrassRole);
+    void associateRoleToGroup(GreengrassGroupId greengrassGroupId, Role greengrassRole);
 
-    String createCoreDefinitionAndVersion(String coreDefinitionName, String coreCertificateArn, String coreThingArn, boolean syncShadow);
+    String createCoreDefinitionAndVersion(String coreDefinitionName, CertificateArn coreCertificateArn, ThingArn coreThingArn, boolean syncShadow);
 
     /**
      * Build a Function object for a new function
@@ -33,14 +35,14 @@ public interface GreengrassHelper {
     /**
      * Build a Function object for a function that exists in AWS Lambda already
      *
-     * @param functionArn
+     * @param functionAliasArn
      * @param lambdaFunctionConfiguration
      * @param defaultEnvironment
      * @param encodingType
      * @param pinned
      * @return
      */
-    Function buildFunctionModel(String functionArn, FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
+    Function buildFunctionModel(FunctionAliasArn functionAliasArn, FunctionConfiguration lambdaFunctionConfiguration, Map<String, String> defaultEnvironment, EncodingType encodingType, boolean pinned);
 
     String createFunctionDefinitionVersion(Set<Function> functions, FunctionIsolationMode defaultFunctionIsolationMode);
 
@@ -48,23 +50,23 @@ public interface GreengrassHelper {
 
     String createLoggerDefinitionAndVersion(List<Logger> loggers);
 
-    String createGroupVersion(String groupId, GroupVersion newGroupVersion);
+    String createGroupVersion(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion);
 
-    String createDeployment(String groupId, String groupVersionId);
+    String createDeployment(GreengrassGroupId greengrassGroupId, String groupVersionId);
 
     String createSubscriptionDefinitionAndVersion(List<Subscription> subscriptions);
 
     String createDefaultLoggerDefinitionAndVersion();
 
-    DeploymentStatus waitForDeploymentStatusToChange(String groupId, String deploymentId);
+    DeploymentStatus waitForDeploymentStatusToChange(GreengrassGroupId greengrassGroupId, String deploymentId);
 
     String createResourceDefinitionFromFunctionConfs(List<FunctionConf> functionConfs);
 
-    Device getDevice(String thingName);
+    Device getDevice(ThingName thingName);
 
     void disassociateServiceRoleFromAccount();
 
-    void disassociateRoleFromGroup(String groupId);
+    void disassociateRoleFromGroup(GreengrassGroupId greengrassGroupId);
 
     Optional<String> createConnectorDefinitionVersion(List<ConnectorConf> connectors);
 

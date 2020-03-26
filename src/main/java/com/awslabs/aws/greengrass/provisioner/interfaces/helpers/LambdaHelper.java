@@ -3,12 +3,15 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
 import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.lambda.data.FunctionAliasArn;
+import com.awslabs.lambda.data.FunctionName;
 import io.vavr.control.Either;
 import software.amazon.awssdk.services.iam.model.Role;
-import software.amazon.awssdk.services.lambda.model.*;
+import software.amazon.awssdk.services.lambda.model.CreateFunctionResponse;
+import software.amazon.awssdk.services.lambda.model.GetFunctionConfigurationResponse;
+import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
 
 import java.util.Map;
-import java.util.Optional;
 
 public interface LambdaHelper {
     String GGP_FUNCTION_CONF = "GGP_FUNCTION_CONF";
@@ -25,23 +28,9 @@ public interface LambdaHelper {
 
     Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConf functionConf, Role role, String zipFilePath);
 
-    LambdaFunctionArnInfo publishLambdaFunctionVersion(String functionName);
-
-    Map<String, String> getFunctionEnvironment(String functionName);
-
-    GetFunctionConfigurationResponse getFunctionConfigurationByName(String functionName);
-
-    PublishVersionResponse publishFunctionVersion(String functionName);
-
-    boolean aliasExists(String functionName, String aliasName);
-
-    String createAlias(String functionName, String functionVersion, String aliasName);
-
-    String createAlias(FunctionConf functionConf, String functionVersion);
-
-    Optional<GetFunctionResponse> getFunction(String functionName);
+    LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName);
 
     void deleteAlias(String functionArn);
 
-    String findFullFunctionArnByPartialName(String substring);
+    FunctionAliasArn findFullFunctionArnByPartialName(String substring);
 }

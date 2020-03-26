@@ -3,9 +3,9 @@ package com.awslabs.aws.greengrass.provisioner.implementations.builders;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.NodeBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.LoggingHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.ProcessHelper;
-import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.JavaResourceHelper;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,13 +36,13 @@ public class BasicNodeBuilder implements NodeBuilder {
     @Override
     public void buildFunctionIfNecessary(FunctionConf functionConf) {
         if (hasDependencies(functionConf.getBuildDirectory().get())) {
-            loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Installing Node dependencies");
+            loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Installing Node dependencies");
 
             // Install all of the dependencies for this function
             installDependencies(functionConf);
         }
 
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Packaging function for AWS Lambda");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Packaging function for AWS Lambda");
 
         File tempFile = Try.of(() -> ioHelper.getTempFile("node-lambda-build", "zip")).get();
 
@@ -58,7 +58,7 @@ public class BasicNodeBuilder implements NodeBuilder {
     }
 
     private void installDependencies(FunctionConf functionConf) {
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Retrieving Node dependencies");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Retrieving Node dependencies");
         List<String> programAndArguments = new ArrayList<>();
         programAndArguments.add("npm");
         programAndArguments.add("install");

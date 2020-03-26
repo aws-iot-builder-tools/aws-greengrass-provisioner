@@ -6,7 +6,9 @@ import com.awslabs.aws.greengrass.provisioner.data.arguments.TestArguments;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.jcraft.jsch.Session;
 import io.vavr.collection.HashMap;
 import io.vavr.collection.List;
@@ -54,7 +56,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     @Inject
     V2GreengrassHelper v2GreengrassHelper;
     @Inject
-    IotHelper iotHelper;
+    V2IotHelper v2IotHelper;
     @Inject
     GGVariables ggVariables;
     @Inject
@@ -81,6 +83,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
     @Override
     public void execute(TestArguments testArguments) {
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(testArguments.groupName).build();
         LocalDateTime testStartLocalDateTime = LocalDateTime.now();
 
         if (testArguments.deviceUnderTest == null) {
@@ -99,7 +102,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         String urlForDeviceTester = optionalUrlForDeviceTester.get();
 
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(testArguments.groupName).findFirst();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + testArguments.groupName + "] not found");
@@ -525,18 +528,19 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private String generateCoreAndGroupInfoJson(GroupInformation groupInformation) {
-        String groupId = v2GreengrassHelper.getGroupIdByGroupInformation(groupInformation)
+        GreengrassGroupId greengrassGroupId = v2GreengrassHelper.getGroupIdByGroupInformation(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
-        String coreThingName = ggVariables.getCoreThingName(groupInformation.name());
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(groupInformation.name()).build();
+        ThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
 
-        Map<String, String> coreInfo = HashMap.of("ThingArn", iotHelper.getThingArn(coreThingName))
-                .put("ThingName", coreThingName)
-                .put("CertArn", iotHelper.getThingPrincipal(coreThingName))
-                .put("IotEndpoint", iotHelper.getEndpoint())
+        Map<String, String> coreInfo = HashMap.of("ThingArn", v2IotHelper.getThingArn(coreThingName).get().getArn())
+                .put("ThingName", coreThingName.getName())
+                .put("CertArn", v2IotHelper.getThingPrincipals(coreThingName).get().get(0).getPrincipal())
+                .put("IotEndpoint", v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS))
                 .toJavaMap();
 
         Map<String, Object> outerMap = HashMap.of("CoreInfo", (Object) coreInfo)
-                .put("GroupId", groupId)
+                .put("GroupId", greengrassGroupId.getGroupId())
                 .toJavaMap();
 
         return jsonHelper.toJson(outerMap);

@@ -2,6 +2,10 @@ package com.awslabs.aws.greengrass.provisioner.data.conf;
 
 import com.awslabs.aws.greengrass.provisioner.data.Language;
 import com.awslabs.aws.greengrass.provisioner.data.resources.*;
+import com.awslabs.iot.data.GreengrassGroupName;
+import com.awslabs.lambda.data.FunctionAlias;
+import com.awslabs.lambda.data.FunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionName;
 import org.immutables.value.Value;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 
@@ -23,13 +27,13 @@ public abstract class FunctionConf {
 
     public abstract Optional<Path> getBuildDirectory();
 
-    public abstract String getGroupName();
+    public abstract GreengrassGroupName getGroupName();
 
-    public abstract String getFunctionName();
+    public abstract FunctionName getFunctionName();
 
     public abstract String getHandlerName();
 
-    public abstract String getAliasName();
+    public abstract FunctionAlias getAliasName();
 
     public abstract int getMemorySizeInKb();
 
@@ -69,8 +73,8 @@ public abstract class FunctionConf {
 
     public abstract Optional<File> getCfTemplate();
 
-    public String getGroupFunctionName() {
-        return String.join("-", getGroupName(), getFunctionName());
+    public FunctionName getGroupFunctionName() {
+        return ImmutableFunctionName.builder().name(String.join("-", getGroupName().getGroupName(), getFunctionName().getName())).build();
     }
 
     public abstract Optional<List<String>> getCoreRoleIamManagedPolicies();

@@ -51,7 +51,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
         log.info("Making executable [" + buildScriptName + "]");
         ioHelper.makeExecutable(buildScriptName);
 
-        loggingHelper.logInfoWithName(log, functionConf.getFunctionName(), "Building executable/native function");
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Building executable/native function");
 
         List<String> programAndArguments = new ArrayList<>();
         programAndArguments.add(buildScriptName);
@@ -71,7 +71,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
 
             log.error("To resolve:");
             log.error("1) GGP sometimes must run outside of Docker if the build script requires Docker. Try running GGP outside of Docker.");
-            log.error("2) Run " + BUILD_SH + " for the [" + functionConf.getFunctionName() + "] function outside of GGP and determine if it builds properly");
+            log.error("2) Run " + BUILD_SH + " for the [" + functionConf.getFunctionName().getName() + "] function outside of GGP and determine if it builds properly");
 
             System.exit(1);
         }

@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.builders;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
+import com.awslabs.lambda.data.FunctionName;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -17,5 +18,5 @@ public interface GradleBuilder extends FunctionBuilder {
 
     void buildJavaFunctionIfNecessary(FunctionConf functionConf);
 
-    void runGradle(Optional<File> gradleBuildPath, Optional<String> functionName);
+    void runGradle(Optional<File> gradleBuildPath, Optional<FunctionName> functionName);
 }

@@ -13,7 +13,7 @@ plugins {
     id 'com.github.ben-manes.versions' version '0.28.0'
 }
 
-def gradleDependencyVersion = '6.1.1'
+def gradleDependencyVersion = '6.3'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -50,7 +50,7 @@ distZip.enabled = shadowDistZip.enabled = false
 distTar.enabled = shadowDistTar.enabled = false
 
 // Specify all of our dependency versions
-def daggerVersion = '2.26'
+def daggerVersion = '2.27'
 def configVersion = '1.4.0'
 def ztZipVersion = '1.14'
 def jcommanderVersion = '1.78'
@@ -59,24 +59,24 @@ def jcabiVersion = '0.18.1'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.6'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.10.79'
+def awsSdk2Version = '2.11.1'
 def mavenInvokerVersion = '3.0.1'
 def commonsTextVersion = '1.8'
 def commonsLangVersion = '3.9'
 def commonsIoVersion = '2.6'
 def junitVersion = '4.13'
 def systemRulesVersion = '1.19.0'
-def mockitoVersion = '3.3.0'
+def mockitoVersion = '3.3.3'
 def vavrVersion = '0.10.2'
-def httpClientVersion = '4.5.11'
-def jodahFailsafeVersion = '2.3.3'
-def testContainersVersion = '1.12.5'
+def httpClientVersion = '4.5.12'
+def jodahFailsafeVersion = '2.3.4'
+def testContainersVersion = '1.13.0'
 def hamcrestVersion = '2.2'
 def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.7.9'
+def resultsIteratorForAwsJavaSdkVersion = '0.8.6'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -202,6 +202,7 @@ dependencies {
     compile "org.apache.commons:commons-lang3:$commonsLangVersion"
     compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
     compile "io.vavr:vavr:$vavrVersion"
+
     compile "commons-io:commons-io:$commonsIoVersion"
     compile "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
 

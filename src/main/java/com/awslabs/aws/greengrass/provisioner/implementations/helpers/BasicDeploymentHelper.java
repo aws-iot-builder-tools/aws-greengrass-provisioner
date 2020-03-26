@@ -14,7 +14,11 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
+import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import com.awslabs.lambda.data.FunctionName;
+import com.awslabs.lambda.data.ImmutableFunctionName;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -111,6 +115,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Inject
     IotHelper iotHelper;
     @Inject
+    V2IotHelper v2IotHelper;
+    @Inject
     CloudFormationHelper cloudFormationHelper;
     @Inject
     ArchiveHelper archiveHelper;
@@ -152,7 +158,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @Override
-    public DeploymentConf getDeploymentConf(String coreThingName, String deploymentConfigFilename, String groupName) {
+    public DeploymentConf getDeploymentConf(ThingName coreThingName, String deploymentConfigFilename, GreengrassGroupName greengrassGroupName) {
         File deploymentConfigFile = new File(deploymentConfigFilename);
 
         if (!deploymentConfigFile.exists()) {
@@ -162,21 +168,24 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
                 .withValue(EnvironmentHelper.ACCOUNT_ID, ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
                 .withValue(EnvironmentHelper.REGION, ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
-                .withValue(EnvironmentHelper.AWS_IOT_THING_NAME, ConfigValueFactory.fromAnyRef(coreThingName))
+                .withValue(EnvironmentHelper.AWS_IOT_THING_NAME, ConfigValueFactory.fromAnyRef(coreThingName.getName()))
                 .withFallback(getFallbackConfig())
                 .resolve();
 
-        return buildDeploymentConf(deploymentConfigFilename, config, groupName);
+        return buildDeploymentConf(deploymentConfigFilename, config, greengrassGroupName);
     }
 
-    private DeploymentConf buildDeploymentConf(String deploymentConfigFilename, Config config, String groupName) {
+    private DeploymentConf buildDeploymentConf(String deploymentConfigFilename, Config config, GreengrassGroupName greengrassGroupName) {
         ImmutableDeploymentConf.Builder deploymentConfBuilder = ImmutableDeploymentConf.builder();
 
         String trimmedDeploymentName = deploymentConfigFilename.replaceAll(".conf$", "").replaceAll("^.*/", "");
         deploymentConfBuilder.name(trimmedDeploymentName);
-        deploymentConfBuilder.functions(config.getStringList("conf.functions"));
+        List<FunctionName> functionNames = config.getStringList("conf.functions")
+                .stream().map(name -> ImmutableFunctionName.builder().name(name).build())
+                .collect(Collectors.toList());
+        deploymentConfBuilder.functions(functionNames);
 
-        deploymentConfBuilder.groupName(groupName);
+        deploymentConfBuilder.groupName(greengrassGroupName);
 
         try {
             deploymentConfBuilder.isSyncShadow(config.getBoolean("conf.core.syncShadow"));
@@ -319,18 +328,18 @@ public class BasicDeploymentHelper implements DeploymentHelper {
      *
      * @param serviceRole
      * @param coreRole
-     * @param groupId
+     * @param greengrassGroupId
      * @param groupVersionId
      */
     @Override
-    public void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
+    public void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, GreengrassGroupId greengrassGroupId, String groupVersionId) {
         log.info("Creating a deployment");
-        log.info("Group ID [" + groupId + "]");
+        log.info("Group ID [" + greengrassGroupId.getGroupId() + "]");
         log.info("Group version ID [" + groupVersionId + "]");
-        String initialDeploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
+        String initialDeploymentId = greengrassHelper.createDeployment(greengrassGroupId, groupVersionId);
         log.info("Deployment created [" + initialDeploymentId + "]");
 
-        DeploymentStatus deploymentStatus = getDeploymentStatus(serviceRole, coreRole, groupId, groupVersionId, initialDeploymentId);
+        DeploymentStatus deploymentStatus = getDeploymentStatus(serviceRole, coreRole, greengrassGroupId, groupVersionId, initialDeploymentId);
 
         if (!DeploymentStatus.SUCCESSFUL.equals(deploymentStatus)) {
             // Not successful, throw an exception to bail out
@@ -340,7 +349,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.info("Deployment successful");
     }
 
-    private DeploymentStatus getDeploymentStatus(Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId, String initialDeploymentId) {
+    private DeploymentStatus getDeploymentStatus(Optional<Role> serviceRole, Optional<Role> coreRole, GreengrassGroupId greengrassGroupId, String groupVersionId, String initialDeploymentId) {
         // Using a StringBuilder here allows us to update the deployment ID if a redeployment is necessary
         StringBuilder deploymentId = new StringBuilder();
         deploymentId.append(initialDeploymentId);
@@ -352,15 +361,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         RetryPolicy<DeploymentStatus> deploymentStatusRetryPolicy = new RetryPolicy<DeploymentStatus>()
                 // If we need a redeployment we'll handle that up to three times
                 .withMaxRetries(3)
-                .handleIf(throwable -> requiresIamReassociation(throwable, deploymentId, serviceRole, coreRole, groupId, groupVersionId));
+                .handleIf(throwable -> requiresIamReassociation(throwable, deploymentId, serviceRole, coreRole, greengrassGroupId, groupVersionId));
 
         DeploymentStatus deploymentStatus = Failsafe.with(deploymentStatusRetryPolicy)
-                .get(() -> greengrassHelper.waitForDeploymentStatusToChange(groupId, deploymentId.toString()));
+                .get(() -> greengrassHelper.waitForDeploymentStatusToChange(greengrassGroupId, deploymentId.toString()));
 
         return deploymentStatus;
     }
 
-    private boolean requiresIamReassociation(Throwable throwable, StringBuilder deploymentId, Optional<Role> serviceRole, Optional<Role> coreRole, String groupId, String groupVersionId) {
+    private boolean requiresIamReassociation(Throwable throwable, StringBuilder deploymentId, Optional<Role> serviceRole, Optional<Role> coreRole, GreengrassGroupId greengrassGroupId, String groupVersionId) {
         // Is this the exception we expected?
         if (!(throwable instanceof IamReassociationNecessaryException)) {
             // No, ignore it
@@ -374,7 +383,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         // We have both roles, we can try to reassociate them
-        String newDeploymentId = iamDisassociateReassociateAndLetSettle(serviceRole, coreRole, groupId, groupVersionId);
+        String newDeploymentId = iamDisassociateReassociateAndLetSettle(serviceRole, coreRole, greengrassGroupId, groupVersionId);
 
         // Clear out the old deployment ID
         deploymentId.setLength(0);
@@ -386,7 +395,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return true;
     }
 
-    private String iamDisassociateReassociateAndLetSettle(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, String groupId, String groupVersionId) {
+    private String iamDisassociateReassociateAndLetSettle(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, GreengrassGroupId greengrassGroupId, String groupVersionId) {
         String deploymentId;
         log.warn("There was a problem with IAM roles, attempting a new deployment");
 
@@ -394,7 +403,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.warn("Disassociating Greengrass service role");
         greengrassHelper.disassociateServiceRoleFromAccount();
         log.warn("Disassociating role from group");
-        greengrassHelper.disassociateRoleFromGroup(groupId);
+        greengrassHelper.disassociateRoleFromGroup(greengrassGroupId);
 
         log.warn("Letting IAM settle...");
 
@@ -404,14 +413,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         log.warn("Reassociating Greengrass service role");
         associateServiceRoleToAccount(greengrassServiceRole.get());
         log.warn("Reassociating Greengrass group role");
-        associateRoleToGroup(greengrassRole.get(), groupId);
+        associateRoleToGroup(greengrassRole.get(), greengrassGroupId);
 
         log.warn("Letting IAM settle...");
 
         ioHelper.sleep(30000);
 
         log.warn("Trying another deployment");
-        deploymentId = greengrassHelper.createDeployment(groupId, groupVersionId);
+        deploymentId = greengrassHelper.createDeployment(greengrassGroupId, groupVersionId);
         log.warn("Deployment created [" + deploymentId + "]");
 
         log.warn("Letting deployment settle...");
@@ -422,9 +431,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @Override
-    public void associateRoleToGroup(Role greengrassRole, String groupId) {
+    public void associateRoleToGroup(Role greengrassRole, GreengrassGroupId greengrassGroupId) {
         log.info("Associating the Greengrass role to the group");
-        greengrassHelper.associateRoleToGroup(groupId, greengrassRole);
+        greengrassHelper.associateRoleToGroup(greengrassGroupId, greengrassRole);
     }
 
     @Override
@@ -439,8 +448,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Make the directories for build, if necessary
         ioHelper.createDirectoryIfNecessary(ggConstants.getBuildDirectory());
 
+        // Get the Greengrass group name
+        GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(deploymentArguments.groupName).build();
+
         // Get the core thing name
-        String coreThingName = ggVariables.getCoreThingName(deploymentArguments.groupName);
+        ThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
 
         ///////////////////////////////////////
         // Load the deployment configuration //
@@ -449,29 +461,29 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         DeploymentConf deploymentConf;
 
         if (isEmptyDeployment(deploymentArguments)) {
-            deploymentConf = getEmptyDeploymentConf(deploymentArguments);
+            deploymentConf = getEmptyDeploymentConf(deploymentArguments, greengrassGroupName);
         } else {
-            deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments.deploymentConfigFilename, deploymentArguments.groupName))
-                    .get();
+            deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments.deploymentConfigFilename, greengrassGroupName)).get();
         }
 
         ///////////////////////////////////////////////////
         // Create an AWS Greengrass Group and get its ID //
         ///////////////////////////////////////////////////
 
-        if (v2GreengrassHelper.groupExistsByName(deploymentArguments.groupName) && (deploymentArguments.ec2LinuxVersion != null)) {
+        if (v2GreengrassHelper.groupExistsByName(greengrassGroupName) && (deploymentArguments.ec2LinuxVersion != null)) {
             throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
         }
 
         log.info("Creating a Greengrass group, if necessary");
-        String groupId = greengrassHelper.createGroupIfNecessary(deploymentArguments.groupName);
+        String groupId = greengrassHelper.createGroupIfNecessary(greengrassGroupName);
+        GreengrassGroupId greengrassGroupId = ImmutableGreengrassGroupId.builder().groupId(groupId).build();
 
         ///////////////////////
         // Create core thing //
         ///////////////////////
 
         log.info("Creating core thing");
-        String coreThingArn = iotHelper.createThing(coreThingName);
+        ThingArn coreThingArn = v2IotHelper.createThing(coreThingName);
 
         ///////////////////////////////////////////////////
         // Determine the default function isolation mode //
@@ -495,7 +507,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Build the default environment for all Lambda functions //
         ////////////////////////////////////////////////////////////
 
-        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(groupId, coreThingName, coreThingArn, deploymentArguments.groupName);
+        Map<String, String> defaultEnvironment = environmentHelper.getDefaultEnvironment(greengrassGroupId, coreThingName, coreThingArn, greengrassGroupName);
 
         // Get a config object with the default environment values (eg. "${AWS_IOT_THING_NAME}" used in the function and connector configuration)
         Config defaultConfig = typeSafeConfigHelper.addDefaultValues(defaultEnvironment, Optional.empty());
@@ -615,7 +627,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new RuntimeException("No role alias specified for the Greengrass core role [" + deploymentConf.getCoreRoleConf().getName());
         }
 
-        optionalCreateRoleAliasResponse = Optional.of(iotHelper.createRoleAliasIfNecessary(coreRole, deploymentConf.getCoreRoleConf().getAlias().get()));
+        optionalCreateRoleAliasResponse = Optional.of(v2IotHelper.forceCreateRoleAlias(coreRole, ImmutableRoleAlias.builder().name(deploymentConf.getCoreRoleConf().getAlias().get()).build()));
 
         //////////////////////////////////
         // Create or reuse certificates //
@@ -633,15 +645,15 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else if (deploymentArguments.csr != null) {
             // Sign the CSR supplied by the user, new or existing group
             log.info("Using user supplied CSR for core certificate");
-            optionalCoreCertificateArn = Optional.of(iotHelper.signCsrAndReturnCertificateArn(deploymentArguments.csr));
+            optionalCoreCertificateArn = Optional.of(v2IotHelper.signCsrAndReturnCertificateArn(ImmutableCertificateSigningRequest.builder().request(deploymentArguments.csr).build()));
         } else if (!optionalGroupVersion.isPresent()) {
             // New group, create new keys
             log.info("Group is new, no certificate ARN or CSR supplied, creating new keys");
-            KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, CORE_SUB_NAME);
+            KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
             optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
         } else {
             // Existing group, can we find the existing keys?
-            optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificate(groupId, CORE_SUB_NAME);
+            optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
 
             if (optionalCoreKeysAndCertificate.isPresent()) {
                 // Found keys, we'll reuse them
@@ -649,7 +661,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             } else if (deploymentArguments.forceCreateNewKeysOption) {
                 // Didn't find keys but the user has requested that they be recreated
                 log.info("Group is not new, user forcing new keys to be created");
-                KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, CORE_SUB_NAME);
+                KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
                 optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
             } else {
                 log.error("Group is not new, keys could not be found, but user not forcing new keys to be created");
@@ -671,13 +683,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new RuntimeException(message.toString());
         }
 
-        String coreCertificateArn = optionalCoreCertificateArn.get();
+        CertificateArn coreCertificateArn = ImmutableCertificateArn.builder().arn(optionalCoreCertificateArn.get()).build();
 
         ////////////////////////////////////////////////////
         // IoT policy creation for the core, if necessary //
         ////////////////////////////////////////////////////
 
-        String corePolicyName;
+        PolicyName corePolicyName;
 
         if (deploymentArguments.corePolicyName == null) {
             if (!deploymentConf.getCoreRoleConf().getIotPolicy().isPresent()) {
@@ -685,36 +697,37 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             }
 
             log.info("Creating policy for core");
-            iotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(deploymentArguments.groupName), deploymentConf.getCoreRoleConf().getIotPolicy().get());
-            corePolicyName = ggVariables.getCorePolicyName(deploymentArguments.groupName);
+            v2IotHelper.createPolicyIfNecessary(ggVariables.getCorePolicyName(greengrassGroupName),
+                    ImmutablePolicyDocument.builder().document(deploymentConf.getCoreRoleConf().getIotPolicy().get()).build());
+            corePolicyName = ggVariables.getCorePolicyName(greengrassGroupName);
         } else {
-            corePolicyName = deploymentArguments.corePolicyName;
+            corePolicyName = ImmutablePolicyName.builder().name(deploymentArguments.corePolicyName).build();
         }
 
         //////////////////////////////////
         // Attach policy to certificate //
         //////////////////////////////////
 
-        iotHelper.attachPrincipalPolicy(corePolicyName, coreCertificateArn);
+        v2IotHelper.attachPrincipalPolicy(corePolicyName, coreCertificateArn);
 
         /////////////////////////////////
         // Attach thing to certificate //
         /////////////////////////////////
 
-        iotHelper.attachThingPrincipal(ggVariables.getCoreThingName(deploymentArguments.groupName), coreCertificateArn);
+        v2IotHelper.attachThingPrincipal(ggVariables.getCoreThingName(greengrassGroupName), coreCertificateArn);
 
         ////////////////////////////////////////////////
         // Associate the Greengrass role to the group //
         ////////////////////////////////////////////////
 
-        associateRoleToGroup(coreRole, groupId);
+        associateRoleToGroup(coreRole, greengrassGroupId);
 
         ////////////////////////////////////////////
         // Create a core definition and a version //
         ////////////////////////////////////////////
 
         log.info("Creating core definition");
-        String coreDefinitionVersionArn = greengrassHelper.createCoreDefinitionAndVersion(ggVariables.getCoreDefinitionName(deploymentArguments.groupName), coreCertificateArn, coreThingArn, deploymentConf.isSyncShadow());
+        String coreDefinitionVersionArn = greengrassHelper.createCoreDefinitionAndVersion(ggVariables.getCoreDefinitionName(greengrassGroupName), coreCertificateArn, coreThingArn, deploymentConf.isSyncShadow());
 
         //////////////////////////////////////////////
         // Create a logger definition and a version //
@@ -767,7 +780,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Determine if any functions are running inside the Greengrass container //
         ////////////////////////////////////////////////////////////////////////////
 
-        List<String> functionsRunningInGreengrassContainer = functionConfs.stream()
+        List<FunctionName> functionsRunningInGreengrassContainer = functionConfs.stream()
                 .filter(FunctionConf::isGreengrassContainer)
                 .map(FunctionConf::getFunctionName)
                 .collect(Collectors.toList());
@@ -842,29 +855,34 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create all of the things from the GGD config //
         //////////////////////////////////////////////////
 
-        Set<String> thingNames = ggdConfs.stream().map(GGDConf::getThingName).collect(Collectors.toSet());
+        Set<ThingName> thingNames = ggdConfs.stream()
+                .map(GGDConf::getThingName)
+                .map(thingName -> ImmutableThingName.builder().name(thingName).build())
+                .collect(Collectors.toSet());
 
         if (thingNames.size() > 0) {
-            Set<String> thingArns = new HashSet<>();
+            Set<ThingArn> thingArns = new HashSet<>();
 
             log.info("Creating Greengrass device things");
 
-            for (String thingName : thingNames) {
-                String deviceThingArn = iotHelper.createThing(thingName);
+            for (ThingName thingName : thingNames) {
+                ThingArn deviceThingArn = v2IotHelper.createThing(thingName);
                 thingArns.add(deviceThingArn);
 
                 String ggdThingName = getGgdThingName(thingName);
-                String ggdPolicyName = String.join("_", ggdThingName, "Policy");
 
                 log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
-                KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, ggdThingName);
-
-                String deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
+                KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, ggdThingName);
 
                 log.info("Creating and attaching policies to Greengrass device thing");
-                iotHelper.createPolicyIfNecessary(ggdPolicyName, policyHelper.buildDevicePolicyDocument(deviceThingArn));
-                iotHelper.attachPrincipalPolicy(ggdPolicyName, deviceCertificateArn);
-                iotHelper.attachThingPrincipal(thingName, deviceCertificateArn);
+
+                PolicyName ggdPolicyName = ImmutablePolicyName.builder().name(String.join("_", ggdThingName, "Policy")).build();
+                CertificateArn deviceCertificateArn = ImmutableCertificateArn.builder().arn(deviceKeysAndCertificate.getCertificateArn()).build();
+
+                v2IotHelper.createPolicyIfNecessary(ggdPolicyName,
+                        ImmutablePolicyDocument.builder().document(policyHelper.buildDevicePolicyDocument(deviceThingArn)).build());
+                v2IotHelper.attachPrincipalPolicy(ggdPolicyName, deviceCertificateArn);
+                v2IotHelper.attachThingPrincipal(thingName, deviceCertificateArn);
             }
         }
 
@@ -886,28 +904,30 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Get a list of all of the connected thing shadows //
         //////////////////////////////////////////////////////
 
-        Set<String> connectedShadowThings = new HashSet<>();
+        Set<ThingName> connectedShadowThings = new HashSet<>();
 
         for (FunctionConf functionConf : functionToConfMap.values()) {
-            connectedShadowThings.addAll(functionConf.getConnectedShadows());
+            connectedShadowThings.addAll(functionConf.getConnectedShadows().stream()
+                    .map(connectedShadow -> ImmutableThingName.builder().name(connectedShadow).build())
+                    .collect(Collectors.toList()));
 
             for (String connectedShadow : functionConf.getConnectedShadows()) {
                 // Make sure all of the connected shadows exist
-                iotHelper.createThing(connectedShadow);
+                v2IotHelper.createThing(ImmutableThingName.builder().name(connectedShadow).build());
             }
         }
 
         for (GGDConf ggdConf : ggdConfs) {
-            connectedShadowThings.addAll(ggdConf.getConnectedShadows());
+            connectedShadowThings.addAll(ggdConf.getConnectedShadows().stream()
+                    .map(connectedShadow -> ImmutableThingName.builder().name(connectedShadow).build())
+                    .collect(Collectors.toList()));
         }
-
-        List<Device> devices = new ArrayList<>();
 
         thingNames.addAll(connectedShadowThings);
 
-        for (String thingName : thingNames) {
-            devices.add(greengrassHelper.getDevice(thingName));
-        }
+        List<Device> devices = thingNames.stream()
+                .map(greengrassHelper::getDevice)
+                .collect(Collectors.toList());
 
         ////////////////////////////////////////////
         // Get a list of all GGD PIP dependencies //
@@ -922,11 +942,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ///////////////////////////////////////
 
         for (GGDConf ggdConf : ggdConfs) {
-            String deviceThingArn = iotHelper.getThingArn(ggdConf.getThingName());
+            String deviceThingArn = v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn();
             subscriptions.addAll(subscriptionHelper.createCloudSubscriptionsForArn(ggdConf.getFromCloudSubscriptions(), ggdConf.getToCloudSubscriptions(), deviceThingArn));
 
             for (String connectedShadow : ggdConf.getConnectedShadows()) {
-                subscriptions.addAll(subscriptionHelper.createShadowSubscriptions(deviceThingArn, connectedShadow));
+                subscriptions.addAll(subscriptionHelper.createShadowSubscriptions(deviceThingArn,
+                        ImmutableThingName.builder().name(connectedShadow).build()));
             }
         }
 
@@ -935,7 +956,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         //////////////////////////////////
 
         log.info("Creating device definition");
-        String deviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(deploymentArguments.groupName), devices);
+        String deviceDefinitionVersionArn = greengrassHelper.createDeviceDefinitionAndVersion(ggVariables.getDeviceDefinitionName(greengrassGroupName), devices);
 
         //////////////////////////////////////////////////////
         // Create the subscription definition from our list //
@@ -963,15 +984,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         GroupVersion groupVersion = groupVersionBuilder.build();
 
-        String groupVersionId = greengrassHelper.createGroupVersion(groupId, groupVersion);
+        String groupVersionId = greengrassHelper.createGroupVersion(greengrassGroupId, groupVersion);
 
         /////////////////////////////////////////////
         // Do all of the output file related stuff //
         /////////////////////////////////////////////
 
         buildOutputFiles(deploymentArguments,
+                greengrassGroupName,
                 optionalCreateRoleAliasResponse,
-                groupId,
+                greengrassGroupId,
                 coreThingName,
                 coreThingArn,
                 optionalCoreKeysAndCertificate,
@@ -1046,7 +1068,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         // Create a deployment and wait for it to succeed.  Return if it fails.
-        Try.run(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(coreRole), groupId, groupVersionId))
+        Try.run(() -> createAndWaitForDeployment(optionalGreengrassServiceRole, Optional.of(coreRole), greengrassGroupId, groupVersionId))
                 .get();
 
         //////////////////////////////////////////////
@@ -1057,7 +1079,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.info("Launching Docker container");
             String officialGreengrassDockerImage = ggConstants.getOfficialGreengrassDockerImage();
             officialGreengrassImageDockerHelper.pullImage(officialGreengrassDockerImage);
-            officialGreengrassImageDockerHelper.createAndStartContainer(officialGreengrassDockerImage, deploymentArguments.groupName);
+            officialGreengrassImageDockerHelper.createAndStartContainer(officialGreengrassDockerImage, greengrassGroupName);
         }
 
         ///////////////////////////////////////////////////////
@@ -1218,6 +1240,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Python functions do not have a Python version specified, this should never happen!");
             legacyPythonFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1233,6 +1256,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Node functions do not have a Node version specified, this should never happen!");
             legacyNodeFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1248,6 +1272,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("Some Java functions do not have a Java version specified, this should never happen!");
             legacyJavaFunctions.stream()
                     .map(FunctionConf::getFunctionName)
+                    .map(FunctionName::getName)
                     .forEach(log::error);
             throw new UnsupportedOperationException();
         }
@@ -1267,7 +1292,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return deploymentArguments.deploymentConfigFilename.equals(EMPTY);
     }
 
-    private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments) {
+    private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName) {
         String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
 
         RoleConf coreRoleConf = ImmutableRoleConf.builder()
@@ -1279,7 +1304,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return ImmutableDeploymentConf.builder()
                 .isSyncShadow(true)
                 .name(EMPTY)
-                .groupName(deploymentArguments.groupName)
+                .groupName(greengrassGroupName)
                 .coreRoleConf(coreRoleConf)
                 .functions(new ArrayList<>())
                 .build();
@@ -1621,7 +1646,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return role;
     }
 
-    private void buildOutputFiles(DeploymentArguments deploymentArguments, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, String groupId, String awsIotThingName, String awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, String coreCertificateArn, List<GGDConf> ggdConfs, Set<String> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
+    private void buildOutputFiles(DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, GreengrassGroupId greengrassGroupId, ThingName awsIotThingName, ThingArn awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, CertificateArn coreCertificateArn, List<GGDConf> ggdConfs, Set<ThingName> thingNames, Set<String> ggdPipDependencies, boolean functionsRunningAsRoot) {
         if (deploymentArguments.scriptOutput) {
             installScriptVirtualTarEntries = Optional.of(new ArrayList<>());
         }
@@ -1661,19 +1686,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else {
             log.info("- Adding only client certificate to archive");
 
-            String coreCertificatePEM = iotHelper.getCertificatePem(coreCertificateArn);
+            String coreCertificatePEM = v2IotHelper.getCertificatePem(coreCertificateArn).get();
 
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
         }
 
         // Add a file for the certificate ARN so it is easier to find on the host or when using the Lambda version of GGP
-        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getArn().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificateArnPath, coreCertificateArn.getArn().getBytes(), normalFilePermissions);
 
-        for (String thingName : thingNames) {
+        for (ThingName thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(groupId, getGgdThingName(thingName));
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, getGgdThingName(thingName));
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
             archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
@@ -1691,7 +1716,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ggConstants.getCorePublicCertificateName(),
                 ggConstants.getCorePrivateKeyName(),
                 awsIotThingArn,
-                iotHelper.getEndpoint(),
+                v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS),
                 currentRegion,
                 deploymentArguments,
                 functionsRunningAsRoot);
@@ -1721,16 +1746,16 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (optionalCreateRoleAliasResponse.isPresent()) {
             CreateRoleAliasResponse createRoleAliasResponse = optionalCreateRoleAliasResponse.get();
 
-            addCredentialProviderFiles(oemVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
-            addCredentialProviderFiles(installScriptVirtualTarEntries, groupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
+            addCredentialProviderFiles(oemVirtualTarEntries, greengrassGroupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
+            addCredentialProviderFiles(installScriptVirtualTarEntries, greengrassGroupId, awsIotThingName, currentRegion, createRoleAliasResponse, deploymentArguments.hsiParameters);
         }
 
         ///////////////////////
         // Build the scripts //
         ///////////////////////
 
-        String baseGgShScriptName = ggVariables.getBaseGgScriptName(deploymentArguments.groupName);
-        String ggShScriptName = ggVariables.getGgShScriptName(deploymentArguments.groupName);
+        String baseGgShScriptName = ggVariables.getBaseGgScriptName(greengrassGroupName);
+        String ggShScriptName = ggVariables.getGgShScriptName(greengrassGroupName);
 
         log.info("Adding scripts to archive");
         Optional<Architecture> optionalArchitecture = getArchitecture(deploymentArguments);
@@ -1770,8 +1795,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             File finalMainScript = mainScript;
 
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
-            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdConf.getThingName()).getBytes(), scriptPermissions);
+            ThingName ggdThingName = ImmutableThingName.builder().name(ggdConf.getThingName()).build();
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdThingName).getBytes(), scriptPermissions);
+            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, "run-" + ggdConf.getScriptName() + ".sh", scriptHelper.generateRunScript(optionalArchitecture, finalMainScript.getPath(), ggdThingName).getBytes(), scriptPermissions);
         }
 
         ///////////////////////////
@@ -1803,7 +1829,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             if (deploymentArguments.oemJsonOutput != null) {
                 writeOemJsonOutput(oemVirtualTarEntries.get(), deploymentArguments.oemJsonOutput);
             } else {
-                String oemArchiveName = ggVariables.getOemArchiveName(deploymentArguments.groupName);
+                String oemArchiveName = ggVariables.getOemArchiveName(greengrassGroupName);
                 log.info("Writing OEM file [" + oemArchiveName + "]");
                 ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
                 ioHelper.makeExecutable(oemArchiveName);
@@ -1814,7 +1840,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         if (ggdVirtualTarEntries.isPresent()) {
-            String ggdArchiveName = ggVariables.getGgdArchiveName(deploymentArguments.groupName);
+            String ggdArchiveName = ggVariables.getGgdArchiveName(greengrassGroupName);
             log.info("Writing GGD file [" + ggdArchiveName + "]");
             ioHelper.writeFile(ggdArchiveName, getByteArrayOutputStream(ggdVirtualTarEntries).get().toByteArray());
             ioHelper.makeExecutable(ggdArchiveName);
@@ -1824,10 +1850,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
     }
 
-    private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, String groupId, String awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse, HsiParameters nullableHsiParameters) {
-        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), groupId.getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), iotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getBytes(), normalFilePermissions);
+    private void addCredentialProviderFiles(Optional<List<VirtualTarEntry>> tarEntries, GreengrassGroupId greengrassGroupId, ThingName awsIotThingName, Region currentRegion, CreateRoleAliasResponse createRoleAliasResponse, HsiParameters nullableHsiParameters) {
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "group-id.txt"), greengrassGroupId.getGroupId().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "credential-provider-url.txt"), v2IotHelper.getCredentialProviderUrl().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "thing-name.txt"), awsIotThingName.getName().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "role-alias-name.txt"), createRoleAliasResponse.roleAlias().getBytes(), normalFilePermissions);
         archiveHelper.addVirtualTarEntry(tarEntries, String.join("/", ggConstants.getConfigDirectoryPrefix(), "region.txt"), currentRegion.id().getBytes(), normalFilePermissions);
 
@@ -1989,8 +2015,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         return createRoleFromRoleConf("core", coreRoleConf);
     }
 
-    private String getGgdThingName(String thingName) {
-        return String.join("-", ggConstants.getGgdPrefix(), thingName);
+    private String getGgdThingName(ThingName thingName) {
+        return String.join("-", ggConstants.getGgdPrefix(), thingName.getName());
     }
 
     private Optional<Architecture> getArchitecture(DeploymentArguments deploymentArguments) {
