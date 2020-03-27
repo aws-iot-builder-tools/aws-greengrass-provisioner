@@ -77,6 +77,9 @@ def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
 def resultsIteratorForAwsJavaSdkVersion = '0.8.6'
+def nomenEstOmenVersion = '2.0.0'
+def jschVersion = '0.1.55'
+
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -181,10 +184,10 @@ dependencies {
     compile "com.spotify:docker-client:$dockerClientVersion"
 
     // For Docker-style names
-    compile 'com.oblac:nomen-est-omen:2.0.0'
+    compile "com.oblac:nomen-est-omen:$nomenEstOmenVersion"
 
     // For scp/ssh support
-    compile 'com.jcraft:jsch:0.1.55'
+    compile "com.jcraft:jsch:$jschVersion"
 
     compile "software.amazon.awssdk:greengrass:$awsSdk2Version"
     compile "software.amazon.awssdk:iam:$awsSdk2Version"
