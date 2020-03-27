@@ -7,7 +7,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IotHelper;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iot.data.GreengrassGroupId;
-import com.awslabs.iot.data.ImmutableCertificateId;
 import com.awslabs.iot.data.ImmutableThingName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import org.slf4j.Logger;
@@ -63,7 +62,7 @@ public class BasicIotHelper implements IotHelper {
 
             KeysAndCertificate keysAndCertificate = ioHelper.deserializeKeys(ioHelper.readFile(createKeysAndCertificateFilename), jsonHelper);
 
-            if (v2IotHelper.certificateExists(ImmutableCertificateId.builder().id(keysAndCertificate.getCertificateId()).build())) {
+            if (v2IotHelper.certificateExists(keysAndCertificate.getCertificateId())) {
                 log.info("- Reusing existing keys.");
                 return Optional.of(keysAndCertificate);
             }
