@@ -636,12 +636,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<GroupVersion> optionalGroupVersion = v2GreengrassHelper.getLatestGroupVersionByNameOrId(groupId);
         Optional<KeysAndCertificate> optionalCoreKeysAndCertificate = Optional.empty();
 
-        Optional<String> optionalCoreCertificateArn = Optional.empty();
+        Optional<CertificateArn> optionalCoreCertificateArn = Optional.empty();
 
         if (deploymentArguments.certificateArn != null) {
             // Use the certificate ARN supplied by the user, new or existing group
             log.info("Using user supplied certificate ARN for core certificate [" + deploymentArguments.certificateArn + "]");
-            optionalCoreCertificateArn = Optional.of(deploymentArguments.certificateArn);
+            optionalCoreCertificateArn = Optional.of(ImmutableCertificateArn.builder().arn(deploymentArguments.certificateArn).build());
         } else if (deploymentArguments.csr != null) {
             // Sign the CSR supplied by the user, new or existing group
             log.info("Using user supplied CSR for core certificate");
@@ -683,7 +683,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new RuntimeException(message.toString());
         }
 
-        CertificateArn coreCertificateArn = ImmutableCertificateArn.builder().arn(optionalCoreCertificateArn.get()).build();
+        CertificateArn coreCertificateArn = optionalCoreCertificateArn.get();
 
         ////////////////////////////////////////////////////
         // IoT policy creation for the core, if necessary //
@@ -877,7 +877,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 log.info("Creating and attaching policies to Greengrass device thing");
 
                 PolicyName ggdPolicyName = ImmutablePolicyName.builder().name(String.join("_", ggdThingName, "Policy")).build();
-                CertificateArn deviceCertificateArn = ImmutableCertificateArn.builder().arn(deviceKeysAndCertificate.getCertificateArn()).build();
+                CertificateArn deviceCertificateArn = deviceKeysAndCertificate.getCertificateArn();
 
                 v2IotHelper.createPolicyIfNecessary(ggdPolicyName,
                         ImmutablePolicyDocument.builder().document(policyHelper.buildDevicePolicyDocument(deviceThingArn)).build());
@@ -1686,10 +1686,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else {
             log.info("- Adding only client certificate to archive");
 
-            String coreCertificatePEM = v2IotHelper.getCertificatePem(coreCertificateArn).get();
+            CertificatePem coreCertificatePem = v2IotHelper.getCertificatePem(coreCertificateArn).get();
+            byte[] pemBytes = coreCertificatePem.getPem().getBytes();
 
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
-            archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, coreCertificatePEM.getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, coreCertificatePath, pemBytes, normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(oemVirtualTarEntries, coreCertificatePath, pemBytes, normalFilePermissions);
         }
 
         // Add a file for the certificate ARN so it is easier to find on the host or when using the Lambda version of GGP
@@ -1699,10 +1700,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         for (ThingName thingName : thingNames) {
             log.info("- Adding keys and certificate files to archive");
             KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, getGgdThingName(thingName));
+            byte[] pemBytes = deviceKeysAndCertificate.getCertificatePem().getPem().getBytes();
             archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(installScriptVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), pemBytes, normalFilePermissions);
             archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePrivateKeyName(thingName), deviceKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), deviceKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+            archiveHelper.addVirtualTarEntry(ggdVirtualTarEntries, ggConstants.getDevicePublicCertificateName(thingName), pemBytes, normalFilePermissions);
         }
 
         ///////////////////////
@@ -1872,7 +1874,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     private void addPrivateAndPublicKeyFiles(Optional<List<VirtualTarEntry>> tarEntries, KeysAndCertificate coreKeysAndCertificate, String privateKeyPath, String publicCertificatePath) {
         archiveHelper.addVirtualTarEntry(tarEntries, privateKeyPath, coreKeysAndCertificate.getKeyPair().privateKey().getBytes(), normalFilePermissions);
-        archiveHelper.addVirtualTarEntry(tarEntries, publicCertificatePath, coreKeysAndCertificate.getCertificatePem().getBytes(), normalFilePermissions);
+        archiveHelper.addVirtualTarEntry(tarEntries, publicCertificatePath, coreKeysAndCertificate.getCertificatePem().getPem().getBytes(), normalFilePermissions);
     }
 
     private void writeOemJsonOutput(List<VirtualTarEntry> oemVirtualTarEntries, String oemJsonFilename) {

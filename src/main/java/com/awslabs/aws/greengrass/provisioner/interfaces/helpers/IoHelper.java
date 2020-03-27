@@ -3,6 +3,9 @@ package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
 import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.ImmutableCertificateArn;
+import com.awslabs.iot.data.ImmutableCertificateId;
+import com.awslabs.iot.data.ImmutableCertificatePem;
 import com.awslabs.lambda.data.FunctionAliasArn;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -151,9 +154,9 @@ public interface IoHelper {
 
     default String serializeKeys(CreateKeysAndCertificateResponse createKeysAndCertificateResponse, JsonHelper jsonHelper) {
         KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
-                .certificateArn(createKeysAndCertificateResponse.certificateArn())
-                .certificateId(createKeysAndCertificateResponse.certificateId())
-                .certificatePem(createKeysAndCertificateResponse.certificatePem())
+                .certificateArn(ImmutableCertificateArn.builder().arn(createKeysAndCertificateResponse.certificateArn()).build())
+                .certificateId(ImmutableCertificateId.builder().id(createKeysAndCertificateResponse.certificateId()).build())
+                .certificatePem(ImmutableCertificatePem.builder().pem(createKeysAndCertificateResponse.certificatePem()).build())
                 .keyPair(createKeysAndCertificateResponse.keyPair())
                 .build();
 
