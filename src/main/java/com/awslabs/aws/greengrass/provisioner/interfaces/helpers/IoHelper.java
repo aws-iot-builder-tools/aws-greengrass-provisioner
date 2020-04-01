@@ -1,11 +1,5 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate;
-import com.awslabs.aws.greengrass.provisioner.data.KeysAndCertificate;
-import com.awslabs.general.helpers.interfaces.JsonHelper;
-import com.awslabs.iot.data.ImmutableCertificateArn;
-import com.awslabs.iot.data.ImmutableCertificateId;
-import com.awslabs.iot.data.ImmutableCertificatePem;
 import com.awslabs.lambda.data.FunctionAliasArn;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
@@ -16,7 +10,6 @@ import io.vavr.control.Try;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.slf4j.Logger;
-import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateResponse;
 
 import java.io.*;
 import java.net.URL;
@@ -141,40 +134,6 @@ public interface IoHelper {
 
     default boolean exists(String path) {
         return new File(path).exists();
-    }
-
-    default String serializeObject(Object object, JsonHelper jsonHelper) {
-        return jsonHelper.toJson(object);
-    }
-
-    default Object deserializeObject(byte[] bytes, JsonHelper jsonHelper) {
-        return Try.of(() -> (Object) jsonHelper.fromJson(KeysAndCertificate.class, bytes))
-                .get();
-    }
-
-    default String serializeKeys(CreateKeysAndCertificateResponse createKeysAndCertificateResponse, JsonHelper jsonHelper) {
-        KeysAndCertificate keysAndCertificate = ImmutableKeysAndCertificate.builder()
-                .certificateArn(ImmutableCertificateArn.builder().arn(createKeysAndCertificateResponse.certificateArn()).build())
-                .certificateId(ImmutableCertificateId.builder().id(createKeysAndCertificateResponse.certificateId()).build())
-                .certificatePem(ImmutableCertificatePem.builder().pem(createKeysAndCertificateResponse.certificatePem()).build())
-                .keyPair(createKeysAndCertificateResponse.keyPair())
-                .build();
-
-        return serializeObject(keysAndCertificate, jsonHelper);
-    }
-
-    default KeysAndCertificate deserializeKeys(byte[] readFile, JsonHelper jsonHelper) {
-        Object object = deserializeObject(readFile, jsonHelper);
-
-        if (object instanceof KeysAndCertificate) {
-            return (KeysAndCertificate) object;
-        }
-
-        if (object instanceof CreateKeysAndCertificateResponse) {
-            return KeysAndCertificate.from((CreateKeysAndCertificateResponse) object);
-        }
-
-        throw new RuntimeException("Couldn't deserialize keys.  This is a bug.");
     }
 
     default Optional<InputStream> extractTar(String tarFile, String filenameToExtract) {

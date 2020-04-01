@@ -10,7 +10,7 @@ import software.amazon.awssdk.services.iot.model.KeyPair;
 @Value.Immutable
 public abstract class KeysAndCertificate {
     public static KeysAndCertificate from(CreateKeysAndCertificateResponse createKeysAndCertificateResponse) {
-        return com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate.builder()
+        return ImmutableKeysAndCertificate.builder()
                 .certificateArn(ImmutableCertificateArn.builder().arn(createKeysAndCertificateResponse.certificateArn()).build())
                 .certificateId(ImmutableCertificateId.builder().id(createKeysAndCertificateResponse.certificateId()).build())
                 .certificatePem(ImmutableCertificatePem.builder().pem(createKeysAndCertificateResponse.certificatePem()).build())
@@ -18,11 +18,11 @@ public abstract class KeysAndCertificate {
                 .build();
     }
 
-    public abstract CertificateArn getCertificateArn();
+    public abstract ImmutableCertificateArn getCertificateArn();
 
-    public abstract CertificateId getCertificateId();
+    public abstract ImmutableCertificateId getCertificateId();
 
-    public abstract CertificatePem getCertificatePem();
+    public abstract ImmutableCertificatePem getCertificatePem();
 
     public abstract KeyPair getKeyPair();
 }

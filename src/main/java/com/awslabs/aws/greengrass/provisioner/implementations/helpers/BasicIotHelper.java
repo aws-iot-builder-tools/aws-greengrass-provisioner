@@ -60,7 +60,7 @@ public class BasicIotHelper implements IotHelper {
         if (ioHelper.exists(createKeysAndCertificateFilename)) {
             log.info("- Attempting to reuse existing keys.");
 
-            KeysAndCertificate keysAndCertificate = ioHelper.deserializeKeys(ioHelper.readFile(createKeysAndCertificateFilename), jsonHelper);
+            KeysAndCertificate keysAndCertificate = jsonHelper.fromJson(KeysAndCertificate.class, ioHelper.readFile(createKeysAndCertificateFilename));
 
             if (v2IotHelper.certificateExists(keysAndCertificate.getCertificateId())) {
                 log.info("- Reusing existing keys.");
@@ -93,8 +93,6 @@ public class BasicIotHelper implements IotHelper {
 
         CreateKeysAndCertificateResponse createKeysAndCertificateResponse = iotClient.createKeysAndCertificate(createKeysAndCertificateRequest);
 
-        ioHelper.writeFile(createKeysAndCertificateFilename, ioHelper.serializeKeys(createKeysAndCertificateResponse, jsonHelper).getBytes());
-
         String deviceName = isCore ? greengrassGroupId.getGroupId() : ggConstants.trimGgdPrefix(ImmutableThingName.builder().name(subName).build());
         String privateKeyFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, KEY);
         String publicSignedCertificateFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, CRT);
@@ -104,6 +102,9 @@ public class BasicIotHelper implements IotHelper {
         ioHelper.writeFile(publicSignedCertificateFilename, createKeysAndCertificateResponse.certificatePem().getBytes());
         log.info("Device public signed certificate key written to [" + publicSignedCertificateFilename + "]");
 
-        return KeysAndCertificate.from(createKeysAndCertificateResponse);
+        KeysAndCertificate keysAndCertificate = KeysAndCertificate.from(createKeysAndCertificateResponse);
+        ioHelper.writeFile(createKeysAndCertificateFilename, jsonHelper.toJson(keysAndCertificate).getBytes());
+
+        return keysAndCertificate;
     }
 }
