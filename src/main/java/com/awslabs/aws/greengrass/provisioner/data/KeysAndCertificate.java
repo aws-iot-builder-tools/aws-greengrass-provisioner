@@ -18,11 +18,11 @@ public abstract class KeysAndCertificate {
                 .build();
     }
 
-    public abstract CertificateArn getCertificateArn();
+    public abstract ImmutableCertificateArn getCertificateArn();
 
-    public abstract CertificateId getCertificateId();
+    public abstract ImmutableCertificateId getCertificateId();
 
-    public abstract CertificatePem getCertificatePem();
+    public abstract ImmutableCertificatePem getCertificatePem();
 
     public abstract KeyPair getKeyPair();
 }
