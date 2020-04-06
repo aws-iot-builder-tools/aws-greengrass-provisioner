@@ -11,6 +11,7 @@ import com.typesafe.config.ConfigException;
 import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.services.s3.model.Bucket;
 
 import javax.inject.Inject;
 import java.util.Optional;
@@ -245,7 +246,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             }
 
             // At this point the S3 options look good, make sure that the bucket exists
-            if (!s3Helper.bucketExists(deploymentArguments.s3Bucket)) {
+            if (!s3Helper.bucketExists(Bucket.builder().name(deploymentArguments.s3Bucket).build())) {
                 throw new RuntimeException("Specified S3 bucket does not exist. The bucket must already exist before running the provisioner");
             }
         } else if (deploymentArguments.s3Directory != null) {

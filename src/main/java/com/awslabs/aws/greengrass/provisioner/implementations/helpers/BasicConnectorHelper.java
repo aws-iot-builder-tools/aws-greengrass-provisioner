@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.greengrass.model.Connector;
 import software.amazon.awssdk.services.greengrass.model.ConnectorDefinitionVersion;
+import software.amazon.awssdk.services.s3.model.Bucket;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -133,13 +134,13 @@ public class BasicConnectorHelper implements ConnectorHelper {
             return;
         }
 
-        List<Tuple2<String, String>> bucketAndKeyList = testableDockerConnectors.stream()
+        List<Tuple2<Bucket, String>> bucketAndKeyList = testableDockerConnectors.stream()
                 .map(Connector::parameters)
-                .map(map -> new Tuple2<>(map.get(DOCKER_COMPOSE_FILE_S3_BUCKET), map.get(DOCKER_COMPOSE_FILE_S3_KEY)))
+                .map(map -> new Tuple2<>(Bucket.builder().name(map.get(DOCKER_COMPOSE_FILE_S3_BUCKET)).build(), map.get(DOCKER_COMPOSE_FILE_S3_KEY)))
                 .collect(Collectors.toList());
 
-        for (Tuple2<String, String> bucketAndKey : bucketAndKeyList) {
-            String bucket = bucketAndKey._1;
+        for (Tuple2<Bucket, String> bucketAndKey : bucketAndKeyList) {
+            Bucket bucket = bucketAndKey._1;
             String key = bucketAndKey._2;
 
             boolean bucketExists = Try.of(() -> s3Helper.bucketExists(bucket)).get();

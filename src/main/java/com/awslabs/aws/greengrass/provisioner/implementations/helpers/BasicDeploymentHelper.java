@@ -652,6 +652,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
             optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
         } else {
+            GroupVersion groupVersion = optionalGroupVersion.get();
+
             // Existing group, can we find the existing keys?
             optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
 
@@ -664,7 +666,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
                 optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
             } else {
-                log.error("Group is not new, keys could not be found, but user not forcing new keys to be created");
+                log.info("Group is not new, keys could not be found, but user not forcing new keys to be created");
+                log.info("Attempting to get the core certificate ARN from the latest group version information");
+                optionalCoreCertificateArn = v2GreengrassHelper.getCoreCertificateArnByGroupVersion(groupVersion);
             }
         }
 
