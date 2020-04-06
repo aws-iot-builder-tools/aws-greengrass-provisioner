@@ -93,13 +93,13 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty())));
     }
 
-    // Test set 11: Expected failure redeploying group without being able to create new keys with Python 3 Hello World without Docker
+    // Test set 11: Expect success redeploying group without being able to create new keys with Python 3 Hello World without Docker
     @Test
     public void shouldFailToRedeployWithoutCreatingNewKeysWithPython3FunctionWithoutDocker() throws IOException {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional.empty())));
         // Clean the directories so we don't have the credentials anymore
         GreengrassITShared.beforeTestSetup();
-        expectedSystemExit.expectSystemExitWithStatus(1);
+        expectedSystemExit.expectSystemExitWithStatus(0);
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional.empty())));
     }
 

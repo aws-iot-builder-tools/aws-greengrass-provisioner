@@ -204,7 +204,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
-    // Test set 10: Expected failure redeploying group without being able to create new keys with Python 3 Hello World with Docker
+    // Test set 10: Expect success redeploying group without being able to create new keys with Python 3 Hello World with Docker
     @Test
     public void shouldFailToRedeployWithoutCreatingNewKeysWithPython3FunctionWithDocker() {
         // Make sure we have a fresh group, not one reused from another test
@@ -217,7 +217,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         genericContainer.stop();
 
         // Expect that the second container returns an error
-        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_NOT_ZERO);
+        runContainer(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(name), EXIT_CODE_IS_ZERO);
     }
 
     // Test set 11: Reuse Python 3 Hello World in another group with Docker
