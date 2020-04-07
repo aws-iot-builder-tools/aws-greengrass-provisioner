@@ -99,7 +99,6 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional.empty())));
         // Clean the directories so we don't have the credentials anymore
         GreengrassITShared.beforeTestSetup();
-        expectedSystemExit.expectSystemExitWithStatus(0);
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommandWithoutForceNewKeys(Optional.empty())));
     }
 
