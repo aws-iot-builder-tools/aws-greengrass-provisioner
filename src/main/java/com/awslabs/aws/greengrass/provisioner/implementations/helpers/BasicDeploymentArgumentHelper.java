@@ -31,54 +31,11 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     V2S3Helper s3Helper;
     @Inject
     SshHelper sshHelper;
+    @Inject
+    TypeSafeConfigHelper typeSafeConfigHelper;
 
     @Inject
     public BasicDeploymentArgumentHelper() {
-    }
-
-    private String getValueOrDefault(String value, Optional<String> defaultValue) {
-        return value == null ? defaultValue.orElse(null) : value;
-    }
-
-    private Integer getValueOrDefault(Integer value, Optional<Integer> defaultValue) {
-        return value == null ? defaultValue.orElse(null) : value;
-    }
-
-    private boolean getValueOrDefault(boolean value, Optional<Boolean> defaultValue) {
-        return value == false ? defaultValue.orElse(false) : value;
-    }
-
-    private Optional<String> getStringDefault(Optional<Config> defaults, String name) {
-        // Get the defaults from a config file
-        if (!defaults.isPresent()) {
-            return Optional.empty();
-        }
-
-        return Try.of(() -> Optional.of(defaults.get().getString(name)))
-                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
-                .get();
-    }
-
-    private Optional<Boolean> getBooleanDefault(Optional<Config> defaults, String name) {
-        // Get the defaults from a config file
-        if (!defaults.isPresent()) {
-            return Optional.empty();
-        }
-
-        return Try.of(() -> Optional.of(defaults.get().getBoolean(name)))
-                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
-                .get();
-    }
-
-    private Optional<Integer> getIntegerDefault(Optional<Config> defaults, String name) {
-        // Get the defaults from a config file
-        if (!defaults.isPresent()) {
-            return Optional.empty();
-        }
-
-        return Try.of(() -> Optional.of(defaults.get().getInt(name)))
-                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
-                .get();
     }
 
     @Override
@@ -102,25 +59,25 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         Optional<Config> defaults = globalDefaultHelper.getGlobalDefaults(ggConstants.getDefaultsConf());
 
-        deploymentArguments.architectureString = getValueOrDefault(deploymentArguments.architectureString, getStringDefault(defaults, "conf.architecture"));
-        deploymentArguments.groupName = getValueOrDefault(deploymentArguments.groupName, getStringDefault(defaults, "conf.groupName"));
-        deploymentArguments.deploymentConfigFilename = getValueOrDefault(deploymentArguments.deploymentConfigFilename, getStringDefault(defaults, "conf.deploymentConfig"));
-        deploymentArguments.buildContainer = getValueOrDefault(deploymentArguments.buildContainer, getBooleanDefault(defaults, "conf.containerBuild"));
-        deploymentArguments.pushContainer = getValueOrDefault(deploymentArguments.pushContainer, getBooleanDefault(defaults, "conf.containerPush"));
-        deploymentArguments.scriptOutput = getValueOrDefault(deploymentArguments.scriptOutput, getBooleanDefault(defaults, "conf.scriptBuild"));
-        deploymentArguments.oemOutput = getValueOrDefault(deploymentArguments.oemOutput, getBooleanDefault(defaults, "conf.oemBuild"));
-        deploymentArguments.ggdOutput = getValueOrDefault(deploymentArguments.ggdOutput, getBooleanDefault(defaults, "conf.ggdBuild"));
-        // deploymentArguments.dockerScriptOutput = getValueOrDefault(deploymentArguments.dockerScriptOutput, getBooleanDefault(defaults, "conf.dockerScriptBuild"));
-        deploymentArguments.ecrRepositoryNameString = getValueOrDefault(deploymentArguments.ecrRepositoryNameString, getStringDefault(defaults, "conf.ecrRepositoryName"));
-        deploymentArguments.noSystemD = getValueOrDefault(deploymentArguments.noSystemD, getBooleanDefault(defaults, "conf.noSystemD"));
-        deploymentArguments.ec2Launch = getValueOrDefault(deploymentArguments.ec2Launch, getStringDefault(defaults, "conf.ec2Launch"));
-        deploymentArguments.dockerLaunch = getValueOrDefault(deploymentArguments.dockerLaunch, getBooleanDefault(defaults, "conf.dockerLaunch"));
-        deploymentArguments.launch = getValueOrDefault(deploymentArguments.launch, getStringDefault(defaults, "conf.launch"));
-        deploymentArguments.s3Bucket = getValueOrDefault(deploymentArguments.s3Bucket, getStringDefault(defaults, "conf.s3Bucket"));
-        deploymentArguments.s3Directory = getValueOrDefault(deploymentArguments.s3Directory, getStringDefault(defaults, "conf.s3Directory"));
-        deploymentArguments.csr = getValueOrDefault(deploymentArguments.csr, getStringDefault(defaults, "conf.csr"));
-        deploymentArguments.certificateArn = getValueOrDefault(deploymentArguments.certificateArn, getStringDefault(defaults, "conf.certificateArn"));
-        deploymentArguments.mqttPort = getValueOrDefault(deploymentArguments.mqttPort, getIntegerDefault(defaults, "conf.mqttPort"));
+        deploymentArguments.architectureString = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.architectureString, typeSafeConfigHelper.getStringDefault(defaults, "conf.architecture"));
+        deploymentArguments.groupName = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.groupName, typeSafeConfigHelper.getStringDefault(defaults, "conf.groupName"));
+        deploymentArguments.deploymentConfigFilename = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.deploymentConfigFilename, typeSafeConfigHelper.getStringDefault(defaults, "conf.deploymentConfig"));
+        deploymentArguments.buildContainer = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.buildContainer, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.containerBuild"));
+        deploymentArguments.pushContainer = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.pushContainer, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.containerPush"));
+        deploymentArguments.scriptOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.scriptOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.scriptBuild"));
+        deploymentArguments.oemOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.oemOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.oemBuild"));
+        deploymentArguments.ggdOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ggdOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.ggdBuild"));
+        // deploymentArguments.dockerScriptOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.dockerScriptOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.dockerScriptBuild"));
+        deploymentArguments.ecrRepositoryNameString = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ecrRepositoryNameString, typeSafeConfigHelper.getStringDefault(defaults, "conf.ecrRepositoryName"));
+        deploymentArguments.noSystemD = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.noSystemD, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.noSystemD"));
+        deploymentArguments.ec2Launch = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ec2Launch, typeSafeConfigHelper.getStringDefault(defaults, "conf.ec2Launch"));
+        deploymentArguments.dockerLaunch = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.dockerLaunch, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.dockerLaunch"));
+        deploymentArguments.launch = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.launch, typeSafeConfigHelper.getStringDefault(defaults, "conf.launch"));
+        deploymentArguments.s3Bucket = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.s3Bucket, typeSafeConfigHelper.getStringDefault(defaults, "conf.s3Bucket"));
+        deploymentArguments.s3Directory = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.s3Directory, typeSafeConfigHelper.getStringDefault(defaults, "conf.s3Directory"));
+        deploymentArguments.csr = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.csr, typeSafeConfigHelper.getStringDefault(defaults, "conf.csr"));
+        deploymentArguments.certificateArn = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.certificateArn, typeSafeConfigHelper.getStringDefault(defaults, "conf.certificateArn"));
+        deploymentArguments.mqttPort = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.mqttPort, typeSafeConfigHelper.getIntegerDefault(defaults, "conf.mqttPort"));
 
         if (deploymentArguments.pushContainer) {
             // If they want to push a container then we have to build it
@@ -186,7 +143,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         }
 
         // Depends on group name being set
-        deploymentArguments.ecrImageNameString = getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
+        deploymentArguments.ecrImageNameString = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ecrImageNameString, Optional.of(deploymentArguments.groupName));
 
         if (deploymentArguments.architectureString != null) {
             deploymentArguments.architecture = getArchitecture(deploymentArguments.architectureString);

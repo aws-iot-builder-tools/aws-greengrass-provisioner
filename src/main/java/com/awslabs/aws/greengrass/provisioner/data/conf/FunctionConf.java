@@ -65,9 +65,9 @@ public abstract class FunctionConf {
 
     public abstract boolean isGreengrassContainer();
 
-    public abstract int getUid();
+    public abstract Optional<Integer> getUid();
 
-    public abstract int getGid();
+    public abstract Optional<Integer> getGid();
 
     public abstract Map<String, String> getEnvironmentVariables();
 
