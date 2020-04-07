@@ -357,8 +357,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         functionConfBuilder.inputTopics(config.getStringList(GGConstants.CONF_INPUT_TOPICS));
         functionConfBuilder.isAccessSysFs(config.getBoolean("conf.accessSysFs"));
         functionConfBuilder.isGreengrassContainer(config.getBoolean(ggConstants.getConfGreengrassContainer()));
-        functionConfBuilder.uid(config.getInt("conf.uid"));
-        functionConfBuilder.gid(config.getInt("conf.gid"));
+        functionConfBuilder.uid(typeSafeConfigHelper.getIntegerDefault(Optional.of(config), "conf.uid"));
+        functionConfBuilder.gid(typeSafeConfigHelper.getIntegerDefault(Optional.of(config), "conf.gid"));
 
         setLocalDeviceResourcesConfig(functionConfBuilder, config);
         setLocalVolumeResourcesConfig(functionConfBuilder, config);

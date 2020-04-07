@@ -39,4 +39,16 @@ public interface TypeSafeConfigHelper {
     <T, S extends SdkBuilder<?, T>> T convertToSdkObject(ConfigObject configObject, Class<S> builderClass);
 
     Config addDefaultValues(Map<String, String> defaults, Optional<Config> optionalConfig);
+
+    String getValueOrDefault(String value, Optional<String> defaultValue);
+
+    Integer getValueOrDefault(Integer value, Optional<Integer> defaultValue);
+
+    boolean getValueOrDefault(boolean value, Optional<Boolean> defaultValue);
+
+    Optional<String> getStringDefault(Optional<Config> defaults, String name);
+
+    Optional<Boolean> getBooleanDefault(Optional<Config> defaults, String name);
+
+    Optional<Integer> getIntegerDefault(Optional<Config> defaults, String name);
 }

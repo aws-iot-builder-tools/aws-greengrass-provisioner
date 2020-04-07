@@ -186,7 +186,13 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER);
         }
 
-        functionExecutionConfigBuilder.runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+        if (functionConf.getUid().isPresent() || functionConf.getGid().isPresent()) {
+            FunctionRunAsConfig.Builder functionRunAsConfigBuilder = FunctionRunAsConfig.builder();
+            functionConf.getUid().ifPresent(uid -> functionRunAsConfigBuilder.uid(uid));
+            functionConf.getGid().ifPresent(gid -> functionRunAsConfigBuilder.gid(gid));
+
+            functionExecutionConfigBuilder.runAs(functionRunAsConfigBuilder.build());
+        }
 
         functionConfigurationEnvironmentBuilder.resourceAccessPolicies(resourceAccessPolicies);
 

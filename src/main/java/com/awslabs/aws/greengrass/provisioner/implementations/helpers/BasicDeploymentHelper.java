@@ -776,7 +776,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ////////////////////////////////////////////////////
 
         boolean functionsRunningAsRoot = functionConfs.stream()
-                .anyMatch(functionConf -> (functionConf.getUid() == 0) || (functionConf.getGid() == 0));
+                .anyMatch(functionConf -> ((functionConf.getUid().isPresent() && (functionConf.getUid().get() == 0))
+                        || (functionConf.getGid().isPresent() && (functionConf.getGid().get() == 0))));
 
         if (functionsRunningAsRoot) {
             log.warn("At least one function was detected that is configured to run as root");
