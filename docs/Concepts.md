@@ -7,7 +7,6 @@ Deployment configurations specify:
 - Which functions to deploy, if any
 - Which connectors to deploy, if any
 - Role and policy information for the core, if different than the defaults
-- Which Greengrass Device scripts to generate when the `--ggd` option is specified, if any
 
 Deployment configuration defaults are stored in `deployments/deployment.defaults.conf`.
 
@@ -101,14 +100,6 @@ Lambda function as the source, the local shadow service as the destination, and 
 as the subject. The second entry specifies the Lambda function as the destination, the local shadow service as the
 source, and `$aws/things/CONNECTED_SHADOW/shadow/#` as the subject.  `CONNECTED_SHADOW` is replaced with the actual
 thing name.
-
-## Greengrass Device (GGD) scripts
-
-Greengrass Device scripts are scripts (currently Python only) that can be packaged with credentials that allow them to
-connect to the Greengrass Core as Greengrass Devices.  These are simulated devices that can be used to test the core's
-connectivity info and Greengrass discovery and they can also serve as a way to interact with the core outside of the
-core's Lambda runtime.  These scripts run as normal Linux processes and can be run from anywhere that the core can be
-reached, either on the core itself or on a remote machine.
 
 # Environment variables available to Lambda functions
 

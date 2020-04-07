@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.interfaces.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.iot.data.ThingName;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.Subscription;
@@ -18,7 +17,7 @@ public interface SubscriptionHelper {
 
     Subscription createSubscriptionFromCloud(String target, String topicFilter);
 
-    List<Subscription> connectFunctionsAndDevices(Map<Function, FunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs);
+    List<Subscription> connectFunctions(Map<Function, FunctionConf> functionAliasToConfMap);
 
     List<Subscription> connectFunctionsToShadows(Map<Function, FunctionConf> functionAliasToConfMap);
 

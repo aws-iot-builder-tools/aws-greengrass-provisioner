@@ -9,6 +9,7 @@ import com.awslabs.general.helpers.interfaces.JsonHelper;
 import com.awslabs.iot.data.GreengrassGroupId;
 import com.awslabs.iot.data.ImmutableThingName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
+import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.iot.IotClient;
@@ -93,9 +94,9 @@ public class BasicIotHelper implements IotHelper {
 
         CreateKeysAndCertificateResponse createKeysAndCertificateResponse = iotClient.createKeysAndCertificate(createKeysAndCertificateRequest);
 
-        String deviceName = isCore ? greengrassGroupId.getGroupId() : ggConstants.trimGgdPrefix(ImmutableThingName.builder().name(subName).build());
-        String privateKeyFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, KEY);
-        String publicSignedCertificateFilename = BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM, CRT);
+        String deviceName = greengrassGroupId.getGroupId();
+        String privateKeyFilename = getPrivateKeyFilename(deviceName);
+        String publicSignedCertificateFilename = getPublicSignedCertificateFilename(deviceName);
 
         ioHelper.writeFile(privateKeyFilename, createKeysAndCertificateResponse.keyPair().privateKey().getBytes());
         log.info("Device private key written to [" + privateKeyFilename + "]");
@@ -106,5 +107,15 @@ public class BasicIotHelper implements IotHelper {
         ioHelper.writeFile(createKeysAndCertificateFilename, jsonHelper.toJson(keysAndCertificate).getBytes());
 
         return keysAndCertificate;
+    }
+
+    @NotNull
+    public String getPublicSignedCertificateFilename(String deviceName) {
+        return BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, PEM);
+    }
+
+    @NotNull
+    public String getPrivateKeyFilename(String deviceName) {
+        return BUILD_DIRECTORY + String.join(DOT_DELIMITER, deviceName, KEY);
     }
 }

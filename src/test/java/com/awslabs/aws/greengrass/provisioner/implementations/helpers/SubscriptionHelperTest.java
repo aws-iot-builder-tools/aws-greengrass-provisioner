@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.Language;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
@@ -121,9 +120,7 @@ public class SubscriptionHelperTest {
 
         map.put(abOutputFunction, abOutput);
 
-        List<GGDConf> ggdConfList = new ArrayList<>();
-
-        List<Subscription> output = basicSubscriptionHelper.connectFunctionsAndDevices(map, ggdConfList);
+        List<Subscription> output = basicSubscriptionHelper.connectFunctions(map);
 
         Assert.assertTrue(topics.stream().allMatch(topic -> oneMatches(output, abInputArn, abOutputArn, topic)));
     }

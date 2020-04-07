@@ -20,8 +20,6 @@ public interface GGVariables {
 
     String getDeviceDefinitionName(GreengrassGroupName greengrassGroupName);
 
-    String getGgdArchiveName(GreengrassGroupName greengrassGroupName);
-
     String getOemArchiveName(GreengrassGroupName greengrassGroupName);
 
     String getGgShScriptName(GreengrassGroupName greengrassGroupName);

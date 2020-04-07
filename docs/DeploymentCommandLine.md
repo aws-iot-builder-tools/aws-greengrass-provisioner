@@ -143,14 +143,6 @@ Long form: `--oem`
 Generates an archive containing the core's public key, private key, public signed certificate, config.json, and root CA.
 This is useful for OEM devices where Greengrass is pre-installed.
 
-## Generate Greengrass Device scripts
-
-Long form: `--ggd`
-
-Generates the Greengrass Device scripts that can be used to test the core's connectivity info and discovery information.
-This is stored in `build/ggd.GROUP_NAME.sh` which will extract the GGD scripts, configuration, and certificates when a
-user runs it.
-
 ## Use Greengrass [Hardware Security Integration](https://docs.aws.amazon.com/greengrass/latest/developerguide/hardware-security.html) (HSI)
 
 Long form: `--hsi`
@@ -185,7 +177,7 @@ Long form: `--s3-bucket`
 
 Long form: `--s3-directory`
 
-Stores build artifacts (OEM file, bootstrap script, and/or GGDs) into S3. Bucket and directory must both be specified.
+Stores build artifacts (OEM file or bootstrap script) into S3. Bucket and directory must both be specified.
 
 ## Bootstrap a non-EC2 host
 

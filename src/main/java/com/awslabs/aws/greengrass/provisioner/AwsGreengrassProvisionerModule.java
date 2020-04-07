@@ -166,11 +166,6 @@ public class AwsGreengrassProvisionerModule {
     }
 
     @Provides
-    public GGDHelper provideGGDHelper(BasicGGDHelper basicGGDHelper) {
-        return basicGGDHelper;
-    }
-
-    @Provides
     public SubscriptionHelper provideSubscriptionHelper(BasicSubscriptionHelper basicSubscriptionHelper) {
         return basicSubscriptionHelper;
     }

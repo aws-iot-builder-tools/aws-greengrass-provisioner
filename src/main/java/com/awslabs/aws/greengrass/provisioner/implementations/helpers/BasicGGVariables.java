@@ -49,11 +49,6 @@ public class BasicGGVariables implements GGVariables {
     }
 
     @Override
-    public String getGgdArchiveName(GreengrassGroupName greengrassGroupName) {
-        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "ggd", greengrassGroupName.getGroupName(), "tar"));
-    }
-
-    @Override
     public String getOemArchiveName(GreengrassGroupName greengrassGroupName) {
         return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "oem", greengrassGroupName.getGroupName(), "tar"));
     }

@@ -25,7 +25,6 @@ public class DeploymentArguments extends Arguments {
     private final String LONG_ECR_IMAGE_NAME_OPTION = "--ecr-image-name";
     private final String SHORT_ECR_IMAGE_NAME_OPTION = "-i";
     private final String LONG_SCRIPT_OUTPUT_OPTION = "--script";
-    private final String LONG_GGD_OUTPUT_OPTION = "--ggd";
     private final String LONG_NO_SYSTEMD_OPTION = "--no-systemd";
     private final String LONG_LAUNCH_OPTION = "--launch";
     private final String LONG_DOCKER_LAUNCH_OPTION = "--docker-launch";
@@ -55,8 +54,6 @@ public class DeploymentArguments extends Arguments {
     public boolean oemOutput;
     @Parameter(names = {LONG_OEM_JSON_OUTPUT_OPTION}, description = "Generate JSON with OEM files and store it in the specified location")
     public String oemJsonOutput;
-    @Parameter(names = {LONG_GGD_OUTPUT_OPTION}, description = "Generate Greengrass Device scripts [ggd.GROUP_NAME.sh]")
-    public boolean ggdOutput;
     @Parameter(names = {LONG_NO_SYSTEMD_OPTION}, description = "Disable systemd support in config.json")
     public boolean noSystemD;
     @Parameter(names = {LONG_EC2_LAUNCH_OPTION}, description = "Launch an EC2 instance for this deployment")

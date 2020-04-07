@@ -113,16 +113,11 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         MountableFile hostFunctionsMountableFile = MountableFile.forHostPath(new File(hostFunctionsPath).toPath());
         String containerFunctionsPath = String.join("", "/", GreengrassITShared.FUNCTIONS);
 
-        String hostGgdsPath = GreengrassITShared.GGDS;
-        MountableFile hostGgdsMountableFile = MountableFile.forHostPath(new File(hostGgdsPath).toPath());
-        String containerGgdsPath = String.join("", "/", GreengrassITShared.GGDS);
-
         GenericContainer genericContainer = new GenericContainer<>(getContainerName())
                 .withCopyFileToContainer(hostAwsCredentialsMountableFile, containerAwsCredentialsPath)
                 .withCopyFileToContainer(hostFoundationMountableFile, containerFoundationPath)
                 .withCopyFileToContainer(hostDeploymentsMountableFile, containerDeploymentsPath)
                 .withCopyFileToContainer(hostFunctionsMountableFile, containerFunctionsPath)
-                .withCopyFileToContainer(hostGgdsMountableFile, containerGgdsPath)
                 .withCommand(arguments);
 
         genericContainer.start();

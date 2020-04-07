@@ -12,8 +12,6 @@ import javax.inject.Inject;
 import java.io.File;
 
 public class BasicGGConstants implements GGConstants {
-    private static final String DEVICE_KEY = "device.key";
-    private static final String DEVICE_CRT = "device.crt";
     private static final String DEPLOYMENTS_DIRECTORY = "deployments";
     @Inject
     IoHelper ioHelper;
@@ -60,11 +58,6 @@ public class BasicGGConstants implements GGConstants {
     @Override
     public String getGgShadowServiceName() {
         return "GGShadowService";
-    }
-
-    @Override
-    public String getGgdPrefix() {
-        return "ggd";
     }
 
     @Override
@@ -118,11 +111,6 @@ public class BasicGGConstants implements GGConstants {
     }
 
     @Override
-    public String getGgdDefaultsConf() {
-        return "ggds/ggd.defaults.conf";
-    }
-
-    @Override
     public String getOfficialGreengrassEcrEndpoint() {
         return String.join(".",
                 getOfficialGreengrassAccountId(),
@@ -134,21 +122,6 @@ public class BasicGGConstants implements GGConstants {
         return String.join("/",
                 getOfficialGreengrassEcrEndpoint(),
                 "aws-iot-greengrass:1.10.0-amazonlinux");
-    }
-
-    @Override
-    public String trimGgdPrefix(ThingName thingName) {
-        return thingName.getName().replaceFirst(getGgdPrefix() + "-", "");
-    }
-
-    @Override
-    public String getDevicePublicCertificateName(ThingName thingName) {
-        return String.join(".", getGgdPrefix(), thingName.getName(), DEVICE_CRT);
-    }
-
-    @Override
-    public String getDevicePrivateKeyName(ThingName thingName) {
-        return String.join(".", getGgdPrefix(), thingName.getName(), DEVICE_KEY);
     }
 
     @Override

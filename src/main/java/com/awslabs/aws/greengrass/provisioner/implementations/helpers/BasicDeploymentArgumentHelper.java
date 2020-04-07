@@ -66,7 +66,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
         deploymentArguments.pushContainer = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.pushContainer, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.containerPush"));
         deploymentArguments.scriptOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.scriptOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.scriptBuild"));
         deploymentArguments.oemOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.oemOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.oemBuild"));
-        deploymentArguments.ggdOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ggdOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.ggdBuild"));
         // deploymentArguments.dockerScriptOutput = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.dockerScriptOutput, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.dockerScriptBuild"));
         deploymentArguments.ecrRepositoryNameString = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.ecrRepositoryNameString, typeSafeConfigHelper.getStringDefault(defaults, "conf.ecrRepositoryName"));
         deploymentArguments.noSystemD = typeSafeConfigHelper.getValueOrDefault(deploymentArguments.noSystemD, typeSafeConfigHelper.getBooleanDefault(defaults, "conf.noSystemD"));
@@ -198,8 +197,8 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
                 throw new RuntimeException("S3 bucket specified without S3 directory. S3 directory is required. Set S3 directory to '/' to store the output in the root of the bucket.");
             }
 
-            if ((!deploymentArguments.oemOutput) && (!deploymentArguments.scriptOutput) && (!deploymentArguments.ggdOutput)) {
-                throw new RuntimeException("S3 destination specified but not output files will be generated. You must specify at least one of OEM, script, and GGD output to use S3.");
+            if ((!deploymentArguments.oemOutput) && (!deploymentArguments.scriptOutput)) {
+                throw new RuntimeException("S3 destination specified but not output files will be generated. You must specify either OEM or script output to use S3.");
             }
 
             // At this point the S3 options look good, make sure that the bucket exists

@@ -29,8 +29,6 @@ public abstract class DeploymentConf {
 
     public abstract Optional<RoleConf> getServiceRoleConf();
 
-    public abstract List<String> getGgds();
-
     public abstract Map<String, String> getEnvironmentVariables();
 
     public abstract boolean isSyncShadow();
