@@ -878,7 +878,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
                 String ggdThingName = getGgdThingName(thingName);
 
-                log.info("- Creating keys and certificate for Greengrass device thing [" + thingName + "]");
+                log.info("- Creating keys and certificate for Greengrass device thing [" + thingName.getName() + "]");
                 KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, ggdThingName);
 
                 log.info("Creating and attaching policies to Greengrass device thing");
