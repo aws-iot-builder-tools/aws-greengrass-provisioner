@@ -627,7 +627,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             throw new RuntimeException("No role alias specified for the Greengrass core role [" + deploymentConf.getCoreRoleConf().getName());
         }
 
-        optionalCreateRoleAliasResponse = Optional.of(v2IotHelper.forceCreateRoleAlias(coreRole, ImmutableRoleAlias.builder().name(deploymentConf.getCoreRoleConf().getAlias().get()).build()));
+        ImmutableRoleAlias coreRoleAlias = ImmutableRoleAlias.builder().name(deploymentConf.getCoreRoleConf().getAlias().get()).build();
+        log.info("Creating core role alias [" + coreRoleAlias.getName() + "]");
+        optionalCreateRoleAliasResponse = Optional.of(v2IotHelper.forceCreateRoleAlias(coreRole, coreRoleAlias));
 
         //////////////////////////////////
         // Create or reuse certificates //
