@@ -11,7 +11,6 @@ import java.util.Optional;
 
 public interface DeploymentHelper extends Operation<DeploymentArguments> {
     String EMPTY = "EMPTY";
-    String CORE_SUB_NAME = "core";
 
     DeploymentConf getDeploymentConf(ThingName coreThingName, String deploymentConfigFilename, GreengrassGroupName greengrassGroupName);
 

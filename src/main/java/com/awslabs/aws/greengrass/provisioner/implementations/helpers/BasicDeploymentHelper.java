@@ -446,7 +446,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(deploymentArguments.groupName).build();
 
         // Get the core thing name
-        ThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
+        ImmutableThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
 
         ///////////////////////////////////////
         // Load the deployment configuration //
@@ -645,13 +645,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         } else if (!optionalGroupVersion.isPresent()) {
             // New group, create new keys
             log.info("Group is new, no certificate ARN or CSR supplied, creating new keys");
-            KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
+            KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificateForCore(greengrassGroupName);
+            iotHelper.writePublicSignedCertificateFileForCore(coreKeysAndCertificate, greengrassGroupName);
+            iotHelper.writePrivateKeyFileForCore(coreKeysAndCertificate, greengrassGroupName);
+            iotHelper.writeRootCaFile(greengrassGroupName);
+            iotHelper.writeIotCpPropertiesFile(greengrassGroupName, coreThingName, coreRoleAlias);
             optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
         } else {
             GroupVersion groupVersion = optionalGroupVersion.get();
 
             // Existing group, can we find the existing keys?
-            optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
+            optionalCoreKeysAndCertificate = iotHelper.loadKeysAndCertificateForCore(greengrassGroupName);
 
             if (optionalCoreKeysAndCertificate.isPresent()) {
                 // Found keys, we'll reuse them
@@ -659,7 +663,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             } else if (deploymentArguments.forceCreateNewKeysOption) {
                 // Didn't find keys but the user has requested that they be recreated
                 log.info("Group is not new, user forcing new keys to be created");
-                KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, CORE_SUB_NAME);
+                KeysAndCertificate coreKeysAndCertificate = iotHelper.createKeysAndCertificateForCore(greengrassGroupName);
                 optionalCoreKeysAndCertificate = Optional.of(coreKeysAndCertificate);
             } else {
                 log.info("Group is not new, keys could not be found, but user not forcing new keys to be created");

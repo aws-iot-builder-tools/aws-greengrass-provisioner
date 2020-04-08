@@ -19,7 +19,7 @@ public class BasicGGVariables implements GGVariables {
     }
 
     @Override
-    public ThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
+    public ImmutableThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
         return ImmutableThingName.builder().name(String.join("_", greengrassGroupName.getGroupName(), "Core")).build();
     }
 
