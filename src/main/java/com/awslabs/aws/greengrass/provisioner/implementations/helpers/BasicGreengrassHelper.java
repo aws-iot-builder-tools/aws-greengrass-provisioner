@@ -860,7 +860,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private void logLocalResourcesScrubbed(FunctionConf functionConf) {
-        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName() + "] because it is not running in the Greengrass container");
+        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName().getName() + "] because it is not running in the Greengrass container");
     }
 
     private Resource createResource(ResourceDataContainer resourceDataContainer, String name, String id) {
