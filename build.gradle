@@ -74,7 +74,7 @@ def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.9.9'
+def resultsIteratorForAwsJavaSdkVersion = '0.9.11'
 def nomenEstOmenVersion = '2.0.0'
 def jschVersion = '0.1.55'
 

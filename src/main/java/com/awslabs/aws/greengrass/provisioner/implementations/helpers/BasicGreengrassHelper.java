@@ -465,7 +465,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupVersion(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId).findFirst()
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId)
                 // If the group exists but has no versions yet, don't use the group information
                 .filter(groupInformation -> groupInformation.latestVersion() != null);
 

@@ -18,7 +18,6 @@ import software.amazon.awssdk.services.cloudformation.CloudFormationClient;
 import software.amazon.awssdk.services.cloudwatchlogs.CloudWatchLogsClient;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ecr.EcrClient;
-import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
 import java.util.Arrays;
@@ -38,11 +37,6 @@ public class AwsGreengrassProvisionerModule {
     @Provides
     public CloudWatchLogsClient provideCloudWatchLogsClient() {
         return new V2SafeProvider<>(CloudWatchLogsClient::create).get();
-    }
-
-    @Provides
-    public LambdaClient provideLambdaClient() {
-        return new V2SafeProvider<>(LambdaClient::create).get();
     }
 
     @Provides
