@@ -4,10 +4,10 @@ Greengrass Provisioner allows to easily automate the *Getting Started* provision
 
 [aws-doc]: https://docs.aws.amazon.com/greengrass/latest/developerguide/gg-gs.html
 
-- on the Edge
+- On the Edge
   - AWS IoT Greengrass core software download and installation 
   - AWS IoT Greengrass core software environment setup (e.g. certificates)
-- on the AWS cloud services
+- On the AWS cloud services
   - AWS Greengrass group creation and initial configuration
   - AWS Lambda function creation or e
   - association of one or more Lambda function(s) to a Greengrass group
@@ -20,7 +20,7 @@ All these steps are usually accomplished in sequentially and no  manual interven
 
 To use GGP you need to have:
 
-- an AWS account
+- An AWS account
 - [the AWS Command Line Interface installed][aws1]
 - [the AWS Command Line Interface configured][aws2]
 - [Docker installed][docker]
@@ -29,7 +29,7 @@ To use GGP you need to have:
 [aws2]: https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-getting-started.html
 [docker]: https://docs.docker.com/install/overview/
 
-You can now pull the GGP script locally
+You can now pull the GGP script locally:
 
 ```bash
 git clone https://github.com/aws-samples/aws-greengrass-lambda-functions
@@ -38,8 +38,8 @@ cd aws-greengrass-lambda-functions
 
 Note that there are 2 main git repositories:
 
-- [aws-greengrass-lambda-functions][ggp1]: for those who plan to **use** GGP. It contains the compiled GGP (or better a bash script that pulls locally the Docker image containing the compiled GGP).
-- [aws-greengrass-provisioner][ggp2]: for those who plan to **contribute to the development** of GGP. It contains the source code of GGP, the Gradle and Docker build files to automate the building process
+- [aws-greengrass-lambda-functions][ggp1]: For those who plan to **use** GGP. It contains the compiled GGP (or better a bash script that pulls locally the Docker image containing the compiled GGP).
+- [aws-greengrass-provisioner][ggp2]: For those who plan to **contribute to the development** of GGP. It contains the source code of GGP, the Gradle and Docker build files to automate the building process
 
 [ggp1]: https://github.com/aws-samples/aws-greengrass-lambda-functions
 [ggp2]: https://github.com/awslabs/aws-greengrass-provisioner
@@ -66,7 +66,7 @@ Every 5 seconds the "Hello World" function publishes a message, sent on the foll
 ${AWS_IOT_THING_NAME}/python2/hello/world
 ```
 
-with a message that looks like:
+With a message that looks like:
 
 ```json
 {"thing_arn": "arn:aws:iot:us-east-1:5xxxxxxxxxx7:thing/xxxxxxxxxxxx_Core", "message": "Hello world! Sent
@@ -99,10 +99,10 @@ Go to the folder where you git cloned the repository and in the console, run:
 
 With this command, you provide to the GGP:
 
-- the new Greengrass group name you want to create: `test1`
-- the platform of the Edge that you want to setup: `ARM64` (i.e. Raspberry Pi)
-- the Lambda function that you want to create: `python2-hello-world`
-- the flag `--script` signaling that you want a *1-click bootstrap setup* script for the Edge
+- The new Greengrass group name you want to create: `test1`
+- The platform of the Edge that you want to setup: `ARM64` (i.e. Raspberry Pi)
+- The Lambda function that you want to create: `python2-hello-world`
+- The flag `--script` signaling that you want a *1-click bootstrap setup* script for the Edge
 
 Now, you are ready to *ssh copy* the setup script on one of your Raspberry Pis and execute it. Make sure that the Raspberry Pi is turned on, connected to the same Wi-Fi network, pingable, has shh enabled and then run:
 
@@ -246,7 +246,7 @@ Let us suppose that you want use GGP with 1 or more existing Lambda(s). In this 
 - HelloWorldPython1
 - HelloWorldPython2
 
-each one need to have a ```live``` alias **not** associated to ```Version: $LATEST```, otherwise it GG deployment is bound to fail.
+Each one need to have a ```live``` alias **not** associated to ```Version: $LATEST```, otherwise it GG deployment is bound to fail.
 
 ## Main steps
 For GGP to work you need to setup the following folder structure:
@@ -259,7 +259,7 @@ For GGP to work you need to setup the following folder structure:
 | |____function.defaults.conf
 ```
 
-where the conf file ```existingLambda.conf``` contains the name of the existing Lambda functions.
+Where the conf file ```existingLambda.conf``` contains the name of the existing Lambda functions.
 
 ```bash
 conf {

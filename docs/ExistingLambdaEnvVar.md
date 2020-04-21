@@ -1,6 +1,9 @@
 # Supported GGP Environment Variables for existing Lambda deployment
+
 If you want to create a new GG group using an existing Lambda function you need to set a ```GGP_FUNCTION_CONF``` environment variable inside your Lambda.
+
 For example, given the following configuration stored as `value` of the ```GGP_FUNCTION_CONF```:
+
 ```bash
 conf {
     language = "PYTHON2_7",
