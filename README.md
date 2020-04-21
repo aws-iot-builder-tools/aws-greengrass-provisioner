@@ -1,5 +1,7 @@
 # AWS Greengrass Provisioner (AWS GGP or GGP)
 
+[STOP! If this is your first time here you can get started quickly with the basic tutorials!](docs/BasicTutorials.md)
+
 Note: GGD support was removed from the latest version of GGP since it was not widely used and has not been updated in a long time. If you need GGD support please create a Github issue.
 
 [![Build Status](https://travis-ci.org/awslabs/aws-greengrass-provisioner.svg?branch=master)](https://travis-ci.org/awslabs/aws-greengrass-provisioner)

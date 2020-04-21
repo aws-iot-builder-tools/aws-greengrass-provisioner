@@ -273,6 +273,7 @@ conf {
   functions = ["~lambda~:live"]
 }
 ```
+
 > Note: if more than one function is found, GGP will fail.
 
 Now, you need to configure the GG group. In the previous example, the configuration was placed inside the ```function.conf```. If the lambda function already exists in the AWS console, then, you need to place the GG configuration inside the *Enviromental Variable*  ```GGP_FUNCTION_CONF```.
@@ -282,9 +283,10 @@ For example:
 conf {  language = "PYTHON2_7"  functionName = "HelloWorldPython"  handlerName = "HelloWorldPython.function_handler"  aliasName = "PROD"  memorySizeInKb = 131072  pinned = true  timeoutInSeconds = 60  fromCloudSubscriptions = []  toCloudSubscriptions = [${AWS_IOT_THING_NAME}"/python2/hello/world"]  outputTopics = []  inputTopics = []}
 ```
 
-You can find more information about the parameters at this link.
+[The docs for ```GGP_FUNCTION_CONF```](ExistingLambdaEnvVar.md) explain in more detail how this works for additional options.
 
 Now, you can run the GGP using the standard command:
+
 ```bash
 ./ggp.sh -g test2 -a ARM64 -d deployments/existingLambda.conf.conf --script
 ```
