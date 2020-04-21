@@ -1,7 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.conf.GGDConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
@@ -19,7 +18,6 @@ import software.amazon.awssdk.services.greengrass.model.Subscription;
 import javax.inject.Inject;
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class BasicSubscriptionHelper implements SubscriptionHelper {
     private final Logger log = LoggerFactory.getLogger(BasicSubscriptionHelper.class);
@@ -37,7 +35,7 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
     }
 
     @Override
-    public List<Subscription> connectFunctionsAndDevices(Map<Function, FunctionConf> functionAliasToConfMap, List<GGDConf> ggdConfs) {
+    public List<Subscription> connectFunctions(Map<Function, FunctionConf> functionAliasToConfMap) {
         // Gather up the list of output topics and each function ARN that uses them
         Map<String, List<String>> outputTopicAndFunctionArnList = functionAliasToConfMap.entrySet().stream()
                 .flatMap(entry -> entry.getValue().getOutputTopics().stream().map(topic -> new Tuple2<>(topic, entry.getKey().functionArn())))
@@ -48,28 +46,12 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
                 .flatMap(entry -> entry.getValue().getInputTopics().stream().map(topic -> new Tuple2<>(topic, entry.getKey().functionArn())))
                 .collect(Collectors.groupingBy(tuple -> tuple._1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
 
-        // Gather up the list of output topics and each thing ARN (GGD) that uses them
-        Map<String, List<String>> outputTopicAndThingArnList = ggdConfs.stream()
-                .map(ggdConf -> new Tuple2<>(v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn(), ggdConf))
-                .flatMap(tuple -> tuple._2.getOutputTopics().stream().map(topic -> new Tuple2<>(topic, tuple._1)))
-                .collect(Collectors.groupingBy(tuple -> tuple._1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
-
-        // Gather up the list of input topics and each thing ARN (GGD) that uses them
-        Map<String, List<String>> inputTopicAndThingArnList = ggdConfs.stream()
-                .map(ggdConf -> new Tuple2<>(v2IotHelper.getThingArn(ImmutableThingName.builder().name(ggdConf.getThingName()).build()).get().getArn(), ggdConf))
-                .flatMap(tuple -> tuple._2.getInputTopics().stream().map(topic -> new Tuple2<>(topic, tuple._1)))
-                .collect(Collectors.groupingBy(tuple -> tuple._1, Collectors.mapping(Tuple2::_2, Collectors.toList())));
-
         // Copy the maps
         Map<String, List<String>> outputTopicAndArnList = outputTopicAndFunctionArnList.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
         Map<String, List<String>> inputTopicAndArnList = inputTopicAndFunctionArnList.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-
-        // Merge topic -> thing ARN maps with the topic -> function ARN maps
-        outputTopicAndThingArnList.forEach((key, value) -> outputTopicAndArnList.merge(key, value, (v1, v2) -> Stream.concat(v1.stream(), v2.stream()).collect(Collectors.toList())));
-        inputTopicAndThingArnList.forEach((key, value) -> inputTopicAndArnList.merge(key, value, (v1, v2) -> Stream.concat(v1.stream(), v2.stream()).collect(Collectors.toList())));
 
         // For each output topic see if there is a matching input topic candidate
         Set<String> outputTopics = outputTopicAndFunctionArnList.keySet();

@@ -116,7 +116,9 @@ public class GreengrassEndToEndIT {
         MatcherAssert.assertThat(oemArchiveName.exists(), is(true));
     }
 
+    // Note: This test is now ignored because the function defaults no longer contains the uid and gid values
     @Test
+    @Ignore
     public void shouldFailWhenTryingToRunFunctionWithUidAndGidZero() throws IOException, InterruptedException, MqttException {
         expectedSystemExit.expectSystemExitWithStatus(1);
 

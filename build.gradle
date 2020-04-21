@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'java-library'
     id 'application'
     id 'idea'
 
@@ -8,9 +9,6 @@ plugins {
 
     // Downloads binary dependencies
     id 'de.undercouch.download' version '4.0.4'
-
-    // Adds dependencyUpdates task
-    id 'com.github.ben-manes.versions' version '0.28.0'
 }
 
 def gradleDependencyVersion = '6.3'
@@ -59,10 +57,10 @@ def jcabiVersion = '0.18.1'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.6'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.11.1'
+def awsSdk2Version = '2.12.0'
 def mavenInvokerVersion = '3.0.1'
 def commonsTextVersion = '1.8'
-def commonsLangVersion = '3.9'
+def commonsLangVersion = '3.10'
 def commonsIoVersion = '2.6'
 def junitVersion = '4.13'
 def systemRulesVersion = '1.19.0'
@@ -70,13 +68,15 @@ def mockitoVersion = '3.3.3'
 def vavrVersion = '0.10.2'
 def httpClientVersion = '4.5.12'
 def jodahFailsafeVersion = '2.3.4'
-def testContainersVersion = '1.13.0'
+def testContainersVersion = '1.14.0'
 def hamcrestVersion = '2.2'
 def awsIotCoreWebsocketsVersion = '0.6.3'
 def awaitilityVersion = '4.0.2'
 def immutablesValueVersion = '2.8.3'
 def awsLambdaJavaCoreVersion = '1.2.0'
-def resultsIteratorForAwsJavaSdkVersion = '0.8.6'
+def resultsIteratorForAwsJavaSdkVersion = '0.9.11'
+def nomenEstOmenVersion = '2.0.0'
+def jschVersion = '0.1.55'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -122,15 +122,14 @@ shadowJar {
     }
 }
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
-
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
 
 repositories {
     mavenCentral()
+
+    maven { url "https://plugins.gradle.org/m2/" }
 
     maven { url "https://repo.gradle.org/gradle/libs-releases-local/" }
 
@@ -141,12 +140,17 @@ repositories {
 sourceSets {
     integrationTest {
         java {
-            compileClasspath += sourceSets.main.output + configurations.testCompile
-            runtimeClasspath += output + compileClasspath + configurations.testRuntime
+            compileClasspath += sourceSets.main.output
+            runtimeClasspath += sourceSets.main.output
 
             srcDir file('src/integration-test/java')
         }
     }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom implementation
+    integrationTestApi.extendsFrom api
 }
 
 task integrationTest(type: Test) {
@@ -165,101 +169,69 @@ dependencies {
     // Immutables (requires annotation processing for code generation)
     annotationProcessor "org.immutables:value:$immutablesValueVersion"
     annotationProcessor "org.immutables:gson:$immutablesValueVersion"
-    compile "org.immutables:value:$immutablesValueVersion"
-    compile "org.immutables:gson:$immutablesValueVersion"
+    implementation "org.immutables:value:$immutablesValueVersion"
+    implementation "org.immutables:gson:$immutablesValueVersion"
 
     // Dependency injection with Dagger
-    compile "com.google.dagger:dagger:$daggerVersion"
+    implementation "com.google.dagger:dagger:$daggerVersion"
 
-    compile "com.typesafe:config:$configVersion"
-    compile "org.zeroturnaround:zt-zip:$ztZipVersion"
-    compile "com.beust:jcommander:$jcommanderVersion"
-    compile "org.slf4j:slf4j-log4j12:$slf4jVersion"
-    compile "com.jcabi:jcabi-log:$jcabiVersion"
-    compile "org.kamranzafar:jtar:$jtarVersion"
-    compile "com.google.code.gson:gson:$gsonVersion"
-    compile "com.spotify:docker-client:$dockerClientVersion"
+    implementation "com.typesafe:config:$configVersion"
+    implementation "org.zeroturnaround:zt-zip:$ztZipVersion"
+    implementation "com.beust:jcommander:$jcommanderVersion"
+    implementation "org.slf4j:slf4j-log4j12:$slf4jVersion"
+    implementation "com.jcabi:jcabi-log:$jcabiVersion"
+    implementation "org.kamranzafar:jtar:$jtarVersion"
+    implementation "com.google.code.gson:gson:$gsonVersion"
+    implementation "com.spotify:docker-client:$dockerClientVersion"
 
     // For Docker-style names
-    compile 'com.oblac:nomen-est-omen:2.0.0'
+    implementation "com.oblac:nomen-est-omen:$nomenEstOmenVersion"
 
     // For scp/ssh support
-    compile 'com.jcraft:jsch:0.1.55'
+    implementation "com.jcraft:jsch:$jschVersion"
 
-    compile "software.amazon.awssdk:greengrass:$awsSdk2Version"
-    compile "software.amazon.awssdk:iam:$awsSdk2Version"
-    compile "software.amazon.awssdk:iot:$awsSdk2Version"
-    compile "software.amazon.awssdk:lambda:$awsSdk2Version"
-    compile "software.amazon.awssdk:cloudformation:$awsSdk2Version"
-    compile "software.amazon.awssdk:sts:$awsSdk2Version"
-    compile "software.amazon.awssdk:ecr:$awsSdk2Version"
-    compile "software.amazon.awssdk:ec2:$awsSdk2Version"
-    compile "software.amazon.awssdk:s3:$awsSdk2Version"
-    compile "software.amazon.awssdk:cloudwatchlogs:$awsSdk2Version"
-    compile "software.amazon.awssdk:secretsmanager:$awsSdk2Version"
-    compile "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
-    compile "org.apache.commons:commons-text:$commonsTextVersion"
-    compile "org.apache.commons:commons-lang3:$commonsLangVersion"
-    compile "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
-    compile "io.vavr:vavr:$vavrVersion"
+    implementation "software.amazon.awssdk:greengrass:$awsSdk2Version"
+    implementation "software.amazon.awssdk:iam:$awsSdk2Version"
+    implementation "software.amazon.awssdk:iot:$awsSdk2Version"
+    implementation "software.amazon.awssdk:lambda:$awsSdk2Version"
+    implementation "software.amazon.awssdk:cloudformation:$awsSdk2Version"
+    implementation "software.amazon.awssdk:sts:$awsSdk2Version"
+    implementation "software.amazon.awssdk:ecr:$awsSdk2Version"
+    implementation "software.amazon.awssdk:ec2:$awsSdk2Version"
+    implementation "software.amazon.awssdk:s3:$awsSdk2Version"
+    implementation "software.amazon.awssdk:cloudwatchlogs:$awsSdk2Version"
+    implementation "software.amazon.awssdk:secretsmanager:$awsSdk2Version"
+    implementation "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
+    implementation "org.apache.commons:commons-text:$commonsTextVersion"
+    implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
+    implementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+    implementation "io.vavr:vavr:$vavrVersion"
 
-    compile "commons-io:commons-io:$commonsIoVersion"
-    compile "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
+    implementation "commons-io:commons-io:$commonsIoVersion"
+    implementation "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
 
     // Dependency added to fix - https://github.com/aws/aws-sdk-java-v2/issues/652
-    compile "org.apache.httpcomponents:httpclient:$httpClientVersion"
+    implementation "org.apache.httpcomponents:httpclient:$httpClientVersion"
 
     // https://mvnrepository.com/artifact/net.jodah/failsafe
-    compile "net.jodah:failsafe:$jodahFailsafeVersion"
+    implementation "net.jodah:failsafe:$jodahFailsafeVersion"
 
-    compile "org.testcontainers:testcontainers:$testContainersVersion"
+    implementation "org.testcontainers:testcontainers:$testContainersVersion"
 
-    compile "org.awaitility:awaitility:$awaitilityVersion"
+    implementation "org.awaitility:awaitility:$awaitilityVersion"
 
     // To support AWS Lambda invocations
-    compile "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCoreVersion"
+    implementation "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCoreVersion"
 
-    testCompile "junit:junit:$junitVersion"
-    testCompile "com.github.stefanbirkner:system-rules:$systemRulesVersion"
-    testCompile "org.hamcrest:hamcrest:$hamcrestVersion"
-    testCompile "org.mockito:mockito-core:$mockitoVersion"
-    testCompile "com.github.awslabs:aws-iot-core-websockets:$awsIotCoreWebsocketsVersion"
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
+    testImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
+    testImplementation "org.mockito:mockito-core:$mockitoVersion"
+
+    integrationTestImplementation "junit:junit:$junitVersion"
+    integrationTestImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
+    integrationTestImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
+    integrationTestImplementation "org.mockito:mockito-core:$mockitoVersion"
+    integrationTestImplementation "com.github.awslabs:aws-iot-core-websockets:$awsIotCoreWebsocketsVersion"
 }
 
-// From: https://gist.github.com/matthiasbalke/3c9ecccbea1d460ee4c3fbc5843ede4a
-task resolveDependencies {
-    doLast {
-        project.rootProject.allprojects.each { subProject ->
-            subProject.buildscript.configurations.each { configuration ->
-                // Check to prevent "Resolving configuration 'integrationTestImplementation' directly is not allowed" error
-                if (!configuration.getName().contains("integrationTest")) {
-                    resolveConfiguration(configuration)
-                }
-            }
-            subProject.configurations.each { configuration ->
-                // Check to prevent "Resolving configuration 'integrationTestImplementation' directly is not allowed" error
-                if (!configuration.getName().contains("integrationTest")) {
-                    resolveConfiguration(configuration)
-                }
-            }
-        }
-    }
-}
-
-void resolveConfiguration(configuration) {
-    if (isResolveableConfiguration(configuration)) {
-        configuration.resolve()
-    }
-}
-
-boolean isResolveableConfiguration(configuration) {
-    def nonResolveableConfigurations = ['apiElements', 'implementation',
-                                        'runtimeElements', 'runtimeOnly',
-                                        'testImplementation', 'testRuntimeOnly',
-                                        'generatedImplementation', 'generatedRuntimeOnly']
-
-    if (nonResolveableConfigurations.contains(configuration.getName())) {
-        return false
-    }
-    return true
-}

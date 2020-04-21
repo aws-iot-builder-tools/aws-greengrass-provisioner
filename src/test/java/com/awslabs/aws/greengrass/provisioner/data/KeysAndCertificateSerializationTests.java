@@ -2,6 +2,9 @@ package com.awslabs.aws.greengrass.provisioner.data;
 
 import com.awslabs.general.helpers.implementations.BasicJsonHelper;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iot.data.ImmutableCertificateArn;
+import com.awslabs.iot.data.ImmutableCertificateId;
+import com.awslabs.iot.data.ImmutableCertificatePem;
 import org.hamcrest.MatcherAssert;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,9 +25,9 @@ public class KeysAndCertificateSerializationTests {
                 .publicKey("publicKey123")
                 .build();
         keysAndCertificate = com.awslabs.aws.greengrass.provisioner.data.ImmutableKeysAndCertificate.builder()
-                .certificateArn("certificateArn123")
-                .certificateId("certificateId123")
-                .certificatePem("certificatePem123")
+                .certificateArn(ImmutableCertificateArn.builder().arn("certificateArn123").build())
+                .certificateId(ImmutableCertificateId.builder().id("certificateId123").build())
+                .certificatePem(ImmutableCertificatePem.builder().pem("certificatePem123").build())
                 .keyPair(keyPair)
                 .build();
     }

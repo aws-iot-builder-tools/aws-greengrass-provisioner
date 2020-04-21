@@ -25,17 +25,14 @@ class GreengrassITShared {
     static final String DEPLOYMENTS = "deployments";
     static final String FUNCTIONS = "functions";
     static final String FOUNDATION = "foundation";
-    static final String GGDS = "ggds";
     static final File MASTER_DEPLOYMENTS = new File(String.join("/", LAMBDA_FUNCTIONS_DIRECTORY_VIA_PARENT, DEPLOYMENTS));
     static final File MASTER_FUNCTIONS = new File(String.join("/", LAMBDA_FUNCTIONS_DIRECTORY_VIA_PARENT, FUNCTIONS));
     static final File MASTER_FOUNDATION = new File(String.join("/", LAMBDA_FUNCTIONS_DIRECTORY_VIA_PARENT, FOUNDATION));
-    static final File MASTER_GGDS = new File(String.join("/", LAMBDA_FUNCTIONS_DIRECTORY_VIA_PARENT, GGDS));
     static final String DOCKERHUB_TIMMATTISON_AWS_GREENGRASS_PROVISIONER = "timmattison/aws-greengrass-provisioner";
     static final File TEMP_DEPLOYMENTS = new File(DEPLOYMENTS);
     static final File TEMP_FUNCTIONS = new File(FUNCTIONS);
     static final File TEMP_FOUNDATION = new File(FOUNDATION);
     static final File TEMP_CREDENTIALS = new File("credentials");
-    static final File TEMP_GGDS = new File(GGDS);
     /**
      * This is used to generate files that can be used in end-to-end tests
      */
@@ -62,7 +59,6 @@ class GreengrassITShared {
         FileUtils.deleteDirectory(TEMP_FUNCTIONS);
         FileUtils.deleteDirectory(TEMP_FOUNDATION);
         FileUtils.deleteDirectory(TEMP_CREDENTIALS);
-        FileUtils.deleteDirectory(TEMP_GGDS);
     }
 
     static ThreadHelper getThreadHelper() {
@@ -81,7 +77,6 @@ class GreengrassITShared {
         IOFileFilter ioFileFilter = FileFilterUtils.and(ignoreVenvDirectories, ignoreNodeModulesDirectories);
 
         FileUtils.copyDirectory(GreengrassITShared.MASTER_FUNCTIONS, GreengrassITShared.TEMP_FUNCTIONS, ioFileFilter);
-        FileUtils.copyDirectory(GreengrassITShared.MASTER_GGDS, GreengrassITShared.TEMP_GGDS, ioFileFilter);
     }
 
     GreengrassGroupName getGroupName() {

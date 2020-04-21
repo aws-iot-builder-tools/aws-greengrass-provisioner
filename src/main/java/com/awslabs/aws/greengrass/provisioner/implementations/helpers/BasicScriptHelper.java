@@ -12,12 +12,10 @@ import com.google.common.collect.ImmutableMap;
 import javax.inject.Inject;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import java.util.regex.Matcher;
 
 
 public class BasicScriptHelper implements ScriptHelper {
-    private static final String GGD_PIP_DEPENDENCIES = "GGD_PIP_DEPENDENCIES";
     private static final String LIB_SYSTEMD_SYSTEM_PATH = "/lib/systemd/system";
     private final String shellPath = "shell/";
     private final String startTemplatePath = shellPath + getStartScriptName() + ".in";
@@ -100,8 +98,8 @@ public class BasicScriptHelper implements ScriptHelper {
     }
 
     @Override
-    public String generateGgScript(Architecture architecture, Set<String> ggdPipDependencies) {
-        return innerGenerateRunScriptWithGgdPipDependencies(ggScriptTemplatePath, Optional.of(architecture), Optional.ofNullable(ggdPipDependencies));
+    public String generateGgScript(Architecture architecture) {
+        return innerGenerateRunScriptWithArchitecture(ggScriptTemplatePath, Optional.of(architecture));
     }
 
     @Override
@@ -111,24 +109,15 @@ public class BasicScriptHelper implements ScriptHelper {
 
     @Override
     public String generateSystemdScript() {
-        return innerGenerateRunScript(systemdTemplatePath, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
-    }
-
-    @Override
-    public String generateRunScript(Optional<Architecture> architecture, String scriptName, ThingName thingName) {
-        return innerGenerateRunScript(shellPath + "run-python.sh.in", architecture, Optional.of(scriptName), Optional.of(thingName), Optional.empty());
+        return innerGenerateRunScript(systemdTemplatePath, Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     private String innerGenerateRunScriptWithArchitecture(String path, Optional<Architecture> architecture) {
-        return innerGenerateRunScript(path, architecture, Optional.empty(), Optional.empty(), Optional.empty());
+        return innerGenerateRunScript(path, architecture, Optional.empty(), Optional.empty());
     }
 
     private String innerGenerateRunScriptWithArchitecture(String path, Optional<Architecture> architecture, Optional<String> scriptName) {
-        return innerGenerateRunScript(path, architecture, scriptName, Optional.empty(), Optional.empty());
-    }
-
-    private String innerGenerateRunScriptWithGgdPipDependencies(String path, Optional<Architecture> architecture, Optional<Set<String>> ggdPipDependencies) {
-        return innerGenerateRunScript(path, architecture, Optional.empty(), Optional.empty(), ggdPipDependencies);
+        return innerGenerateRunScript(path, architecture, scriptName, Optional.empty());
     }
 
     private void addScriptName(ImmutableMap.Builder<String, String> variables, Optional<String> scriptName) {
@@ -140,17 +129,8 @@ public class BasicScriptHelper implements ScriptHelper {
         variables.put("GG_SH", name);
     }
 
-    private void addThingNameVariables(ImmutableMap.Builder<String, String> variables, Optional<ThingName> thingName) {
-        thingName.ifPresent(name -> putThingNameCertAndPrivateKey(variables, name));
-    }
-
-    private void putThingNameCertAndPrivateKey(ImmutableMap.Builder<String, String> variables, ThingName thingName) {
-        variables.put("DEVICE_THING_NAME", thingName.getName());
-        variables.put("DEVICE_PUBLIC_CERTIFICATE", ggConstants.getDevicePublicCertificateName(thingName));
-        variables.put("DEVICE_PRIVATE_KEY", ggConstants.getDevicePrivateKeyName(thingName));
-    }
-
-    private void addNormalVariables(ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
+    private void addNormalVariables
+            (ImmutableMap.Builder<String, String> variables, Optional<Architecture> architecture) {
         variables.put("ENDPOINT", v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS));
         variables.put("START_SCRIPT", getStartScriptName());
         variables.put("STOP_SCRIPT", getStopScriptName());
@@ -165,36 +145,17 @@ public class BasicScriptHelper implements ScriptHelper {
         architecture.ifPresent(arch -> variables.put("GG_BITS", arch.getFilename()));
     }
 
-    private String innerGenerateRunScript(String path, Optional<Architecture> architecture, Optional<String> scriptName, Optional<ThingName> thingName, Optional<Set<String>> ggdPipDependencies) {
+    private String innerGenerateRunScript(String path, Optional<Architecture> architecture, Optional<String> scriptName, Optional<ThingName> thingName) {
         String input = javaResourceHelper.resourceToString(path);
 
         ImmutableMap.Builder<String, String> variablesBuilder = new ImmutableMap.Builder<>();
 
         addScriptName(variablesBuilder, scriptName);
-        addThingNameVariables(variablesBuilder, thingName);
         addNormalVariables(variablesBuilder, architecture);
-        addGgdPipDependencies(variablesBuilder, ggdPipDependencies);
 
         String output = replaceVariables(variablesBuilder.build(), input);
 
         return output;
-    }
-
-    private void addGgdPipDependencies(ImmutableMap.Builder<String, String> variablesBuilder, Optional<Set<String>> ggdPipDependencies) {
-        ggdPipDependencies.ifPresent(list -> createListOfGgdPipDependencies(variablesBuilder, list));
-
-        // Make sure this is filled in so that we don't leave the placeholder string in the template
-        if (!variablesBuilder.build().containsKey(GGD_PIP_DEPENDENCIES)) {
-            variablesBuilder.put(GGD_PIP_DEPENDENCIES, "");
-        }
-    }
-
-    private void createListOfGgdPipDependencies(ImmutableMap.Builder<String, String> variablesBuilder, Set<String> list) {
-        if (list.isEmpty()) {
-            return;
-        }
-
-        variablesBuilder.put(GGD_PIP_DEPENDENCIES, String.join(" ", list));
     }
 
     private String replaceVariables(ImmutableMap<String, String> variables, String input) {

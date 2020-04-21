@@ -23,7 +23,7 @@ public interface ScriptHelper {
 
     String generateUpdateDependenciesScript();
 
-    String generateGgScript(Architecture architecture, Set<String> ggdPipDependencies);
+    String generateGgScript(Architecture architecture);
 
     String getCredentialsScriptName();
 
@@ -36,6 +36,4 @@ public interface ScriptHelper {
     String getSystemdScriptName();
 
     String generateSystemdScript();
-
-    String generateRunScript(Optional<Architecture> architecture, String filename, ThingName thingName);
 }

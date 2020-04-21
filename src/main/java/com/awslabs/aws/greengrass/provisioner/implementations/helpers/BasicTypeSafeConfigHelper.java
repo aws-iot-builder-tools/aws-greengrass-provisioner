@@ -65,4 +65,55 @@ public class BasicTypeSafeConfigHelper implements TypeSafeConfigHelper {
 
         return config;
     }
+
+    @Override
+    public String getValueOrDefault(String value, Optional<String> defaultValue) {
+        return value == null ? defaultValue.orElse(null) : value;
+    }
+
+    @Override
+    public Integer getValueOrDefault(Integer value, Optional<Integer> defaultValue) {
+        return value == null ? defaultValue.orElse(null) : value;
+    }
+
+    @Override
+    public boolean getValueOrDefault(boolean value, Optional<Boolean> defaultValue) {
+        return value == false ? defaultValue.orElse(false) : value;
+    }
+
+    @Override
+    public Optional<String> getStringDefault(Optional<Config> defaults, String name) {
+        // Get the defaults from a config file
+        if (!defaults.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Try.of(() -> Optional.of(defaults.get().getString(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
+    }
+
+    @Override
+    public Optional<Boolean> getBooleanDefault(Optional<Config> defaults, String name) {
+        // Get the defaults from a config file
+        if (!defaults.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Try.of(() -> Optional.of(defaults.get().getBoolean(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
+    }
+
+    @Override
+    public Optional<Integer> getIntegerDefault(Optional<Config> defaults, String name) {
+        // Get the defaults from a config file
+        if (!defaults.isPresent()) {
+            return Optional.empty();
+        }
+
+        return Try.of(() -> Optional.of(defaults.get().getInt(name)))
+                .recover(ConfigException.Missing.class, throwable -> Optional.empty())
+                .get();
+    }
 }

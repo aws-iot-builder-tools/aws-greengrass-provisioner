@@ -172,10 +172,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             thingName = ImmutableThingName.builder().name(addDeviceString).build();
             log.info("No thing ARN specified for device [" + thingName.getName() + "], will re-use keys if possible");
 
-            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupId, thingName.getName());
+            KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupName, thingName.getName());
 
             ImmutablePolicyName ggdPolicyName = ImmutablePolicyName.builder().name(String.join("_", thingName.getName(), "Policy")).build();
-            CertificateArn certificateArn = ImmutableCertificateArn.builder().arn(deviceKeysAndCertificate.getCertificateArn()).build();
+            CertificateArn certificateArn = deviceKeysAndCertificate.getCertificateArn();
             thingArn = v2IotHelper.createThing(thingName);
 
             v2IotHelper.createPolicyIfNecessary(ggdPolicyName,

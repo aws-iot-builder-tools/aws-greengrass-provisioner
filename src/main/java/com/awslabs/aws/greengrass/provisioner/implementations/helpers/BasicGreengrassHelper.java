@@ -186,7 +186,13 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             functionExecutionConfigBuilder = functionExecutionConfigBuilder.isolationMode(FunctionIsolationMode.NO_CONTAINER);
         }
 
-        functionExecutionConfigBuilder.runAs(FunctionRunAsConfig.builder().uid(functionConf.getUid()).gid(functionConf.getGid()).build());
+        if (functionConf.getUid().isPresent() || functionConf.getGid().isPresent()) {
+            FunctionRunAsConfig.Builder functionRunAsConfigBuilder = FunctionRunAsConfig.builder();
+            functionConf.getUid().ifPresent(uid -> functionRunAsConfigBuilder.uid(uid));
+            functionConf.getGid().ifPresent(gid -> functionRunAsConfigBuilder.gid(gid));
+
+            functionExecutionConfigBuilder.runAs(functionRunAsConfigBuilder.build());
+        }
 
         functionConfigurationEnvironmentBuilder.resourceAccessPolicies(resourceAccessPolicies);
 
@@ -459,7 +465,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupVersion(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId).findFirst()
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId)
                 // If the group exists but has no versions yet, don't use the group information
                 .filter(groupInformation -> groupInformation.latestVersion() != null);
 
@@ -854,7 +860,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private void logLocalResourcesScrubbed(FunctionConf functionConf) {
-        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName() + "] because it is not running in the Greengrass container");
+        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName().getName() + "] because it is not running in the Greengrass container");
     }
 
     private Resource createResource(ResourceDataContainer resourceDataContainer, String name, String id) {

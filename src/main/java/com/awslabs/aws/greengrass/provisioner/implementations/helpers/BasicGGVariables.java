@@ -19,7 +19,7 @@ public class BasicGGVariables implements GGVariables {
     }
 
     @Override
-    public ThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
+    public ImmutableThingName getCoreThingName(GreengrassGroupName greengrassGroupName) {
         return ImmutableThingName.builder().name(String.join("_", greengrassGroupName.getGroupName(), "Core")).build();
     }
 
@@ -46,11 +46,6 @@ public class BasicGGVariables implements GGVariables {
     @Override
     public String getDeviceDefinitionName(GreengrassGroupName greengrassGroupName) {
         return String.join("_", greengrassGroupName.getGroupName(), "DeviceDefinition");
-    }
-
-    @Override
-    public String getGgdArchiveName(GreengrassGroupName greengrassGroupName) {
-        return String.join("/", ggConstants.getBuildDirectory(), String.join(".", "ggd", greengrassGroupName.getGroupName(), "tar"));
     }
 
     @Override
