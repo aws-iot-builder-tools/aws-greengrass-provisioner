@@ -34,6 +34,8 @@ public interface Injector {
 
     GGVariables ggVariables();
 
+    GGConstants ggConstants();
+
     JsonHelper jsonHelper();
 
     IotHelper iotHelper();

@@ -39,6 +39,10 @@ public interface GGConstants {
 
     String getOfficialGreengrassEcrEndpoint();
 
+    String getOfficialGreengrassDockerImageName();
+
+    String getDockerHubGreengrassDockerImageName();
+
     String getOfficialGreengrassDockerImage();
 
     String getDefaultsConf();

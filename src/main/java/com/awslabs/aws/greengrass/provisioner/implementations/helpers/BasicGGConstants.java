@@ -2,7 +2,6 @@ package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import com.awslabs.iot.data.ThingName;
 import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 import software.amazon.awssdk.services.greengrass.model.Function;
@@ -13,6 +12,7 @@ import java.io.File;
 
 public class BasicGGConstants implements GGConstants {
     private static final String DEPLOYMENTS_DIRECTORY = "deployments";
+    public static final String DOCKER_GREENGRASS_VERSION = "1.10.1";
     @Inject
     IoHelper ioHelper;
 
@@ -118,10 +118,25 @@ public class BasicGGConstants implements GGConstants {
     }
 
     @Override
+    public String getOfficialGreengrassDockerImageName() {
+        return String.join("",
+                "aws-iot-greengrass:",
+                DOCKER_GREENGRASS_VERSION,
+                "-amazonlinux-x86-64");
+    }
+
+    @Override
+    public String getDockerHubGreengrassDockerImageName() {
+        return String.join("/",
+                "amazon",
+                getOfficialGreengrassDockerImageName());
+    }
+
+    @Override
     public String getOfficialGreengrassDockerImage() {
         return String.join("/",
                 getOfficialGreengrassEcrEndpoint(),
-                "aws-iot-greengrass:1.10.0-amazonlinux");
+                getOfficialGreengrassDockerImageName());
     }
 
     @Override
