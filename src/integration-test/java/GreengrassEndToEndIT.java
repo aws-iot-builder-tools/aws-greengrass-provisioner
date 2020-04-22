@@ -1,4 +1,5 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
+import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGConstants;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.GGVariables;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
 import com.awslabs.aws.iot.websockets.BasicMqttOverWebsocketsProvider;
@@ -41,8 +42,6 @@ public class GreengrassEndToEndIT {
     private static final String GREENGRASS_OEM_TAR = GREENGRASS_DIRECTORY + "/oem.tar";
     private static final String STARTUP_SH = "/startup.sh";
     private static final String GREENGRASS_ENTRYPOINT_SH = "./greengrass-entrypoint.sh";
-    // TODO: Temporarily using Docker Hub, should migrate this to ECR to get guaranteed official images
-    private static final String AMAZON_AWS_IOT_GREENGRASS_1_10_0_AMAZON_LINUX = "amazon/aws-iot-greengrass:1.10.0-amazonlinux";
     /**
      * Makes regex DOT character match newlines
      */
@@ -61,6 +60,7 @@ public class GreengrassEndToEndIT {
     private Duration defaultTimeout;
     private Path functionDefaultsPath;
     private JsonHelper jsonHelper;
+    private GGConstants ggConstants;
 
     @Before
     public void beforeTestSetup() throws IOException, NoSuchAlgorithmException, InvalidKeyException, MqttException {
@@ -89,6 +89,8 @@ public class GreengrassEndToEndIT {
         mqttClient.connect();
 
         jsonHelper = AwsGreengrassProvisioner.getInjector().jsonHelper();
+
+        ggConstants = AwsGreengrassProvisioner.getInjector().ggConstants();
 
         flag = new AtomicBoolean(false);
 
@@ -248,7 +250,7 @@ public class GreengrassEndToEndIT {
 
         String command = "bash " + STARTUP_SH;
 
-        GenericContainer greengrass = new GenericContainer(AMAZON_AWS_IOT_GREENGRASS_1_10_0_AMAZON_LINUX)
+        GenericContainer greengrass = new GenericContainer(ggConstants.getDockerHubGreengrassDockerImageName())
                 .withCopyFileToContainer(MountableFile.forHostPath(tempScript.toPath()), STARTUP_SH)
                 .withCopyFileToContainer(MountableFile.forHostPath(oemArchiveName.toPath()), GREENGRASS_OEM_TAR)
                 .withExposedPorts(8883, 8000)
