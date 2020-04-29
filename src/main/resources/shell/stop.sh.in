@@ -17,3 +17,6 @@ else
   echo "Stopping manually"
   ${GREENGRASS_DAEMON} stop
 fi
+
+echo "Shutting down Greengrass OTA agent (if necessary)"
+killall -r ggc-ota
