@@ -40,6 +40,7 @@ clean_aws_credential_process "root"
 clean_aws_credential_process "${SUDO_USER}"
 
 rm -rf /greengrass \
+  /var/log/greengrass \
   ./${START_SCRIPT} \
   ./${STOP_SCRIPT} \
   ./${MONITOR_SCRIPT} \
