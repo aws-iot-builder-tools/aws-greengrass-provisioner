@@ -32,6 +32,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
     public static final String P_11_PROVIDER = "P11Provider";
     public static final String SLOT_LABEL = "slotLabel";
     public static final String SLOT_USER_PIN = "slotUserPin";
+    public static final String OPENSSL_ENGINE = "OpenSSLEngine";
     public static final String PKCS_11 = "PKCS11";
     public static final String CA_PATH = "caPath";
     public static final String CORE_THING = "coreThing";
@@ -94,6 +95,7 @@ public class BasicConfigFileHelper implements ConfigFileHelper {
             PKCS11Map.put(P_11_PROVIDER, hsiParameters.getP11Provider());
             PKCS11Map.put(SLOT_LABEL, hsiParameters.getSlotLabel());
             PKCS11Map.put(SLOT_USER_PIN, hsiParameters.getSlotUserPin());
+            hsiParameters.getOpenSSLEngine().ifPresent(openSslEngine -> PKCS11Map.put(OPENSSL_ENGINE, openSslEngine));
 
             cryptoMap.put(PKCS_11, PKCS11Map);
         } else {

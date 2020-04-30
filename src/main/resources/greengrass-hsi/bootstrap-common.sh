@@ -6,6 +6,7 @@ CERTIFICATE_ARN_FILE=certificate.arn
 CERTIFICATE_ID_FILE=certificate.id
 P11_PROVIDER=""
 PKCS11_ENGINE_FOR_CURL=""
+OPENSSL_ENGINE_PATH=$(find /usr/lib /usr/lib64 -name "libpkcs11.so" | head -n 1)
 
 function error() {
   ARGS=$@
@@ -23,7 +24,7 @@ function finish() {
   CERTIFICATE_ARN=$(cat $CERTIFICATE_ARN_FILE)
   echo "If you are using GGP your HSI options will be:"
   echo " "
-  echo "  --hsi P11Provider=$P11_PROVIDER,slotLabel=greengrass,slotUserPin=1234$PKCS11_ENGINE_FOR_CURL --certificate-arn $CERTIFICATE_ARN"
+  echo "  --hsi P11Provider=$P11_PROVIDER,slotLabel=greengrass,slotUserPin=1234,OpenSSLEngine=$OPENSSL_ENGINE_PATH$PKCS11_ENGINE_FOR_CURL --certificate-arn $CERTIFICATE_ARN"
   echo " "
   success "$CERTIFICATE_ARN"
 }
@@ -58,8 +59,6 @@ fi
 
 P11_PROVIDER=$2
 
-PKCS11_ENGINE_FOR_CURL=""
-
 if [ ! -z "$3" ]; then
   PKCS11_ENGINE_FOR_CURL=",pkcs11EngineForCurl=$3"
 fi
@@ -80,6 +79,13 @@ if [ -f "$CERTIFICATE_ARN_FILE" ]; then
 
   # Certificate does not exist in AWS IoT, try to sign the CSR again
   echo "Certificate does not exist in AWS IoT, recreating"
+fi
+
+OPENSSL_ENGINE_NAME=libpkcs11.so
+OPENSSL_ENGINE_PATH=$(find /usr/lib /usr/lib64 -name "$OPENSSL_ENGINE_NAME" | head -n 1)
+
+if [ -z "$OPENSSL_ENGINE_PATH" ]; then
+  error "$OPENSSL_ENGINE_NAME not found, can not continue"
 fi
 
 CERTIFICATE_INFO=$(aws iot create-certificate-from-csr --set-as-active --certificate-signing-request file://$CSR_FILE)
