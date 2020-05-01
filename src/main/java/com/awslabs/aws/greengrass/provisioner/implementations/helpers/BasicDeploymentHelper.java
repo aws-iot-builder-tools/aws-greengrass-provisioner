@@ -13,7 +13,11 @@ import com.awslabs.aws.greengrass.provisioner.docker.interfaces.OfficialGreengra
 import com.awslabs.aws.greengrass.provisioner.interfaces.ExceptionHelper;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.general.helpers.interfaces.JsonHelper;
+import com.awslabs.iam.data.*;
 import com.awslabs.iam.helpers.interfaces.V2IamHelper;
+import com.awslabs.iot.data.ImmutablePolicyDocument;
+import com.awslabs.iot.data.ImmutablePolicyName;
+import com.awslabs.iot.data.PolicyName;
 import com.awslabs.iot.data.*;
 import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
@@ -163,7 +167,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
-                .withValue(EnvironmentHelper.ACCOUNT_ID, ConfigValueFactory.fromAnyRef(iamHelper.getAccountId()))
+                .withValue(EnvironmentHelper.ACCOUNT_ID, ConfigValueFactory.fromAnyRef(iamHelper.getAccountId().getId()))
                 .withValue(EnvironmentHelper.REGION, ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
                 .withValue(EnvironmentHelper.AWS_IOT_THING_NAME, ConfigValueFactory.fromAnyRef(coreThingName.getName()))
                 .withFallback(getFallbackConfig())
@@ -464,7 +468,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Create an AWS Greengrass Group and get its ID //
         ///////////////////////////////////////////////////
 
-        if (v2GreengrassHelper.groupExistsByName(greengrassGroupName) && (deploymentArguments.ec2LinuxVersion != null)) {
+        if (v2GreengrassHelper.groupExists(greengrassGroupName) && (deploymentArguments.ec2LinuxVersion != null)) {
             throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
         }
 
@@ -596,7 +600,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Role coreRole;
 
         if (deploymentArguments.coreRoleName != null) {
-            Optional<Role> optionalCoreRole = iamHelper.getRole(deploymentArguments.coreRoleName);
+            RoleName coreRoleName = ImmutableRoleName.builder().name(deploymentArguments.coreRoleName).build();
+            Optional<Role> optionalCoreRole = iamHelper.getRole(coreRoleName);
 
             if (!optionalCoreRole.isPresent()) {
                 throw new RuntimeException("Greengrass core role is not present or GetRole failed due to insufficient permissions on [" + deploymentArguments.coreRoleName + "]");
@@ -668,7 +673,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             } else {
                 log.info("Group is not new, keys could not be found, but user not forcing new keys to be created");
                 log.info("Attempting to get the core certificate ARN from the latest group version information");
-                optionalCoreCertificateArn = v2GreengrassHelper.getCoreCertificateArnByGroupVersion(groupVersion);
+                optionalCoreCertificateArn = v2GreengrassHelper.getCoreCertificateArn(groupVersion);
             }
         }
 
@@ -760,7 +765,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
             requireAssumeRolePolicy(lambdaRoleConf, "Lambda");
 
-            optionalLambdaRole = Optional.of(iamHelper.createRoleIfNecessary(lambdaRoleConf.getName(), lambdaRoleConf.getAssumeRolePolicy()));
+            optionalLambdaRole = Optional.of(createRoleFromRoleConf(lambdaRoleConf));
         }
 
         ////////////////////////////////////////////////////////
@@ -1537,27 +1542,54 @@ public class BasicDeploymentHelper implements DeploymentHelper {
      * @return
      */
     private Role createServiceRole(RoleConf serviceRoleConf) {
-        Role serviceRole = createRoleFromRoleConf("service", serviceRoleConf);
+        Role serviceRole = createRoleFromRoleConfAndAttachPolicies("service", serviceRoleConf);
 
         associateServiceRoleToAccount(serviceRole);
 
         return serviceRole;
     }
 
-    private Role createRoleFromRoleConf(String type, RoleConf roleConf) {
+    private Role createRoleFromRoleConfAndAttachPolicies(String type, RoleConf roleConf) {
         String name = roleConf.getName();
 
         log.info("Creating Greengrass " + type + " role [" + name + "]");
 
-        Role role = iamHelper.createRoleIfNecessary(name, roleConf.getAssumeRolePolicy());
+        Role role = createRoleFromRoleConf(roleConf);
 
         log.info("Attaching role policies to Greengrass " + type + " role [" + name + "]");
 
-        iamHelper.attachRolePolicies(role, roleConf.getIamManagedPolicies());
+        Optional<List<ManagedPolicyArn>> managedPolicyArns = Optional.empty();
 
-        iamHelper.putInlinePolicy(role, "inline-by-ggp", roleConf.getIamPolicy());
+        if (roleConf.getIamManagedPolicies().isPresent()) {
+            managedPolicyArns = Optional.of(roleConf.getIamManagedPolicies().get().stream()
+                    .map(managedPolicyArn -> ImmutableManagedPolicyArn.builder().arn(managedPolicyArn).build())
+                    .collect(Collectors.toList()));
+        }
+
+        iamHelper.attachRolePolicies(role, managedPolicyArns);
+
+        com.awslabs.iam.data.ImmutablePolicyName policyName = com.awslabs.iam.data.ImmutablePolicyName.builder().name("inline-by-ggp").build();
+
+        Optional<InlinePolicy> optionalInlinePolicy = Optional.empty();
+
+        if (roleConf.getIamPolicy().isPresent()) {
+            optionalInlinePolicy = Optional.of(ImmutableInlinePolicy.builder().policy(roleConf.getIamPolicy().get()).build());
+        }
+
+        iamHelper.putInlinePolicy(role, policyName, optionalInlinePolicy);
 
         return role;
+    }
+
+    private Role createRoleFromRoleConf(RoleConf roleConf) {
+        RoleName roleName = ImmutableRoleName.builder().name(roleConf.getName()).build();
+        Optional<AssumeRolePolicyDocument> optionalAssumeRolePolicyDocument = Optional.empty();
+
+        if (roleConf.getAssumeRolePolicy().isPresent()) {
+            optionalAssumeRolePolicyDocument = Optional.of(ImmutableAssumeRolePolicyDocument.builder().document(roleConf.getAssumeRolePolicy().get()).build());
+        }
+
+        return iamHelper.createRoleIfNecessary(roleName, optionalAssumeRolePolicyDocument);
     }
 
     private void buildOutputFiles(DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName, Optional<CreateRoleAliasResponse> optionalCreateRoleAliasResponse, GreengrassGroupId greengrassGroupId, ThingName awsIotThingName, ThingArn awsIotThingArn, Optional<KeysAndCertificate> optionalCoreKeysAndCertificate, CertificateArn coreCertificateArn, boolean functionsRunningAsRoot) {
@@ -1873,7 +1905,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private Role createCoreRole(RoleConf coreRoleConf) {
         requireAssumeRolePolicy(coreRoleConf, "core");
 
-        return createRoleFromRoleConf("core", coreRoleConf);
+        return createRoleFromRoleConfAndAttachPolicies("core", coreRoleConf);
     }
 
     private Optional<Architecture> getArchitecture(DeploymentArguments deploymentArguments) {

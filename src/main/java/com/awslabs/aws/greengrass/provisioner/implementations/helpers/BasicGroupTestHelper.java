@@ -102,7 +102,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
 
         String urlForDeviceTester = optionalUrlForDeviceTester.get();
 
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName).findFirst();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + testArguments.groupName + "] not found");
@@ -172,7 +172,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
                 String remoteCoreAndGroupInfoFilename = String.join("/",
                         VAR_LIB_GGQ,
                         String.join(".",
-                                iamHelper.getAccountId(),
+                                iamHelper.getAccountId().getId(),
                                 awsHelper.getCurrentRegion().toString(),
                                 "CoreAndGroupInfo",
                                 "json"));
@@ -528,14 +528,14 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private String generateCoreAndGroupInfoJson(GroupInformation groupInformation) {
-        GreengrassGroupId greengrassGroupId = v2GreengrassHelper.getGroupIdByGroupInformation(groupInformation)
+        GreengrassGroupId greengrassGroupId = v2GreengrassHelper.getGroupId(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
         GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(groupInformation.name()).build();
         ThingName coreThingName = ggVariables.getCoreThingName(greengrassGroupName);
 
         Map<String, String> coreInfo = HashMap.of("ThingArn", v2IotHelper.getThingArn(coreThingName).get().getArn())
                 .put("ThingName", coreThingName.getName())
-                .put("CertArn", v2IotHelper.getThingPrincipals(coreThingName).get().get(0).getPrincipal())
+                .put("CertArn", v2IotHelper.getThingPrincipals(coreThingName).findFirst().get().getPrincipal())
                 .put("IotEndpoint", v2IotHelper.getEndpoint(V2IotEndpointType.DATA_ATS))
                 .toJavaMap();
 

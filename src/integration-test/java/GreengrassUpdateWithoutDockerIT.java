@@ -60,7 +60,7 @@ public class GreengrassUpdateWithoutDockerIT {
         GreengrassGroupName group2Name = optionalGroup2Name.get();
 
         // Get the information for group 2 so we can pull the Hello World function out of it
-        GroupInformation group2Information = v2GreengrassHelper.getGroupInformationByName(group2Name).findFirst()
+        GroupInformation group2Information = v2GreengrassHelper.getGroupInformation(group2Name).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group 2 information not present"));
 
         // Pull the Hello World function out of the group
@@ -75,7 +75,7 @@ public class GreengrassUpdateWithoutDockerIT {
         FunctionAlias functionAlias = ImmutableFunctionAlias.builder().alias(ioHelper.getUuid()).build();
 
         // Make sure the function isn't present in group 1 before the update
-        GroupInformation group1InformationBeforeUpdate = v2GreengrassHelper.getGroupInformationByName(group1Name).findFirst()
+        GroupInformation group1InformationBeforeUpdate = v2GreengrassHelper.getGroupInformation(group1Name).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group 1 information not present before update"));
 
         Optional<Function> optionalGroup1HelloWorldNodeFunctionBeforeUpdate = getFunctionFromGroupInformation(group1InformationBeforeUpdate, HELLO_WORLD_NODE);
@@ -86,7 +86,7 @@ public class GreengrassUpdateWithoutDockerIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getAddFunctionCommand(group1Name, helloWorldNodeFunctionName, functionAlias)));
 
         // Make sure the function is present in group 1 after the update
-        GroupInformation group1InformationAfterUpdate = v2GreengrassHelper.getGroupInformationByName(group1Name).findFirst()
+        GroupInformation group1InformationAfterUpdate = v2GreengrassHelper.getGroupInformation(group1Name).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group 1 information not present after update"));
 
         Optional<Function> optionalGroup1HelloWorldNodeFunctionAfterUpdate = getFunctionFromGroupInformation(group1InformationAfterUpdate, HELLO_WORLD_NODE);
@@ -105,7 +105,7 @@ public class GreengrassUpdateWithoutDockerIT {
         GreengrassGroupName groupName = optionalGroupName.get();
 
         // Get the information for the group so we can pull the Hello World function out of it
-        GroupInformation groupInformation = v2GreengrassHelper.getGroupInformationByName(groupName).findFirst()
+        GroupInformation groupInformation = v2GreengrassHelper.getGroupInformation(groupName).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group information not present"));
 
         // Pull the Hello World function out of the group
@@ -123,7 +123,7 @@ public class GreengrassUpdateWithoutDockerIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getRemoveFunctionCommand(groupName, helloWorldPythonFunctionName, helloWorldPythonFunctionAlias)));
 
         // Make sure the function is not present in the group after the update
-        GroupInformation groupInformationAfterUpdate = v2GreengrassHelper.getGroupInformationByName(groupName).findFirst()
+        GroupInformation groupInformationAfterUpdate = v2GreengrassHelper.getGroupInformation(groupName).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group information not present after update"));
 
         Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON2);
@@ -133,7 +133,7 @@ public class GreengrassUpdateWithoutDockerIT {
 
     @NotNull
     private Optional<Function> getFunctionFromGroupInformation(GroupInformation groupInformation, String functionName) {
-        List<Function> group2Functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+        List<Function> group2Functions = v2GreengrassHelper.getFunctions(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         return group2Functions.stream()

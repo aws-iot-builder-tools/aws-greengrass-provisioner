@@ -76,7 +76,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         GreengrassGroupName greengrassGroupName = ImmutableGreengrassGroupName.builder().groupName(queryArguments.groupName).build();
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName).findFirst();
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
             throw new RuntimeException("Group [" + queryArguments.groupName + "] not found");
@@ -85,7 +85,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         GroupInformation groupInformation = optionalGroupInformation.get();
 
         if (queryArguments.getGroupCa) {
-            Optional<GetGroupCertificateAuthorityResponse> optionalGetGroupCertificateAuthorityResponse = v2GreengrassHelper.getGroupCertificateAuthorityResponseByGroupInformation(groupInformation);
+            Optional<GetGroupCertificateAuthorityResponse> optionalGetGroupCertificateAuthorityResponse = v2GreengrassHelper.getGroupCertificateAuthorityResponse(groupInformation);
 
             if (!optionalGetGroupCertificateAuthorityResponse.isPresent()) {
                 throw new RuntimeException("Couldn't get the group CA");
@@ -102,7 +102,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listSubscriptions) {
-            List<Subscription> subscriptions = v2GreengrassHelper.getSubscriptionsByGroupInformation(groupInformation)
+            List<Subscription> subscriptions = v2GreengrassHelper.getSubscriptions(groupInformation)
                     .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Subscriptions:");
@@ -117,7 +117,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listFunctions) {
-            List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+            List<Function> functions = v2GreengrassHelper.getFunctions(groupInformation)
                     .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Functions:");
@@ -132,7 +132,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         }
 
         if (queryArguments.listDevices) {
-            List<Device> devices = v2GreengrassHelper.getDevicesByGroupInformation(groupInformation)
+            List<Device> devices = v2GreengrassHelper.getDevices(groupInformation)
                     .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
             log.info("Devices:");
@@ -276,7 +276,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
                 .map(Optional::get)
                 .collect(Collectors.toList());
 
-        List<Function> functions = v2GreengrassHelper.getFunctionsByGroupInformation(groupInformation)
+        List<Function> functions = v2GreengrassHelper.getFunctions(groupInformation)
                 .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
 
         List<LogGroup> functionLogGroups = functions.stream()

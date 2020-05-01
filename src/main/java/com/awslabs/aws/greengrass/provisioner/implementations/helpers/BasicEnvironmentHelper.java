@@ -34,7 +34,7 @@ public class BasicEnvironmentHelper implements EnvironmentHelper {
         defaultEnvironment.put(AWS_IOT_THING_ARN, coreThingArn.getArn());
         defaultEnvironment.put(AWS_GREENGRASS_GROUP_NAME, greengrassGroupName.getGroupName());
         defaultEnvironment.put(REGION, awsHelper.getCurrentRegion().id());
-        defaultEnvironment.put(ACCOUNT_ID, iamHelper.getAccountId());
+        defaultEnvironment.put(ACCOUNT_ID, iamHelper.getAccountId().getId());
 
         return defaultEnvironment;
     }

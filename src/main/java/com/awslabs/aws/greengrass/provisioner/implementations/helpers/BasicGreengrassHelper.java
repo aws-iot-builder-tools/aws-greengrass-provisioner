@@ -71,7 +71,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupIfNecessary(GreengrassGroupName greengrassGroupName) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationByName(greengrassGroupName)
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName)
                 .findFirst();
 
         if (optionalGroupInformation.isPresent()) {
@@ -465,7 +465,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public String createGroupVersion(GreengrassGroupId greengrassGroupId, GroupVersion newGroupVersion) {
-        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformationById(greengrassGroupId)
+        Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupId)
                 // If the group exists but has no versions yet, don't use the group information
                 .filter(groupInformation -> groupInformation.latestVersion() != null);
 
@@ -477,7 +477,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
         } else {
-            currentGroupVersion = v2GreengrassHelper.getLatestGroupVersionByGroupInformation(optionalGroupInformation.get())
+            currentGroupVersion = v2GreengrassHelper.getLatestGroupVersion(optionalGroupInformation.get())
                     .orElseThrow(() -> new RuntimeException("Group not found, can not continue"));
         }
 
@@ -881,13 +881,11 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         String thingArn = optionalThingArn.get().getArn();
 
-        Optional<List<ThingPrincipal>> optionalThingPrincipals = v2IotHelper.getThingPrincipals(thingName);
+        List<ThingPrincipal> thingPrincipals = v2IotHelper.getThingPrincipals(thingName).collect(Collectors.toList());
 
-        if (!optionalThingPrincipals.isPresent()) {
+        if (thingPrincipals.isEmpty()) {
             rethrowResourceNotFoundException(thingName.getName());
         }
-
-        List<ThingPrincipal> thingPrincipals = optionalThingPrincipals.get();
 
         if (thingPrincipals.size() != 1) {
             throw new RuntimeException("More than one principal found for [" + thingName + "], can not continue");
@@ -951,7 +949,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
     @Override
     public FunctionIsolationMode getDefaultIsolationMode(GroupInformation groupInformation) {
-        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = v2GreengrassHelper.getDefaultIsolationModeByGroupInformation(groupInformation);
+        Optional<FunctionIsolationMode> optionalFunctionIsolationMode = v2GreengrassHelper.getDefaultIsolationMode(groupInformation);
 
         if (optionalFunctionIsolationMode.isPresent()) {
             return optionalFunctionIsolationMode.get();
