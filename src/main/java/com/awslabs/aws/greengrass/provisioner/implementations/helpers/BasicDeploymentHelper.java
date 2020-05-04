@@ -23,6 +23,11 @@ import com.awslabs.iot.helpers.interfaces.V2GreengrassHelper;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.awslabs.lambda.data.FunctionName;
 import com.awslabs.lambda.data.ImmutableFunctionName;
+import com.awslabs.s3.helpers.data.ImmutableS3Bucket;
+import com.awslabs.s3.helpers.data.ImmutableS3Path;
+import com.awslabs.s3.helpers.data.S3Bucket;
+import com.awslabs.s3.helpers.data.S3Path;
+import com.awslabs.s3.helpers.interfaces.V2S3Helper;
 import com.google.common.collect.ImmutableSet;
 import com.jcraft.jsch.JSchException;
 import com.jcraft.jsch.Session;
@@ -35,7 +40,6 @@ import net.jodah.failsafe.RetryPolicy;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ec2.model.*;
@@ -44,7 +48,6 @@ import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
@@ -150,6 +153,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     TypeSafeConfigHelper typeSafeConfigHelper;
     @Inject
     ConnectorHelper connectorHelper;
+    @Inject
+    V2S3Helper v2S3Helper;
 
     private Optional<List<VirtualTarEntry>> installScriptVirtualTarEntries = Optional.empty();
     private Optional<List<VirtualTarEntry>> oemVirtualTarEntries = Optional.empty();
@@ -834,7 +839,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             functionHelper.verifyFunctionsAreSupported(functionConfs);
 
             // Get the map of functions to function configuration (builds functions and publishes them to Lambda)
-            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(functionConfs, lambdaRole);
+            functionToConfMap = functionHelper.buildFunctionsAndGenerateMap(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, functionConfs, lambdaRole);
         }
 
         ////////////////////////////
@@ -1725,7 +1730,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             ioHelper.makeExecutable(ggShScriptName);
 
             // Copy to S3 if necessary
-            copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, ggShScriptName);
+            if (deploymentArguments.s3Bucket != null) {
+                S3Bucket s3Bucket = ImmutableS3Bucket.builder().bucket(deploymentArguments.s3Bucket).build();
+                S3Path s3Path = ImmutableS3Path.builder().path(deploymentArguments.s3Directory).build();
+                File file = new File(ggShScriptName);
+                v2S3Helper.copyToS3(s3Bucket, s3Path, file);
+            }
         }
 
         if (oemVirtualTarEntries.isPresent()) {
@@ -1738,7 +1748,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 ioHelper.makeExecutable(oemArchiveName);
 
                 // Copy to S3 if necessary
-                copyToS3IfNecessary(deploymentArguments.s3Bucket, deploymentArguments.s3Directory, oemArchiveName);
+                if (deploymentArguments.s3Bucket != null) {
+                    S3Bucket s3Bucket = ImmutableS3Bucket.builder().bucket(deploymentArguments.s3Bucket).build();
+                    S3Path s3Path = ImmutableS3Path.builder().path(deploymentArguments.s3Directory).build();
+                    File file = new File(oemArchiveName);
+                    v2S3Helper.copyToS3(s3Bucket, s3Path, file);
+                }
             }
         }
     }
@@ -1774,38 +1789,6 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("Writing OEM JSON output to [" + oemJsonFilename + "]");
         ioHelper.writeFile(oemJsonFilename, jsonHelper.toJson(oemJson).getBytes());
-    }
-
-    private void copyToS3IfNecessary(String s3Bucket, String s3Directory, String fileName) {
-        if (s3Bucket == null) {
-            return;
-        }
-
-        if (s3Directory.equals("/")) {
-            // Clear out the S3 directory if it is just the root
-            s3Directory = "";
-        }
-
-        File inputFile = new File(fileName);
-        String s3FileName = inputFile.getName();
-
-        // Put the key together from the path
-        String key = String.join("/", s3Directory, s3FileName);
-
-        if (key.startsWith("/")) {
-            // If there's a leading slash remove it
-            key = key.substring(1);
-        }
-
-        // Replace any accidental double slashes
-        key = key.replaceAll("//", "/");
-
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(s3Bucket)
-                .key(key)
-                .build();
-
-        s3Client.putObject(putObjectRequest, RequestBody.fromFile(inputFile));
     }
 
     private void writePayload(Architecture architecture, ByteArrayOutputStream ggScriptTemplate) throws IOException {

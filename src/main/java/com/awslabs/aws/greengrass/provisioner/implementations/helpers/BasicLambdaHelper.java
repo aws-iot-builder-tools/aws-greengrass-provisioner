@@ -1,9 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
-import com.awslabs.aws.greengrass.provisioner.data.ImmutableZipFilePathAndFunctionConf;
-import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
-import com.awslabs.aws.greengrass.provisioner.data.Language;
+import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.builders.*;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
@@ -21,14 +18,12 @@ import org.gradle.tooling.BuildException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
 
 import javax.inject.Inject;
 import java.io.File;
-import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.HashMap;
 import java.util.List;
@@ -188,12 +183,11 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 
     @Override
-    public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConf functionConf, Role role, String zipFilePath) {
-        FunctionCode functionCode = FunctionCode.builder()
-                .zipFile(SdkBytes.fromByteBuffer(ByteBuffer.wrap(ioHelper.readFile(zipFilePath))))
-                .build();
-
+    public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConfAndFunctionCode functionConfAndFunctionCode, Role role) {
         String runtime;
+
+        FunctionConf functionConf = functionConfAndFunctionCode.functionConf();
+        FunctionCode functionCode = functionConfAndFunctionCode.functionCode();
 
         if (functionConf.getLanguage().equals(Language.EXECUTABLE)) {
             runtime = ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE;
@@ -236,10 +230,17 @@ public class BasicLambdaHelper implements LambdaHelper {
     private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
 
-        UpdateFunctionCodeRequest updateFunctionCodeRequest = UpdateFunctionCodeRequest.builder()
-                .functionName(functionName.getName())
-                .zipFile(functionCode.zipFile())
-                .build();
+        UpdateFunctionCodeRequest.Builder updateFunctionCodeRequestBuilder = UpdateFunctionCodeRequest.builder()
+                .functionName(functionName.getName());
+
+        if (functionCode.zipFile() != null) {
+            updateFunctionCodeRequestBuilder.zipFile(functionCode.zipFile());
+        } else {
+            updateFunctionCodeRequestBuilder.s3Bucket(functionCode.s3Bucket());
+            updateFunctionCodeRequestBuilder.s3Key(functionCode.s3Key());
+        }
+
+        UpdateFunctionCodeRequest updateFunctionCodeRequest = updateFunctionCodeRequestBuilder.build();
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {

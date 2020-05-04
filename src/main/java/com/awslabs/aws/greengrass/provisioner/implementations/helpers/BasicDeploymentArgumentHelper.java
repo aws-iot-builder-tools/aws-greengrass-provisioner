@@ -7,8 +7,6 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.s3.helpers.interfaces.V2S3Helper;
 import com.beust.jcommander.JCommander;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException;
-import io.vavr.control.Try;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.s3.model.Bucket;
@@ -195,10 +193,6 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
             if (deploymentArguments.s3Directory == null) {
                 throw new RuntimeException("S3 bucket specified without S3 directory. S3 directory is required. Set S3 directory to '/' to store the output in the root of the bucket.");
-            }
-
-            if ((!deploymentArguments.oemOutput) && (!deploymentArguments.scriptOutput)) {
-                throw new RuntimeException("S3 destination specified but not output files will be generated. You must specify either OEM or script output to use S3.");
             }
 
             // At this point the S3 options look good, make sure that the bucket exists

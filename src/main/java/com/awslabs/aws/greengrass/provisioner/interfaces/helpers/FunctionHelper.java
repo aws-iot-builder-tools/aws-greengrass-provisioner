@@ -36,5 +36,5 @@ public interface FunctionHelper {
 
     Predicate<FunctionConf> getJavaPredicate();
 
-    Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> buildableFunctions, Role lambdaRole);
+    Map<Function, FunctionConf> buildFunctionsAndGenerateMap(String s3Bucket, String s3Directory, List<FunctionConf> buildableFunctions, Role lambdaRole);
 }
