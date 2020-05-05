@@ -1,9 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
-import com.awslabs.aws.greengrass.provisioner.data.ImmutableLambdaFunctionArnInfo;
-import com.awslabs.aws.greengrass.provisioner.data.LambdaFunctionArnInfo;
-import com.awslabs.aws.greengrass.provisioner.data.Language;
-import com.awslabs.aws.greengrass.provisioner.data.ZipFilePathAndFunctionConf;
+import com.awslabs.aws.greengrass.provisioner.data.*;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
@@ -12,25 +9,34 @@ import com.awslabs.aws.greengrass.provisioner.interfaces.builders.GradleBuilder;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
 import com.awslabs.lambda.data.*;
 import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
+import com.awslabs.s3.helpers.data.ImmutableS3Bucket;
+import com.awslabs.s3.helpers.data.ImmutableS3Key;
+import com.awslabs.s3.helpers.data.S3Bucket;
+import com.awslabs.s3.helpers.data.S3Key;
+import com.awslabs.s3.helpers.interfaces.V2S3Helper;
 import com.typesafe.config.*;
 import io.vavr.Tuple3;
 import io.vavr.control.Either;
 import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
+import org.bouncycastle.util.encoders.Base64;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import software.amazon.awssdk.core.SdkBytes;
 import software.amazon.awssdk.services.greengrass.model.EncodingType;
 import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.FunctionIsolationMode;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.model.CreateFunctionResponse;
+import software.amazon.awssdk.services.lambda.model.FunctionCode;
 import software.amazon.awssdk.services.lambda.model.UpdateFunctionConfigurationResponse;
 
 import javax.inject.Inject;
 import java.io.File;
 import java.io.FileFilter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
@@ -45,6 +51,7 @@ public class BasicFunctionHelper implements FunctionHelper {
     public static final String FULL_LAMBDA_ARN_CHECK_REGEX = String.join("", ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX, NO_COLONS_REGEX, ":", NO_COLONS_REGEX);
     public static final String EXISTING_LAMBDA_FUNCTION_WILDCARD = "~";
     public static final String ENDS_WITH_ALIAS_REGEX = "[^:]*:[^:]*$";
+    public static final int LAMBDA_FUNCTION_DIRECT_UPLOAD_SIZE_LIMIT_IN_BYTES = 69905067;
     private final Logger log = LoggerFactory.getLogger(BasicFunctionHelper.class);
     @Inject
     GreengrassHelper greengrassHelper;
@@ -66,6 +73,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     SecretsManagerHelper secretsManagerHelper;
     @Inject
     TypeSafeConfigHelper typeSafeConfigHelper;
+    @Inject
+    V2S3Helper v2S3Helper;
 
     @Inject
     public BasicFunctionHelper() {
@@ -698,12 +707,14 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(List<FunctionConf> functionConfList, Role lambdaRole) {
-        List<ZipFilePathAndFunctionConf> builtFunctions = buildExistingFunctions(functionConfList);
+    public Map<Function, FunctionConf> buildFunctionsAndGenerateMap(String s3Bucket, String s3Directory, List<FunctionConf> functionConfList, Role lambdaRole) {
+        List<FunctionConfAndFunctionCode> builtFunctions = buildExistingFunctions(functionConfList).stream()
+                .map(zipFilePathAndFunctionConf -> convertZipFileToFunctionCode(s3Bucket, s3Directory, zipFilePathAndFunctionConf))
+                .collect(Collectors.toList());
 
         // Create or update the functions as necessary
         List<Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse>> lambdaResponsesForBuiltFunctions = builtFunctions.stream()
-                .map(zipFilePathAndFunctionConf -> lambdaHelper.createOrUpdateFunction(zipFilePathAndFunctionConf.getFunctionConf(), lambdaRole, zipFilePathAndFunctionConf.getZipFilePath().get()))
+                .map(functionConfAndFunctionCode -> lambdaHelper.createOrUpdateFunction(functionConfAndFunctionCode, lambdaRole))
                 .collect(Collectors.toList());
 
         // Get the function ARNs from the built functions
@@ -735,6 +746,45 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .collect(Collectors.toList());
 
         return buildCombinedMapOfGreengrassFunctionModels(functionConfsWithEnvironmentVariables);
+    }
+
+    private ImmutableFunctionConfAndFunctionCode convertZipFileToFunctionCode(String s3BucketString, String s3DirectoryString, ZipFilePathAndFunctionConf zipFilePathAndFunctionConf) {
+        File zipFile = new File(zipFilePathAndFunctionConf.getZipFilePath().get());
+        String functionName = zipFilePathAndFunctionConf.getFunctionConf().getFunctionName().getName();
+
+        FunctionCode functionCode;
+
+        int base64Length = Base64.encode(ioHelper.readFile(zipFile)).length;
+
+        // Base64 encoded length can not be larger than this constant value or the direct upload will fail
+        if (base64Length > LAMBDA_FUNCTION_DIRECT_UPLOAD_SIZE_LIMIT_IN_BYTES) {
+            // File is too big, need to put it in S3
+            if ((s3BucketString == null) || (s3DirectoryString == null)) {
+                throw new RuntimeException("Lambda function [" + functionName + "] is greater than the direct upload limit for Lambda. It must be uploaded to S3. Re-run GGP with the --s3-bucket and --s3-directory options specified to upload to S3 automatically.");
+            }
+
+            S3Bucket s3Bucket = ImmutableS3Bucket.builder().bucket(s3BucketString).build();
+            String s3KeyString = String.join("/", s3DirectoryString, zipFile.getName());
+            S3Key s3Key = ImmutableS3Key.builder().key(s3KeyString).build();
+
+            log.info("Lambda function [" + functionName + "] is being uploaded to S3 - " + s3Bucket.bucket() + ", " + s3Key.key());
+            v2S3Helper.copyToS3(s3Bucket, s3Key, zipFile);
+            log.info("Lambda function [" + functionName + "] has been uploaded to S3 - " + s3Bucket.bucket() + ", " + s3Key.key());
+
+            functionCode = FunctionCode.builder()
+                    .s3Bucket(s3Bucket.bucket())
+                    .s3Key(s3Key.key())
+                    .build();
+        } else {
+            functionCode = FunctionCode.builder()
+                    .zipFile(SdkBytes.fromByteBuffer(ByteBuffer.wrap(ioHelper.readFile(zipFile))))
+                    .build();
+        }
+
+        return ImmutableFunctionConfAndFunctionCode.builder()
+                .functionConf(zipFilePathAndFunctionConf.getFunctionConf())
+                .functionCode(functionCode)
+                .build();
     }
 
     @NotNull
@@ -771,6 +821,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             System.exit(1);
         }
+
         return builtFunctions;
     }
 
