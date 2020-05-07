@@ -935,13 +935,19 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.ec2LinuxVersion != null) {
             log.info("Launching EC2 instance");
+
             Set<Integer> openPorts = functionConfs.stream()
+                    // Get all of the environment variables from each function
                     .map(FunctionConf::getEnvironmentVariables)
+                    // Extract the PORT variables
                     .map(environmentVariables -> Optional.ofNullable(environmentVariables.get("PORT")))
+                    // Filter out missing values
                     .filter(Optional::isPresent)
                     .map(Optional::get)
+                    // Parse the string into an integer
                     .map(Integer::parseInt)
                     .collect(Collectors.toSet());
+
             optionalInstanceId = launchEc2Instance(deploymentArguments.groupName, deploymentArguments.architecture, deploymentArguments.ec2LinuxVersion, deploymentArguments.mqttPort, openPorts);
 
             if (!optionalInstanceId.isPresent()) {
