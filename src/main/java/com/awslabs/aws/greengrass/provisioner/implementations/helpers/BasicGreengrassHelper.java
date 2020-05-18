@@ -888,7 +888,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         }
 
         if (thingPrincipals.size() != 1) {
-            throw new RuntimeException(String.join("More than one principal found for [", thingName.getName(), "], can not continue"));
+            throw new RuntimeException(String.join("", "More than one principal found for [", thingName.getName(), "], can not continue"));
         }
 
         String certificateArn = thingPrincipals.get(0).getPrincipal();
