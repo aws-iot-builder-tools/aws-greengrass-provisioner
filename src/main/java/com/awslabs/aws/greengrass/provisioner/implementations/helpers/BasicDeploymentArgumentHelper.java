@@ -136,7 +136,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
             // Filter out normal apostrophes, and special apostrophes (from "farfetch’d")
             deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("'", "");
             deploymentArguments.groupName = deploymentArguments.groupName.replaceAll("’", "");
-            log.info("No group name specified, group name auto-generated [" + deploymentArguments.groupName + "]");
+            log.info(String.join("", "No group name specified, group name auto-generated [", deploymentArguments.groupName, "]"));
         }
 
         // Depends on group name being set
@@ -176,7 +176,7 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.buildContainer) {
             if (!ecrDockerHelper.getDockerfileForArchitecture(deploymentArguments.architecture).exists()) {
-                throw new RuntimeException("No dockerfile exists for architecture [" + deploymentArguments.architecture.toString() + "]");
+                throw new RuntimeException(String.join("", "No dockerfile exists for architecture [", deploymentArguments.architecture.toString(), "]"));
             }
         }
 
@@ -212,14 +212,14 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.mqttPort == 0) {
             // No value was set, use the default
-            log.warn("No MQTT port value was set, using default [" + DEFAULT_MQTT_PORT + "]");
+            log.warn(String.join("", "No MQTT port value was set, using default [", String.valueOf(DEFAULT_MQTT_PORT), "]"));
             deploymentArguments.mqttPort = DEFAULT_MQTT_PORT;
         }
 
         if (((!deploymentArguments.scriptOutput) && (!deploymentArguments.oemOutput))
                 && (deploymentArguments.mqttPort != DEFAULT_MQTT_PORT)) {
             // No script and OEM files are being generated but a non-default MQTT port was specified
-            throw new RuntimeException("A non-default MQTT port was specified [" + deploymentArguments.mqttPort + "] but no output files are being generated. Can not continue. The MQTT port can only be set in the config.json. It cannot be changed from the cloud.");
+            throw new RuntimeException(String.join("", "A non-default MQTT port was specified [", String.valueOf(deploymentArguments.mqttPort), "] but no output files are being generated. Can not continue. The MQTT port can only be set in the config.json. It cannot be changed from the cloud."));
         }
 
         return deploymentArguments;

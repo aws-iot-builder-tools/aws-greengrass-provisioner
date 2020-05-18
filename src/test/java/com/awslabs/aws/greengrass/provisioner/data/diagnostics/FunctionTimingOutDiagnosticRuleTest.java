@@ -20,7 +20,7 @@ import static org.hamcrest.CoreMatchers.is;
 public class FunctionTimingOutDiagnosticRuleTest {
     private static final String funcArn = "arn:aws:lambda:us-east-1:xxx:function:yyy:47";
     private static final String invoker = "cloud";
-    private static final String logLine = "Timing out work item.   {\"invoker\": \"" + invoker + "\", \"invocationId\": \"6a92c46c-7ce8-4c00-70e4-e70d33628862\", \"funcArn\": \"" + funcArn + "\", \"workerId\": \"32b93434-787f-4bc1-4453-a1bc2538b711\"}";
+    private static final String logLine = String.join("", "Timing out work item.   {\"invoker\": \"", invoker, "\", \"invocationId\": \"6a92c46c-7ce8-4c00-70e4-e70d33628862\", \"funcArn\": \"", funcArn, "\", \"workerId\": \"32b93434-787f-4bc1-4453-a1bc2538b711\"}");
     private FunctionTimingOutDiagnosticRule functionTimingOutDiagnosticRule;
     private Tuple3<LogGroup, LogStream, List<String>> log;
 
@@ -42,8 +42,8 @@ public class FunctionTimingOutDiagnosticRuleTest {
         List<String> result = optionalResult.get();
         MatcherAssert.assertThat(result.size(), is(1));
         String resultString = result.get(0);
-        MatcherAssert.assertThat(resultString, containsString("[" + funcArn + "]"));
-        MatcherAssert.assertThat(resultString, containsString("[" + invoker + "]"));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", funcArn, "]")));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", invoker, "]")));
     }
 
     @Test

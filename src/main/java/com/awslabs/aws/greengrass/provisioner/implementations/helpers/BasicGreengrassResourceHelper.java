@@ -75,10 +75,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
-                    .map(string -> "\"" + string + "\"")
+                    .map(string -> String.join("", "\"", string, "\""))
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local secrets manager secrets defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            log.error(String.join("", "Duplicate local secrets manager secrets defined [", duplicatesString, "].  Greengrass will not accept this configuration."));
             throw new RuntimeException("Invalid resource configuration");
         }
     }
@@ -95,10 +95,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
         }
 
         String duplicatesString = duplicates.get().stream()
-                .map(string -> "\"" + string + "\"")
+                .map(string -> String.join("", "\"", string, "\""))
                 .collect(Collectors.joining(", "));
 
-        log.error("Duplicate local device resource source paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+        log.error(String.join("", "Duplicate local device resource source paths defined [", duplicatesString, "].  Greengrass will not accept this configuration."));
         throw new RuntimeException("Invalid resource configuration");
     }
 
@@ -113,10 +113,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
         }
 
         String invalidString = invalidSourcePaths.stream()
-                .map(string -> "\"" + string + "\"")
+                .map(string -> String.join("", "\"", string, "\""))
                 .collect(Collectors.joining(", "));
 
-        log.error("Local device resource source paths were specified outside of /dev [" + invalidString + "].  Greengrass will not accept this configuration.");
+        log.error(String.join("", "Local device resource source paths were specified outside of /dev [", invalidString, "].  Greengrass will not accept this configuration."));
         throw new RuntimeException("Invalid resource configuration");
     }
 
@@ -131,10 +131,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
 
         if (multipleDestinations.isPresent()) {
             String multipleDestinationsString = multipleDestinations.get().stream()
-                    .map(entry -> "Source [" + entry.getKey() + "], destinations [" + String.join(", ", entry.getValue()) + "]")
+                    .map(entry -> String.join("", "Source [", entry.getKey(), "], destinations [", String.join(", ", entry.getValue()), "]"))
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local volume resource destination paths defined [" + multipleDestinationsString + "].  Greengrass will not accept this configuration.");
+            log.error(String.join("", "Duplicate local volume resource destination paths defined [", multipleDestinationsString, "].  Greengrass will not accept this configuration."));
 
             throw new RuntimeException("Invalid resource configuration");
         }
@@ -149,10 +149,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
-                    .map(string -> "\"" + string + "\"")
+                    .map(string -> String.join("", "\"", string, "\""))
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local SageMaker resource destination paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            log.error(String.join("", "Duplicate local SageMaker resource destination paths defined [", duplicatesString, "].  Greengrass will not accept this configuration."));
             throw new RuntimeException("Invalid resource configuration");
         }
     }
@@ -166,10 +166,10 @@ public class BasicGreengrassResourceHelper implements GreengrassResourceHelper {
 
         if (duplicates.isPresent()) {
             String duplicatesString = duplicates.get().stream()
-                    .map(string -> "\"" + string + "\"")
+                    .map(string -> String.join("", "\"", string, "\""))
                     .collect(Collectors.joining(", "));
 
-            log.error("Duplicate local S3 resource destination paths defined [" + duplicatesString + "].  Greengrass will not accept this configuration.");
+            log.error(String.join("", "Duplicate local S3 resource destination paths defined [", duplicatesString, "].  Greengrass will not accept this configuration."));
             throw new RuntimeException("Invalid resource configuration");
         }
     }

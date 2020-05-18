@@ -19,7 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 
 public class FunctionTimedOutDiagnosticRuleTest {
     private static final String funcArn = "arn:aws:lambda:us-east-1:yyy:function:zzz:47";
-    private static final String logLine = "WorkItem reached max retry limit.     {\"invocationId\": \"6a92c46c-7ce8-4c00-70e4-e70d33628862\", \"funcArn\": \"" + funcArn + "\", \"workerId\": \"32b93434-787f-4bc1-4453-a1bc2538b711\"}";
+    private static final String logLine = String.join("", "WorkItem reached max retry limit.     {\"invocationId\": \"6a92c46c-7ce8-4c00-70e4-e70d33628862\", \"funcArn\": \"", funcArn, "\", \"workerId\": \"32b93434-787f-4bc1-4453-a1bc2538b711\"}");
     private FunctionTimedOutDiagnosticRule functionTimedOutDiagnosticRule;
     private Tuple3<LogGroup, LogStream, List<String>> log;
 
@@ -41,7 +41,7 @@ public class FunctionTimedOutDiagnosticRuleTest {
         List<String> result = optionalResult.get();
         MatcherAssert.assertThat(result.size(), is(1));
         String resultString = result.get(0);
-        MatcherAssert.assertThat(resultString, containsString("[" + funcArn + "]"));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", funcArn, "]")));
     }
 
     @Test

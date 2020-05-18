@@ -58,7 +58,7 @@ public class BasicConnectorHelper implements ConnectorHelper {
         if (connectorConfList.size() > 0) {
             log.info("Enabled connector configurations: ");
             connectorConfList
-                    .forEach(connectorConf -> log.info("  " + connectorConf.getConnector().connectorArn()));
+                    .forEach(connectorConf -> log.info(String.join("", "  ", connectorConf.getConnector().connectorArn())));
         } else {
             log.warn("No connectors enabled");
         }
@@ -146,13 +146,13 @@ public class BasicConnectorHelper implements ConnectorHelper {
             boolean bucketExists = Try.of(() -> s3Helper.bucketExists(bucket)).get();
 
             if (!bucketExists) {
-                throw new RuntimeException("The bucket [" + bucket + "] does not exist. This would cause the deployment to fail. Can not continue.");
+                throw new RuntimeException(String.join("", "The bucket [", bucket.name(), "] does not exist. This would cause the deployment to fail. Can not continue."));
             }
 
             boolean objectExists = Try.of(() -> s3Helper.objectExists(bucket, key)).get();
 
             if (!objectExists) {
-                throw new RuntimeException("The object [" + bucket + "/" + key + "] does not exist. This would cause the deployment to fail. Can not continue.");
+                throw new RuntimeException(String.join("", "The object [", bucket.name(), "/", key, "] does not exist. This would cause the deployment to fail. Can not continue."));
             }
         }
     }

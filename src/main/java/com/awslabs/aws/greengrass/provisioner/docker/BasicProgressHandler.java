@@ -18,22 +18,22 @@ public class BasicProgressHandler implements ProgressHandler {
     @Override
     public void progress(ProgressMessage message) {
         if (message.error() != null) {
-            log.error("Docker build error [" + message.error() + "]");
+            log.error(String.join("", "Docker build error [", message.error(), "]"));
             return;
         }
 
         if ((message.status() != null) && (!message.status().equals(lastMessage))) {
-            log.info("Status: " + message.status());
+            log.info(String.join("", "Status: ", message.status()));
             lastMessage = message.status();
         }
 
         if ((message.progress() != null) && (!message.progress().equals(lastMessage))) {
-            log.info("Progress: " + message.progress());
+            log.info(String.join("", "Progress: ", message.progress()));
             lastMessage = message.progress();
         }
 
         if ((message.stream() != null) && (!message.stream().equals(lastMessage))) {
-            log.info("Stream: " + message.stream());
+            log.info(String.join("", "Stream: ", message.stream()));
             lastMessage = message.stream();
         }
     }

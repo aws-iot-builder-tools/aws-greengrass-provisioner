@@ -199,12 +199,12 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
     }
 
     private Void printCouldNotCreateContainerAndThrow(Throwable throwable) {
-        log.error("Couldn't create container [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Couldn't create container [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 
     private Void printCouldNotCopyFilesToContainerAndThrow(Throwable throwable) {
-        log.error("Couldn't copy files to container [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Couldn't copy files to container [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 
@@ -215,6 +215,6 @@ public class OfficialGreengrassImageDockerHelper extends AbstractDockerHelper {
 
     @Override
     public String getEcrProxyEndpoint() {
-        return "https://" + ggConstants.getOfficialGreengrassEcrEndpoint();
+        return String.join("", "https://", ggConstants.getOfficialGreengrassEcrEndpoint());
     }
 }

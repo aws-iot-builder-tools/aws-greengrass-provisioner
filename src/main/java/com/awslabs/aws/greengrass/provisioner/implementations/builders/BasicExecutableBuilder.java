@@ -33,7 +33,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
         File buildScript = new File(getBuildScriptName(functionConf));
 
         if (!buildScript.exists()) {
-            log.warn("Builder for executable function was called but no build script [" + BUILD_SH + "] was present");
+            log.warn(String.join("", "Builder for executable function was called but no build script [", BUILD_SH, "] was present"));
             return;
         }
 
@@ -48,7 +48,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
     private void buildExecutable(FunctionConf functionConf) {
         String buildScriptName = getBuildScriptName(functionConf);
 
-        log.info("Making executable [" + buildScriptName + "]");
+        log.info(String.join("", "Making executable [", buildScriptName, "]"));
         ioHelper.makeExecutable(buildScriptName);
 
         loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "Building executable/native function");
@@ -71,7 +71,7 @@ public class BasicExecutableBuilder implements ExecutableBuilder {
 
             log.error("To resolve:");
             log.error("1) GGP sometimes must run outside of Docker if the build script requires Docker. Try running GGP outside of Docker.");
-            log.error("2) Run " + BUILD_SH + " for the [" + functionConf.getFunctionName().getName() + "] function outside of GGP and determine if it builds properly");
+            log.error(String.join("", "2) Run ", BUILD_SH, " for the [", functionConf.getFunctionName().getName(), "] function outside of GGP and determine if it builds properly"));
 
             System.exit(1);
         }

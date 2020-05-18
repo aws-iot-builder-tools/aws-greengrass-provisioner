@@ -60,7 +60,7 @@ public class BasicTestArgumentHelper implements TestArgumentHelper {
         if (ioHelper.isRunningInDocker()) {
             testArguments.outputDirectory = DTOUTPUT;
             testArguments.deviceTesterLocation = DT_ZIP;
-            log.warn("Forcing output directory to " + DTOUTPUT + " because it looks like we're running in Docker");
+            log.warn(String.join("", "Forcing output directory to ", DTOUTPUT, " because it looks like we're running in Docker"));
         }
 
         if (testArguments.outputDirectory == null) {

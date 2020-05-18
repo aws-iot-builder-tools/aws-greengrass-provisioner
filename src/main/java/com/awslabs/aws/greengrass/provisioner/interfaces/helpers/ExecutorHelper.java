@@ -22,7 +22,7 @@ public interface ExecutorHelper {
     }
 
     default void logAndRethrow(Logger log, Throwable throwable) {
-        log.error("Task execution failed [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Task execution failed [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 

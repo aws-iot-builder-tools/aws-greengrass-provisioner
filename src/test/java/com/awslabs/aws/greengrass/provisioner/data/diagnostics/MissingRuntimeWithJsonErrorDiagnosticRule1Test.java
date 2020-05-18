@@ -19,7 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 
 public class MissingRuntimeWithJsonErrorDiagnosticRule1Test {
     private static final String runtime = "nodejs12.x";
-    private static final String logLine = "runtime execution error: unable to start lambda container.       {\"errorString\": \"failed to run container sandbox: container_linux.go:344: starting container process caused \\\"exec: \\\\\\\"" + runtime + "\\\\\\\": executable file not found in $PATH\\\"\"}";
+    private static final String logLine = String.join("", "runtime execution error: unable to start lambda container.       {\"errorString\": \"failed to run container sandbox: container_linux.go:344: starting container process caused \\\"exec: \\\\\\\"", runtime, "\\\\\\\": executable file not found in $PATH\\\"\"}");
     private MissingRuntimeWithJsonErrorDiagnosticRule1 missingRuntimeDiagnosticRule1;
     private Tuple3<LogGroup, LogStream, List<String>> log;
 
@@ -41,7 +41,7 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule1Test {
         List<String> result = optionalResult.get();
         MatcherAssert.assertThat(result.size(), is(1));
         String resultString = result.get(0);
-        MatcherAssert.assertThat(resultString, containsString("[" + runtime + "]"));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", runtime, "]")));
     }
 
     @Test

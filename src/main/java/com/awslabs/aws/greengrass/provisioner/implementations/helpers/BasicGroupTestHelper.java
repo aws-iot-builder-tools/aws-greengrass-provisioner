@@ -36,10 +36,10 @@ import java.util.stream.Collectors;
 
 public class BasicGroupTestHelper implements GroupTestHelper {
     private static final String RUNTIME_LOG = "runtime.log";
-    private static final String FULL_RUNTIME_LOG_PATH = "/greengrass/ggc/var/log/system/" + RUNTIME_LOG;
+    private static final String FULL_RUNTIME_LOG_PATH = String.join("", "/greengrass/ggc/var/log/system/", RUNTIME_LOG);
     private static final String DAEMON_SEARCH_STRING = "bin/daemon";
     private static final String PROXY_SEARCH_STRING = "tmp/greenlight/proxy/proxy";
-    private static final String TAIL_FOLLOW_COMMAND = "tail -F " + FULL_RUNTIME_LOG_PATH;
+    private static final String TAIL_FOLLOW_COMMAND = String.join("", "tail -F ", FULL_RUNTIME_LOG_PATH);
     private static final int SSH_TIMEOUT_IN_MINUTES = 45;
     private static final String DEVICE_POOL_ID = "DevicePool";
     private static final String WINDOWS_DEVICE_TESTER_URL = "https://d232ctwt5kahio.cloudfront.net/greengrass/devicetester_greengrass_win_1.3.2.zip";
@@ -105,7 +105,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
         Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
-            throw new RuntimeException("Group [" + testArguments.groupName + "] not found");
+            throw new RuntimeException(String.join("", "Group [", testArguments.groupName, "] not found"));
         }
 
         GroupInformation groupInformation = optionalGroupInformation.get();
@@ -239,7 +239,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
             File executionDirectory = mainExecutable.getParentFile().getParentFile();
 
             List<String> deviceTesterAndArguments = List.of(
-                    "./bin/" + mainExecutable.getName(),
+                    String.join("", "./bin/", mainExecutable.getName()),
                     "run-suite",
                     "--suite-id",
                     "GGQ_1",
@@ -349,7 +349,7 @@ public class BasicGroupTestHelper implements GroupTestHelper {
     }
 
     private void killRemoteProcessesBySearchString(Session finalSession, String searchString) {
-        Try.of(() -> ioHelper.runCommand(finalSession, "ps ax | grep '" + searchString + "' | awk '{ print $1 }' | xargs sudo kill -9")).get();
+        Try.of(() -> ioHelper.runCommand(finalSession, String.join("", "ps ax | grep '", searchString, "' | awk '{ print $1 }' | xargs sudo kill -9"))).get();
     }
 
     private void safeDisconnect(Session session) {

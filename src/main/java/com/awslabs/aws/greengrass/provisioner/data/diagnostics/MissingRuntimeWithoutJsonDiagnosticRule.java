@@ -33,8 +33,9 @@ public interface MissingRuntimeWithoutJsonDiagnosticRule extends DiagnosticRule 
         String function = matcher.group(1);
         String runtime = matcher.group(2);
 
-        return Optional.of(String.join("\n\t", "The runtime [" + runtime + "] appears to be missing.",
-                "This will prevent [" + function + "] from running."));
+        return Optional.of(String.join("\n\t",
+                String.join("", "The runtime [", runtime, "] appears to be missing."),
+                String.join("", "This will prevent [", function, "] from running.")));
     }
 
     Pattern getPattern();

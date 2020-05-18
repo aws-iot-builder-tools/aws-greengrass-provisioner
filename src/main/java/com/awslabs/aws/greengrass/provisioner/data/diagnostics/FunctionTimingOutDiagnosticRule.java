@@ -47,7 +47,8 @@ public class FunctionTimingOutDiagnosticRule implements DiagnosticRule {
         String invoker = (String) error.get("invoker");
         String funcArn = (String) Optional.ofNullable(error.get("funcArn")).orElse("UNKNOWN");
 
-        return Optional.of(Collections.singletonList(String.join("\n\t", "The function [" + funcArn + "] was invoked by [" + invoker + "] and timed out.",
+        return Optional.of(Collections.singletonList(String.join("\n\t",
+                String.join("", "The function [", funcArn, "] was invoked by [", invoker, "] and timed out."),
                 "This could be because the function handler did not return before the timeoutInSeconds value for the function.",
                 "All event-based invocations of a function must return before the timeoutInSeconds value.",
                 "If the function has a long running task it must complete try starting the task in a thread and returning from the function handler.",

@@ -42,7 +42,7 @@ public class BasicSecretsManagerHelper implements SecretsManagerHelper {
             return;
         }
 
-        throw new RuntimeException("The secret [" + describeSecretResponse.name() + "] is scheduled for deletion. It can not be used in a Greengrass configuration.");
+        throw new RuntimeException(String.join("", "The secret [", describeSecretResponse.name(), "] is scheduled for deletion. It can not be used in a Greengrass configuration."));
     }
 
     public DescribeSecretResponse getDescribeSecretResponse(String id) {

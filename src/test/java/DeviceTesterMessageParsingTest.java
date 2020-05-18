@@ -220,7 +220,7 @@ public class DeviceTesterMessageParsingTest {
         List<DeviceTesterLogMessageType> missing = List.of(DeviceTesterLogMessageType.values()).removeAll(deviceTesterLogMessageTypes.toJavaSet());
 
         missing.toStream()
-                .forEach(deviceTesterLogMessageType -> System.out.println(String.format("Did not find a message with type [" + deviceTesterLogMessageType.name() + "]")));
+                .forEach(deviceTesterLogMessageType -> System.out.println(String.join("", "Did not find a message with type [", deviceTesterLogMessageType.name(), "]")));
 
         Assert.fail("Did not identify all message types");
     }

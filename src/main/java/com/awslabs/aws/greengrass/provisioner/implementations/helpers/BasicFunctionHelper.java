@@ -47,7 +47,7 @@ import java.util.stream.IntStream;
 
 public class BasicFunctionHelper implements FunctionHelper {
     public static final String NO_COLONS_REGEX = "[^:]*";
-    public static final String ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX = "arn:aws:lambda:" + NO_COLONS_REGEX + ":" + NO_COLONS_REGEX + ":function:";
+    public static final String ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX = String.join("", "arn:aws:lambda:", NO_COLONS_REGEX, ":", NO_COLONS_REGEX, ":function:");
     public static final String FULL_LAMBDA_ARN_CHECK_REGEX = String.join("", ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX, NO_COLONS_REGEX, ":", NO_COLONS_REGEX);
     public static final String EXISTING_LAMBDA_FUNCTION_WILDCARD = "~";
     public static final String ENDS_WITH_ALIAS_REGEX = "[^:]*:[^:]*$";
@@ -89,13 +89,13 @@ public class BasicFunctionHelper implements FunctionHelper {
             if (pathOrUrlOrArn.matches(ENDS_WITH_ALIAS_REGEX)) {
                 return Either.left(lambdaHelper.findFullFunctionArnByPartialName(pathOrUrlOrArn));
             } else {
-                throw new RuntimeException("Lambda function reference [" + pathOrUrlOrArn + "] does not include an alias. Append a colon and the alias to the partial name and try again.");
+                throw new RuntimeException(String.join("", "Lambda function reference [", pathOrUrlOrArn, "] does not include an alias. Append a colon and the alias to the partial name and try again."));
             }
         }
 
         if (pathOrUrlOrArn.startsWith(HTTPS)) {
             return Either.right(getGitFunctionConfFile(pathOrUrlOrArn));
-        } else if (pathOrUrlOrArn.matches(ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX + ".*$")) {
+        } else if (pathOrUrlOrArn.matches(String.join("", ARN_AWS_LAMBDA_FUNCTION_PREFIX_REGEX, ".*$"))) {
             throwExceptionIfLambdaArnIsIncomplete(pathOrUrlOrArn);
 
             return Either.left(ImmutableFunctionAliasArn.builder().aliasArn(pathOrUrlOrArn).build());
@@ -106,7 +106,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     private void throwExceptionIfLambdaArnIsIncomplete(String functionName) {
         if (!functionName.matches(FULL_LAMBDA_ARN_CHECK_REGEX)) {
-            throw new RuntimeException("Existing Lambda ARN [" + functionName + "] is malformed or incomplete. The Lambda ARN must be the fully qualified ARN with an alias.");
+            throw new RuntimeException(String.join("", "Existing Lambda ARN [", functionName, "] is malformed or incomplete. The Lambda ARN must be the fully qualified ARN with an alias."));
         }
     }
 
@@ -116,7 +116,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         Optional<String> optionalFunctionConfString = Optional.ofNullable(existingEnvironment.get(LambdaHelper.GGP_FUNCTION_CONF));
 
         if (!optionalFunctionConfString.isPresent()) {
-            throw new RuntimeException("This function does not contain the required [" + LambdaHelper.GGP_FUNCTION_CONF + "] key. Add this key to the function and try again.");
+            throw new RuntimeException(String.join("", "This function does not contain the required [", LambdaHelper.GGP_FUNCTION_CONF, "] key. Add this key to the function and try again."));
         }
 
         return optionalFunctionConfString.get();
@@ -179,7 +179,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         String[] components = tempFunctionName.split("/");
 
         if (components.length < 3) {
-            throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (1)");
+            throw new RuntimeException(String.join("", "The git URL specified [", functionName, "] is in a format that was not understood (1)"));
         }
 
         String last = components[components.length - 1];
@@ -192,12 +192,12 @@ public class BasicFunctionHelper implements FunctionHelper {
             String[] repoAndDirectory = last.split(":");
 
             if (repoAndDirectory.length != 2) {
-                throw new RuntimeException("The git URL specified [" + functionName + "] is in a format that was not understood (2)");
+                throw new RuntimeException(String.join("", "The git URL specified [", functionName, "] is in a format that was not understood (2)"));
             }
 
             repoName = repoAndDirectory[0];
             directoryName = repoAndDirectory[1];
-            cloneName = functionName.replaceAll(":" + NO_COLONS_REGEX + "$", "");
+            cloneName = functionName.replaceAll(String.join("", ":", NO_COLONS_REGEX, "$"), "");
         } else {
             repoName = last;
             directoryName = ".";
@@ -262,7 +262,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     private void warnAboutMissingDefaultsIfNecessary() {
         if (!ggConstants.getFunctionDefaultsConf().exists()) {
-            log.warn(ggConstants.getFunctionDefaultsConf().toString() + " does not exist.  All function configurations MUST contain all required values.");
+            log.warn(String.join("", ggConstants.getFunctionDefaultsConf().toString(), " does not exist.  All function configurations MUST contain all required values."));
         }
     }
 
@@ -285,7 +285,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         if (enabledFunctionConfObjects.size() > 0) {
             log.info("Enabled functions: ");
             enabledFunctionConfObjects
-                    .forEach(functionConf -> log.info("  " + functionConf.getFunctionName().getName()));
+                    .forEach(functionConf -> log.info(String.join("", "  ", functionConf.getFunctionName().getName())));
         } else {
             log.warn("NO FUNCTIONS ENABLED");
         }
@@ -409,12 +409,12 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     private void addConnectedShadowsToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> connectedShadows) {
         IntStream.range(0, connectedShadows.size())
-                .forEach(index -> functionConfBuilder.putEnvironmentVariables("CONNECTED_SHADOW_" + index, connectedShadows.get(index)));
+                .forEach(index -> functionConfBuilder.putEnvironmentVariables(String.join("", "CONNECTED_SHADOW_", String.valueOf(index)), connectedShadows.get(index)));
     }
 
     private void addSecretNamesToEnvironment(ImmutableFunctionConf.Builder functionConfBuilder, List<String> secretNames) {
         IntStream.range(0, secretNames.size())
-                .forEach(index -> functionConfBuilder.putEnvironmentVariables("SECRET_" + index, secretNames.get(index)));
+                .forEach(index -> functionConfBuilder.putEnvironmentVariables(String.join("", "SECRET_", String.valueOf(index)), secretNames.get(index)));
     }
 
     private List<Either<FunctionAliasArn, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
@@ -429,7 +429,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<String> connectedShadows = config.getStringList("conf.connectedShadows");
 
         if (connectedShadows.size() == 0) {
-            log.debug("No connected shadows specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
+            log.debug(String.join("", "No connected shadows specified for [", functionConfBuilder.build().getFunctionName().getName(), "] function"));
             return new ArrayList<>();
         }
 
@@ -440,7 +440,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localDeviceResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local device resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
+            log.debug(String.join("", "No local device resources specified for [", functionConfBuilder.build().getFunctionName().getName(), "] function"));
             return;
         }
 
@@ -461,7 +461,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localVolumeResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local volume resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
+            log.debug(String.join("", "No local volume resources specified for [", functionConfBuilder.build().getFunctionName().getName(), "] function"));
             return;
         }
 
@@ -487,7 +487,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localS3Resources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local S3 resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
+            log.debug(String.join("", "No local S3 resources specified for [", functionConfBuilder.build().getFunctionName().getName(), "] function"));
             return;
         }
 
@@ -509,7 +509,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         List<? extends ConfigObject> configObjectList = config.getObjectList("conf.localSageMakerResources");
 
         if (configObjectList.size() == 0) {
-            log.debug("No local SageMaker resources specified for [" + functionConfBuilder.build().getFunctionName().getName() + "] function");
+            log.debug(String.join("", "No local SageMaker resources specified for [", functionConfBuilder.build().getFunctionName().getName(), "] function"));
             return;
         }
 
@@ -524,21 +524,21 @@ public class BasicFunctionHelper implements FunctionHelper {
             // Regex from https://docs.aws.amazon.com/sagemaker/latest/dg/API_CreateTrainingJob.html
 
             if (arnComponents.length != 6) {
-                throw new RuntimeException("SageMaker ARN looks malformed [" + arn + "]");
+                throw new RuntimeException(String.join("", "SageMaker ARN looks malformed [", arn, "]"));
             }
 
             if (!arnComponents[2].equals("sagemaker")) {
-                throw new RuntimeException("SageMaker ARN does not look like a SageMaker ARN [" + arn + "]");
+                throw new RuntimeException(String.join("", "SageMaker ARN does not look like a SageMaker ARN [", arn, "]"));
             }
 
             arnComponents = arnComponents[5].split("/");
 
             if (arnComponents.length < 2) {
-                throw new RuntimeException("SageMaker ARN looks malformed [" + arn + "]");
+                throw new RuntimeException(String.join("", "SageMaker ARN looks malformed [", arn, "]"));
             }
 
             if (!arnComponents[0].equals(TRAINING_JOB)) {
-                throw new RuntimeException("SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [" + arn + "]");
+                throw new RuntimeException(String.join("", "SageMaker ARNs must be training job ARNs, not model ARNs or other types of ARNs [", arn, "]"));
             }
 
             LocalSageMakerResource localSageMakerResource = ImmutableLocalSageMakerResource.builder()
@@ -558,7 +558,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         String functionNameString = functionConfBuilder.build().getFunctionName().getName();
 
         if (idList.size() == 0) {
-            log.debug("No local secrets manager resources specified for [" + functionNameString + "] function");
+            log.debug(String.join("", "No local secrets manager resources specified for [", functionNameString, "] function"));
 
             return secretNames;
         }
@@ -577,15 +577,15 @@ public class BasicFunctionHelper implements FunctionHelper {
             // Example ARN from https://docs.aws.amazon.com/secretsmanager/latest/apireference/API_CreateSecret.html
 
             if (arnComponents.length != 7) {
-                throw new RuntimeException("Secrets manager ARN looks malformed [" + arn + "]");
+                throw new RuntimeException(String.join("", "Secrets manager ARN looks malformed [", arn, "]"));
             }
 
             if (!arnComponents[2].equals("secretsmanager")) {
-                throw new RuntimeException("Secrets manager ARN does not look like a secrets manager ARN [" + arn + "], third component is not 'secretsmanager'");
+                throw new RuntimeException(String.join("", "Secrets manager ARN does not look like a secrets manager ARN [", arn, "], third component is not 'secretsmanager'"));
             }
 
             if (!arnComponents[5].equals("secret")) {
-                throw new RuntimeException("Secrets manager ARN does not look like a secrets manager ARN [" + arn + "], second to last component is not 'secret'");
+                throw new RuntimeException(String.join("", "Secrets manager ARN does not look like a secrets manager ARN [", arn, "], second to last component is not 'secret'"));
             }
 
             String resourceName = arnComponents[6];
@@ -600,7 +600,7 @@ public class BasicFunctionHelper implements FunctionHelper {
                     .resourceName(resourceName)
                     .build();
 
-            log.info("Adding secret resource [" + resourceName + "] with name [" + secretName + "] to function [" + functionNameString + "]");
+            log.info(String.join("", "Adding secret resource [", resourceName, "] with name [", secretName, "] to function [", functionNameString, "]"));
 
             functionConfBuilder.addLocalSecretsManagerResources(localSecretsManagerResource);
         }
@@ -676,7 +676,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         log.error("The following function(s) are not buildable:");
 
         functionsNotBuilt
-                .forEach(functionConf -> log.error("\t" + functionConf.getFunctionName().getName()));
+                .forEach(functionConf -> log.error(String.join("", "\t", functionConf.getFunctionName().getName())));
 
         throw new RuntimeException("This is a bug, cannot continue");
     }
@@ -760,16 +760,16 @@ public class BasicFunctionHelper implements FunctionHelper {
         if (base64Length > LAMBDA_FUNCTION_DIRECT_UPLOAD_SIZE_LIMIT_IN_BYTES) {
             // File is too big, need to put it in S3
             if ((s3BucketString == null) || (s3DirectoryString == null)) {
-                throw new RuntimeException("Lambda function [" + functionName + "] is greater than the direct upload limit for Lambda. It must be uploaded to S3. Re-run GGP with the --s3-bucket and --s3-directory options specified to upload to S3 automatically.");
+                throw new RuntimeException(String.join("", "Lambda function [", functionName, "] is greater than the direct upload limit for Lambda. It must be uploaded to S3. Re-run GGP with the --s3-bucket and --s3-directory options specified to upload to S3 automatically."));
             }
 
             S3Bucket s3Bucket = ImmutableS3Bucket.builder().bucket(s3BucketString).build();
             String s3KeyString = String.join("/", s3DirectoryString, zipFile.getName());
             S3Key s3Key = ImmutableS3Key.builder().key(s3KeyString).build();
 
-            log.info("Lambda function [" + functionName + "] is being uploaded to S3 - " + s3Bucket.bucket() + ", " + s3Key.key());
+            log.info(String.join("", "Lambda function [", functionName, "] is being uploaded to S3 - ", s3Bucket.bucket(), ", ", s3Key.key()));
             v2S3Helper.copyToS3(s3Bucket, s3Key, zipFile);
-            log.info("Lambda function [" + functionName + "] has been uploaded to S3 - " + s3Bucket.bucket() + ", " + s3Key.key());
+            log.info(String.join("", "Lambda function [", functionName, "] has been uploaded to S3 - ", s3Bucket.bucket(), ", ", s3Key.key()));
 
             functionCode = FunctionCode.builder()
                     .s3Bucket(s3Bucket.bucket())
@@ -965,8 +965,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     private void logErrorInLambdaFunction(ZipFilePathAndFunctionConf error) {
-        log.error("- Function [" + error.getFunctionConf().getFunctionName().getName() + "]");
-        log.error("  Error [" + error.getError().get() + "]");
+        log.error(String.join("", "- Function [", error.getFunctionConf().getFunctionName().getName(), "]"));
+        log.error(String.join("", "  Error [", error.getError().get(), "]"));
     }
 
     private List<ZipFilePathAndFunctionConf> buildFunctions(List<FunctionConf> functionConfList) {

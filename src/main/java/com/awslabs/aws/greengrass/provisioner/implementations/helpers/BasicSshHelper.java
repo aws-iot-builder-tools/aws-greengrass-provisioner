@@ -49,7 +49,7 @@ public class BasicSshHelper implements SshHelper {
         String[] strings = input.split("@");
 
         if (strings.length != 2) {
-            throw new RuntimeException("Invalid " + type + " format. Specify the " + type + " as user@host (e.g. pi@192.168.1.5).");
+            throw new RuntimeException(String.join("", "Invalid ", type, " format. Specify the ", type, " as user@host (e.g. pi@192.168.1.5)."));
         }
 
         return strings;

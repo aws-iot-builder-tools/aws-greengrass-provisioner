@@ -53,7 +53,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
         // Get an SSH session to the target
         Session session = sshHelper.getSshSession(hsiBootstrapArguments.targetHost, hsiBootstrapArguments.targetUser);
 
-        final String bootstrapVendorPath = (BOOTSTRAP_VENDOR_PREFIX + hsiBootstrapArguments.hsiVendor.name() + ".sh").toLowerCase();
+        final String bootstrapVendorPath = (String.join("", BOOTSTRAP_VENDOR_PREFIX, hsiBootstrapArguments.hsiVendor.name(), ".sh")).toLowerCase();
         final String bootstrapVendorResourcePath = String.join("/", GREENGRASS_HSI, bootstrapVendorPath);
 
         // Get input streams for the resources
@@ -95,7 +95,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
             String successString = optionalSuccess.get();
             String arn = successString.substring(successString.indexOf(ARN_AWS_IOT));
 
-            log.info("HSI successfully bootstrapped. ARN for the certificate is: " + arn);
+            log.info(String.join("", "HSI successfully bootstrapped. ARN for the certificate is: ", arn));
 
             return;
         }
@@ -105,7 +105,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
                 .findFirst();
 
         if (optionalError.isPresent()) {
-            log.error("HSI bootstrap failed for the following reason [" + optionalError.get() + "]");
+            log.error(String.join("", "HSI bootstrap failed for the following reason [", optionalError.get(), "]"));
         } else {
             log.error("HSI bootstrap failed for an unknown reason");
         }
@@ -136,7 +136,7 @@ public class BasicHsiBootstrapHelper implements HsiBootstrapHelper {
     }
 
     public void makeExecutable(Session session, String filename) {
-        Try.of(() -> ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + filename))).get();
+        Try.of(() -> ioHelper.runCommand(session, String.join(" ", "chmod", "+x", String.join("", "./", filename)))).get();
     }
 
     @Override

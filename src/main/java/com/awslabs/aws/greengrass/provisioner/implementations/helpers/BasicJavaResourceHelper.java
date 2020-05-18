@@ -52,7 +52,7 @@ public class BasicJavaResourceHelper implements JavaResourceHelper {
         InputStream inputStream = getResourceAsStream(filename);
 
         if (inputStream == null) {
-            throw new RuntimeException("Cannot get resource [" + filename + "] from JAR file.");
+            throw new RuntimeException(String.join("", "Cannot get resource [", filename, "] from JAR file."));
         }
 
         int readBytes;

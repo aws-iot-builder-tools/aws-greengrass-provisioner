@@ -247,10 +247,10 @@ public interface IoHelper {
                 .collect(Collectors.toList());
 
         if (missingConfFiles.size() > 0) {
-            log.error("Missing " + type + " conf files (this is NOT OK in normal deployments): ");
+            log.error(String.join("", "Missing ", type, " conf files (this is NOT OK in normal deployments): "));
             missingConfFiles
-                    .forEach(functionName -> log.error("  " + functionName));
-            throw new RuntimeException("Missing " + type + " conf files, can not build deployment");
+                    .forEach(functionName -> log.error(String.join("", "  ", functionName)));
+            throw new RuntimeException(String.join("", "Missing ", type, " conf files, can not build deployment"));
         }
     }
 }

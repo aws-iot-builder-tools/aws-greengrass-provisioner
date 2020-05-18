@@ -34,7 +34,8 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule2 implements MissingRuntim
     public Optional<List<String>> buildErrorString(Map error, String runtime) {
         String functionArn = (String) Optional.ofNullable(error.get("functionArn")).orElse("UNKNOWN");
 
-        return Optional.of(Collections.singletonList(String.join("\n\t", "The runtime [" + runtime + "] appears to be missing.",
-                "This will prevent [" + functionArn + "] from running.")));
+        return Optional.of(Collections.singletonList(String.join("\n\t",
+                String.join("", "The runtime [", runtime, "] appears to be missing."),
+                String.join("", "This will prevent [", functionArn, "] from running."))));
     }
 }

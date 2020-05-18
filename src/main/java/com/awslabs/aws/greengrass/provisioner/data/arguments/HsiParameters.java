@@ -23,8 +23,8 @@ public abstract class HsiParameters {
     }
 
     public String getCurlPkcsPath() {
-        String token = "token=" + getSlotLabel();
-        String pinValue = "pin-value=" + getSlotUserPin();
+        String token = String.join("", "token=", getSlotLabel());
+        String pinValue = String.join("", "pin-value=", getSlotUserPin());
 
         return String.join(";", getPkcsPath(), token, pinValue);
     }

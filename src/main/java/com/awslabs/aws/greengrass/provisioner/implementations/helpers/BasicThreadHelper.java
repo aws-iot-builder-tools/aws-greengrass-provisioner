@@ -32,12 +32,12 @@ public class BasicThreadHelper implements ThreadHelper {
     }
 
     private <T> Optional<T> logExceptionMessage(ExecutionException throwable) {
-        log.error("Task exception [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Task exception [", throwable.getMessage(), "]"));
         return Optional.empty();
     }
 
     private <T> Optional<T> logInterruptedMessage(InterruptedException throwable) {
-        log.error("Task interrupted [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Task interrupted [", throwable.getMessage(), "]"));
         return Optional.empty();
     }
 

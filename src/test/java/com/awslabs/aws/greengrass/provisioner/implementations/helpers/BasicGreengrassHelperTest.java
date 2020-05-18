@@ -21,7 +21,7 @@ public class BasicGreengrassHelperTest {
     public void shouldReturnTrueWithBothValues() {
         // This test is to validate the behavior of some new error handling logic
         GetDeploymentStatusResponse getDeploymentStatusResponse = GetDeploymentStatusResponse.builder()
-                .errorMessage("---- " + CONFIGURATION_PARAMETER + " ---- " + DOES_NOT_MATCH_REQUIRED_PATTERN + " ---- ")
+                .errorMessage(String.join("", "---- ", CONFIGURATION_PARAMETER, " ---- ", DOES_NOT_MATCH_REQUIRED_PATTERN, " ---- "))
                 .build();
 
         Assert.assertTrue(basicGreengrassHelper.shouldRedeploy(getDeploymentStatusResponse, Arrays.asList(CONFIGURATION_PARAMETER, DOES_NOT_MATCH_REQUIRED_PATTERN), "One or more configuration parameters were specified that did not match the allowed patterns. Adjust the values and try again."));
@@ -31,13 +31,13 @@ public class BasicGreengrassHelperTest {
     public void shouldReturnFalseWithOnlyOneValue() {
         // This test is to validate the behavior of some new error handling logic
         GetDeploymentStatusResponse getDeploymentStatusResponse1 = GetDeploymentStatusResponse.builder()
-                .errorMessage("---- " + CONFIGURATION_PARAMETER + " ---- ")
+                .errorMessage(String.join("", "---- ", CONFIGURATION_PARAMETER, " ---- "))
                 .build();
 
         Assert.assertFalse(basicGreengrassHelper.shouldRedeploy(getDeploymentStatusResponse1, Arrays.asList(CONFIGURATION_PARAMETER, DOES_NOT_MATCH_REQUIRED_PATTERN), "One or more configuration parameters were specified that did not match the allowed patterns. Adjust the values and try again."));
 
         GetDeploymentStatusResponse getDeploymentStatusResponse2 = GetDeploymentStatusResponse.builder()
-                .errorMessage("---- " + DOES_NOT_MATCH_REQUIRED_PATTERN + " ---- ")
+                .errorMessage(String.join("", "---- ", DOES_NOT_MATCH_REQUIRED_PATTERN, " ---- "))
                 .build();
 
         Assert.assertFalse(basicGreengrassHelper.shouldRedeploy(getDeploymentStatusResponse2, Arrays.asList(CONFIGURATION_PARAMETER, DOES_NOT_MATCH_REQUIRED_PATTERN), "One or more configuration parameters were specified that did not match the allowed patterns. Adjust the values and try again."));

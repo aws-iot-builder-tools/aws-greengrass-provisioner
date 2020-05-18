@@ -175,22 +175,22 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
         String handlerName = functionConf.getHandlerName();
 
         if (!handlerName.contains(".")) {
-            return Optional.of("Python handler name [" + handlerName + "] does not contain a dot separator (e.g. LambdaFunction.function_handler)");
+            return Optional.of(String.join("", "Python handler name [", handlerName, "] does not contain a dot separator (e.g. LambdaFunction.function_handler)"));
         }
 
         String[] handlerNameParts = handlerName.split("\\.");
 
         if (handlerNameParts.length != 2) {
-            return Optional.of("Python handler name [" + handlerName + "] contains too many dot separators or is missing the handler function name (e.g. LambdaFunction.function_handler)");
+            return Optional.of(String.join("", "Python handler name [", handlerName, "] contains too many dot separators or is missing the handler function name (e.g. LambdaFunction.function_handler)"));
         }
 
         String handlerFilename = handlerNameParts[0];
         String handlerFunctionName = handlerNameParts[1];
 
-        File handlerFile = new File(String.join("/", buildDirectory, handlerFilename + ".py"));
+        File handlerFile = new File(String.join("/", buildDirectory, String.join("", handlerFilename, ".py")));
 
         if (!handlerFile.exists()) {
-            return Optional.of("Python handler file [" + handlerFile.toPath() + "] does not exist");
+            return Optional.of(String.join("", "Python handler file [", handlerFile.toPath().toString(), "] does not exist"));
         }
 
         return Try.of(() -> innerVerifyHandlerExists(handlerFunctionName, handlerFile))
@@ -200,11 +200,11 @@ public abstract class BasicPythonBuilder implements PythonBuilder {
 
     private Optional<String> innerVerifyHandlerExists(String handlerFunctionName, File handlerFile) throws IOException {
         // Use a regex to find what the function should look like
-        String pattern = "^def\\s+" + handlerFunctionName + "\\s*\\(.*";
+        String pattern = String.join("", "^def\\s+", handlerFunctionName, "\\s*\\(.*");
 
         if (Files.lines(handlerFile.toPath())
                 .noneMatch(line -> line.matches(pattern))) {
-            return Optional.of("Python handler function name [" + handlerFunctionName + "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build.");
+            return Optional.of(String.join("", "Python handler function name [", handlerFunctionName, "] does not appear to exist.  Has the file been saved?  This function will not work.  Stopping build."));
         }
 
         return Optional.empty();

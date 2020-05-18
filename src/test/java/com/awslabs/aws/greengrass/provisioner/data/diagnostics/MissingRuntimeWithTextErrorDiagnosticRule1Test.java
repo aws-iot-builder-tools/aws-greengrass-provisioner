@@ -19,7 +19,7 @@ import static org.hamcrest.CoreMatchers.is;
 public class MissingRuntimeWithTextErrorDiagnosticRule1Test {
     private final String runtime = "nodejs12.x";
     private final String functionArn = "arn:aws:lambda:us-east-1:zzz:function:yyy:11";
-    private final String logLine = "unable to create worker process for " + functionArn + ". cannot find executable " + runtime + " under any of the provided paths [/usr/bin /usr/local/bin]";
+    private final String logLine = String.join("", "unable to create worker process for ", functionArn, ". cannot find executable ", runtime, " under any of the provided paths [/usr/bin /usr/local/bin]");
     private MissingRuntimeWithTextErrorDiagnosticRule1 missingRuntimeForFunctionDiagnosticRule1;
     private Tuple3<LogGroup, LogStream, List<String>> log;
 
@@ -40,8 +40,8 @@ public class MissingRuntimeWithTextErrorDiagnosticRule1Test {
         List<String> result = optionalResult.get();
         MatcherAssert.assertThat(result.size(), is(1));
         String resultString = result.get(0);
-        MatcherAssert.assertThat(resultString, containsString("[" + runtime + "]"));
-        MatcherAssert.assertThat(resultString, containsString("[" + functionArn + "]"));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", runtime, "]")));
+        MatcherAssert.assertThat(resultString, containsString(String.join("", "[", functionArn, "]")));
     }
 
     @Test

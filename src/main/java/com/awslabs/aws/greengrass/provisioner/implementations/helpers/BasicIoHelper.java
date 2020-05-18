@@ -135,7 +135,7 @@ public class BasicIoHelper implements IoHelper {
         List<String> privateKeyFiles = Try.of(this::getPrivateKeyFilesForSsh).get();
 
         if (privateKeyFiles.isEmpty()) {
-            throw new RuntimeException("No SSH private keys found, cannot continue. " + OPENSSH_HELP);
+            throw new RuntimeException(String.join("", "No SSH private keys found, cannot continue. ", OPENSSH_HELP));
 
         }
 
@@ -146,14 +146,14 @@ public class BasicIoHelper implements IoHelper {
         }
 
         if (jsch.getIdentityRepository().getIdentities().isEmpty()) {
-            throw new RuntimeException("No usable identities found, cannot continue. " + OPENSSH_HELP);
+            throw new RuntimeException(String.join("", "No usable identities found, cannot continue. ", OPENSSH_HELP));
         }
 
         return jsch;
     }
 
     private String logPrivateKeyIssueAndIgnore(String privateKeyFile) {
-        log.error("Issue with private key file [" + privateKeyFile + "], skipping");
+        log.error(String.join("", "Issue with private key file [", privateKeyFile, "], skipping"));
         return null;
     }
 
@@ -193,8 +193,8 @@ public class BasicIoHelper implements IoHelper {
                 .handle(SshRecoverableException.class)
                 .withDelay(Duration.ofSeconds(10))
                 .withMaxRetries(3)
-                .onRetry(failure -> log.warn("Waiting for target host to become available [" + failure.getLastFailure().getMessage() + "]"))
-                .onRetriesExceeded(failure -> log.error("Target host never became available [" + failure.getFailure().getMessage() + "]"));
+                .onRetry(failure -> log.warn(String.join("", "Waiting for target host to become available [", failure.getLastFailure().getMessage(), "]")))
+                .onRetriesExceeded(failure -> log.error(String.join("", "Target host never became available [", failure.getFailure().getMessage(), "]")));
 
         return Failsafe.with(sessionRetryPolicy)
                 .get(() -> innerGetSession(hostname, user, jsch, connectedMessage, timeoutMessage, refusedMessage, errorMessage));
@@ -286,9 +286,9 @@ public class BasicIoHelper implements IoHelper {
 
         // exec 'scp -t rfile' remotely
         remoteFilename = remoteFilename.replace("'", "'\"'\"'");
-        remoteFilename = "'" + remoteFilename + "'";
+        remoteFilename = String.join("", "'", remoteFilename, "'");
 
-        String command = "scp " + " -t " + remoteFilename;
+        String command = String.join("", "scp ", " -t ", remoteFilename);
 
         Channel channel = session.openChannel("exec");
         ((ChannelExec) channel).setCommand(command);
@@ -305,7 +305,7 @@ public class BasicIoHelper implements IoHelper {
             // send "C0644 filesize filename", where filename should not include '/'
             long filesize = byteArrayFromInputStream.length;
 
-            command = "C0644 " + filesize + " ";
+            command = String.join("", "C0644 ", String.valueOf(filesize), " ");
 
             if (localFilename.lastIndexOf('/') > 0) {
                 command += localFilename.substring(localFilename.lastIndexOf('/') + 1);

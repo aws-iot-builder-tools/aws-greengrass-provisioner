@@ -73,7 +73,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
-            throw new RuntimeException("Group [" + updateArguments.groupName + "] not found");
+            throw new RuntimeException(String.join("", "Group [", updateArguments.groupName, "] not found"));
         }
 
         if (updateArguments.addSubscription || updateArguments.removeSubscription) {
@@ -131,7 +131,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         String thingArn = deviceToRemove.thingArn();
 
         if (devices.stream().noneMatch(device -> device.thingArn().equals(deviceToRemove.thingArn()))) {
-            throw new RuntimeException("Device with thing ARN [" + thingArn + "] is not part of this Greengrass Group, nothing to do");
+            throw new RuntimeException(String.join("", "Device with thing ARN [", thingArn, "] is not part of this Greengrass Group, nothing to do"));
         }
 
         List<Device> devicesToRemove = devices.stream()
@@ -139,7 +139,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .collect(Collectors.toList());
 
         for (Device device : devicesToRemove) {
-            log.warn("Removing device [" + device.thingArn() + ", " + device.certificateArn() + "]");
+            log.warn(String.join("", "Removing device [", device.thingArn(), ", ", device.certificateArn(), "]"));
         }
 
         devices.removeAll(devicesToRemove);
@@ -170,7 +170,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (!isThingArn) {
             thingName = ImmutableThingName.builder().name(addDeviceString).build();
-            log.info("No thing ARN specified for device [" + thingName.getName() + "], will re-use keys if possible");
+            log.info(String.join("", "No thing ARN specified for device [", thingName.getName(), "], will re-use keys if possible"));
 
             KeysAndCertificate deviceKeysAndCertificate = iotHelper.createKeysAndCertificate(greengrassGroupName, thingName.getName());
 
@@ -184,10 +184,10 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             v2IotHelper.attachThingPrincipal(thingName, certificateArn);
         } else {
             // Device name looks like a thing ARN
-            log.info("[" + addDeviceString + "] looks like a thing ARN, attempting to use existing device");
+            log.info(String.join("", "[", addDeviceString, "] looks like a thing ARN, attempting to use existing device"));
             thingArn = ImmutableThingArn.builder().arn(addDeviceString).build();
             thingName = ImmutableThingName.builder().name(thingArn.getArn().substring(thingArn.getArn().lastIndexOf('/') + 1)).build();
-            log.info("Device name appears to be [" + thingName.getName() + "]");
+            log.info(String.join("", "Device name appears to be [", thingName.getName(), "]"));
         }
 
         Device newDevice = greengrassHelper.getDevice(thingName);
@@ -199,7 +199,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (devices.stream()
                 .anyMatch(device -> device.thingArn().equals(finalThingArn.getArn()))) {
-            throw new RuntimeException("Device with thing ARN [" + thingArn + "] is already part of this Greengrass Group.  Nothing to do.");
+            throw new RuntimeException(String.join("", "Device with thing ARN [", thingArn.getArn(), "] is already part of this Greengrass Group.  Nothing to do."));
         }
 
         devices.add(newDevice);
@@ -210,7 +210,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .deviceDefinitionVersionArn(newDeviceDefinitionVersionArn)
                 .build();
 
-        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Device added [" + newDevice.thingArn() + ", " + newDevice.certificateArn() + "]");
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info(String.join("", "Device added [", newDevice.thingArn(), ", ", newDevice.certificateArn(), "]"));
 
         createAndWaitForDeployment(greengrassGroupId, newGroupVersion, successHandler);
     }
@@ -241,13 +241,13 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         FunctionAlias functionAlias = ImmutableFunctionAlias.builder().alias(updateArguments.functionAlias).build();
 
         if (v2LambdaHelper.aliasExists(functionName, functionAlias)) {
-            throw new RuntimeException("The specified alias [" + functionAlias + "] already exists.  You must specify a new alias for an ad-hoc add function so other group configurations are not affected.");
+            throw new RuntimeException(String.join("", "The specified alias [", functionAlias.getAlias(), "] already exists.  You must specify a new alias for an ad-hoc add function so other group configurations are not affected."));
         }
 
         Optional<GetFunctionResponse> optionalGetFunctionResponse = v2LambdaHelper.getFunction(functionName);
 
         if (!optionalGetFunctionResponse.isPresent()) {
-            throw new RuntimeException("Function [" + functionName + "] not found.  Make sure only the function name is specified without an alias or version number.");
+            throw new RuntimeException(String.join("", "Function [", functionName.getName(), "] not found.  Make sure only the function name is specified without an alias or version number."));
         }
 
         GetFunctionResponse getFunctionResponse = optionalGetFunctionResponse.get();
@@ -270,7 +270,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
         if (functions.stream()
                 .anyMatch(function -> function.functionArn().equals(functionAliasArn))) {
-            throw new RuntimeException("Function with ARN [" + functionAliasArn + "] is already part of this Greengrass Group.  Nothing to do.");
+            throw new RuntimeException(String.join("", "Function with ARN [", functionAliasArn.getAliasArn(), "] is already part of this Greengrass Group.  Nothing to do."));
         }
 
         functions.add(newFunction);
@@ -281,7 +281,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .functionDefinitionVersionArn(newFunctionDefinitionVersionArn)
                 .build();
 
-        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info("Function added [" + newFunction.functionArn() + "]");
+        Consumer<? super Void> successHandler = (Consumer<Void>) aVoid -> log.info(String.join("", "Function added [", newFunction.functionArn(), "]"));
 
         createAndWaitForDeployment(greengrassGroupId, newGroupVersion, successHandler);
     }
@@ -298,9 +298,9 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
                 .collect(Collectors.toList());
 
         if (functionsToDelete.size() == 0) {
-            throw new RuntimeException("Function with ARN [" + functionArn + "] is not part of this Greengrass Group.  Nothing to do.");
+            throw new RuntimeException(String.join("", "Function with ARN [", functionArn, "] is not part of this Greengrass Group.  Nothing to do."));
         } else if (functionsToDelete.size() > 1) {
-            throw new RuntimeException("More than one function matched the pattern [" + functionArn + "].  Only one function can be removed at a time.");
+            throw new RuntimeException(String.join("", "More than one function matched the pattern [", functionArn, "].  Only one function can be removed at a time."));
         }
 
         Function functionToDelete = functionsToDelete.get(0);
@@ -323,7 +323,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
     }
 
     private void logFunctionRemovedAndDeleteLambdaAlias(Function functionToDelete, String functionToDeleteArn) {
-        log.info("Function removed [" + functionToDelete.functionArn() + "]");
+        log.info(String.join("", "Function removed [", functionToDelete.functionArn(), "]"));
         lambdaHelper.deleteAlias(functionToDeleteArn);
     }
 
@@ -334,7 +334,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         Set<Subscription> subscriptionsToRemove = getMatchingSubscriptions(subscriptions, thingOrFunctionArn, true, Optional.empty());
 
         for (Subscription subscription : subscriptionsToRemove) {
-            log.warn("Removing subscription [" + subscription.source() + ", " + subscription.target() + ", " + subscription.subject() + "]");
+            log.warn(String.join("", "Removing subscription [", subscription.source(), ", ", subscription.target(), ", ", subscription.subject(), "]"));
         }
 
         subscriptions.removeAll(subscriptionsToRemove);
@@ -361,7 +361,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
             if (!validatedSource.isPresent()) {
                 // Source is invalid
-                throw new RuntimeException("Source [" + source + "] " + SUBSCRIPTION_ERROR);
+                throw new RuntimeException(String.join("", "Source [", source, "] ", SUBSCRIPTION_ERROR));
             } else {
                 source = validatedSource.get();
             }
@@ -371,7 +371,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
 
             if (!validatedTarget.isPresent()) {
                 // Target is invalid
-                throw new RuntimeException("Target [" + target + "] " + SUBSCRIPTION_ERROR);
+                throw new RuntimeException(String.join("", "Target [", target, "] ", SUBSCRIPTION_ERROR));
             } else {
                 target = validatedTarget.get();
             }
@@ -385,7 +385,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             Subscription subscription = subscriptionHelper.createSubscription(source, target, subject);
             subscriptions.add(subscription);
 
-            log.info("Subscription added [" + subscription.source() + ", " + subscription.target() + ", " + subscription.subject() + "]");
+            log.info(String.join("", "Subscription added [", subscription.source(), ", ", subscription.target(), ", ", subscription.subject(), "]"));
         } else if (updateArguments.removeSubscription) {
             Set<Subscription> existingSubscriptions = getMatchingSubscriptions(subscriptions, source, target, subject);
 
@@ -399,7 +399,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
             // Exactly one, remove it
             Subscription subscriptionToRemove = existingSubscriptions.iterator().next();
             subscriptions.remove(subscriptionToRemove);
-            log.info("Subscription removed [" + subscriptionToRemove.source() + ", " + subscriptionToRemove.target() + ", " + subscriptionToRemove.subject() + "]");
+            log.info(String.join("", "Subscription removed [", subscriptionToRemove.source(), ", ", subscriptionToRemove.target(), ", ", subscriptionToRemove.subject(), "]"));
         } else {
             throw new RuntimeException("This should never happen.  This is a bug.");
         }
@@ -531,7 +531,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         if (functionArns.size() == 1) {
             return Optional.ofNullable(functionArns.get(0));
         } else if (functionArns.size() > 1) {
-            log.error("Multiple functions match pattern [" + sourceOrTarget + "], please specify a more specific match");
+            log.error(String.join("", "Multiple functions match pattern [", sourceOrTarget, "], please specify a more specific match"));
             return Optional.empty();
         }
 
@@ -544,7 +544,7 @@ public class BasicGroupUpdateHelper implements GroupUpdateHelper {
         if (thingArns.size() == 1) {
             return Optional.ofNullable(thingArns.get(0));
         } else if (thingArns.size() > 1) {
-            log.error("Multiple things match pattern [" + sourceOrTarget + "], please specify a more specific match");
+            log.error(String.join("", "Multiple things match pattern [", sourceOrTarget, "], please specify a more specific match"));
             return Optional.empty();
         }
 

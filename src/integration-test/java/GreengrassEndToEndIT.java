@@ -39,7 +39,7 @@ import static org.hamcrest.CoreMatchers.is;
 
 public class GreengrassEndToEndIT {
     private static final String GREENGRASS_DIRECTORY = "/greengrass";
-    private static final String GREENGRASS_OEM_TAR = GREENGRASS_DIRECTORY + "/oem.tar";
+    private static final String GREENGRASS_OEM_TAR = String.join("", GREENGRASS_DIRECTORY, "/oem.tar");
     private static final String STARTUP_SH = "/startup.sh";
     private static final String GREENGRASS_ENTRYPOINT_SH = "./greengrass-entrypoint.sh";
     /**
@@ -240,7 +240,7 @@ public class GreengrassEndToEndIT {
     private void waitForContainerToStartSuccessfully(Optional<Duration> optionalWaitDuration, Optional<Callable<Boolean>> optionalBooleanCallable) throws IOException {
         String script = String.join("\n",
                 "#!/usr/bin/env bash",
-                "tar xvf " + GREENGRASS_OEM_TAR + " -C " + GREENGRASS_DIRECTORY,
+                String.join("", "tar xvf ", GREENGRASS_OEM_TAR, " -C ", GREENGRASS_DIRECTORY),
                 GREENGRASS_ENTRYPOINT_SH);
 
         File tempScript = File.createTempFile("script-", ".sh");
@@ -248,7 +248,7 @@ public class GreengrassEndToEndIT {
         ioHelper.writeFile(tempScript, script.getBytes());
         tempScript.setExecutable(true);
 
-        String command = "bash " + STARTUP_SH;
+        String command = String.join("", "bash ", STARTUP_SH);
 
         GenericContainer greengrass = new GenericContainer(ggConstants.getDockerHubGreengrassDockerImageName())
                 .withCopyFileToContainer(MountableFile.forHostPath(tempScript.toPath()), STARTUP_SH)
@@ -266,7 +266,7 @@ public class GreengrassEndToEndIT {
         }
 
         Duration waitDuration = optionalWaitDuration.get();
-        log.info("Waiting up to " + waitDuration.toString() + " for the configuration to pass secondary tests");
+        log.info(String.join("", "Waiting up to ", waitDuration.toString(), " for the configuration to pass secondary tests"));
 
         await().atMost(waitDuration).until(optionalBooleanCallable.orElse(flag::get));
     }

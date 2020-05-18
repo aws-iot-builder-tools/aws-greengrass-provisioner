@@ -16,21 +16,21 @@ import static org.hamcrest.CoreMatchers.containsString;
 
 public class ProvisionerLambdaIT {
     private static final String NEW_KEY_PATH = "/secretstuff/key.key";
-    private static final String GREENGRASS_DEFAULT_POLICY = "{\n" +
-            "  \"Statement\": [\n" +
-            "    {\n" +
-            "      \"Action\": [\n" +
-            "        \"iot:*\",\n" +
-            "        \"greengrass:*\"\n" +
-            "      ],\n" +
-            "      \"Effect\": \"Allow\",\n" +
-            "      \"Resource\": [\n" +
-            "        \"*\"\n" +
-            "      ]\n" +
-            "    }\n" +
-            "  ],\n" +
-            "  \"Version\": \"2012-10-17\"\n" +
-            "}";
+    private static final String GREENGRASS_DEFAULT_POLICY = String.join("", "{\n",
+            "  \"Statement\": [\n",
+            "    {\n",
+            "      \"Action\": [\n",
+            "        \"iot:*\",\n",
+            "        \"greengrass:*\"\n",
+            "      ],\n",
+            "      \"Effect\": \"Allow\",\n",
+            "      \"Resource\": [\n",
+            "        \"*\"\n",
+            "      ]\n",
+            "    }\n",
+            "  ],\n",
+            "  \"Version\": \"2012-10-17\"\n",
+            "}");
     private static final String GREENGRASS_DEFAULT_POLICY_NAME = "GreengrassDefaultPolicy";
     private V2IotHelper v2IotHelper;
     private AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda;

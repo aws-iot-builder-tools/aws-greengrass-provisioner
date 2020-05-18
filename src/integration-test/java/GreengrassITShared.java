@@ -158,7 +158,7 @@ class GreengrassITShared {
     @NotNull
     private String getReusedFunctionDeploymentConfContents(String partialFunctionName, GreengrassGroupName greengrassGroupName) {
         String functionToReuse = String.join("-", greengrassGroupName.getGroupName(), partialFunctionName);
-        return "conf { functions = [\"" + functionToReuse + "\"] }";
+        return String.join("", "conf { functions = [\"", functionToReuse, "\"] }");
     }
 
     @NotNull

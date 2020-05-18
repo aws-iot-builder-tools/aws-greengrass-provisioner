@@ -49,7 +49,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                         .build())
                 .collect(Collectors.toList());
 
-        log.info("Launching CloudFormation template for [" + functionConf.getFunctionName().getName() + "], stack name [" + stackName + "]");
+        log.info(String.join("", "Launching CloudFormation template for [", functionConf.getFunctionName().getName(), "], stack name [", stackName, "]"));
         CreateStackRequest createStackRequest = CreateStackRequest.builder()
                 .stackName(stackName)
                 .capabilities(Capability.CAPABILITY_IAM, Capability.CAPABILITY_NAMED_IAM)
@@ -74,7 +74,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
 
     private Optional<String> recoverFromCloudFormationException(String finalStackName, CloudFormationException throwable) {
         if (throwable.getMessage().contains("No updates are to be performed")) {
-            log.info("No updates necessary for CloudFormation stack [" + finalStackName + "]");
+            log.info(String.join("", "No updates necessary for CloudFormation stack [", finalStackName, "]"));
             return Optional.empty();
         }
 
@@ -95,14 +95,14 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
     }
 
     private Boolean logStackAlreadyExists(String finalStackName) {
-        log.warn("CloudFormation stack [" + finalStackName + "] already exists, attempting update");
+        log.warn(String.join("", "CloudFormation stack [", finalStackName, "] already exists, attempting update"));
         return false;
     }
 
     private Boolean createStack(CreateStackRequest createStackRequest, String finalStackName) {
         CreateStackResponse createStackResponse = cloudFormationClient.createStack(createStackRequest);
 
-        log.info("CloudFormation stack launched [" + finalStackName + ", " + createStackResponse.stackId() + "]");
+        log.info(String.join("", "CloudFormation stack launched [", finalStackName, ", ", createStackResponse.stackId(), "]"));
 
         return true;
     }
@@ -121,7 +121,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
             if (stackStatus.equals(StackStatus.ROLLBACK_IN_PROGRESS) ||
                     (stackStatus.equals(StackStatus.ROLLBACK_COMPLETE)) ||
                     (stackStatus.equals(StackStatus.ROLLBACK_FAILED))) {
-                throw new RuntimeException("CloudFormation stack [" + stackName + "] failed to launch");
+                throw new RuntimeException(String.join("", "CloudFormation stack [", stackName, "] failed to launch"));
             }
 
             String action = "creating";
@@ -130,7 +130,7 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
                 action = "updating";
             }
 
-            log.info("Waiting for stack to finish " + action + " [" + stackName + ", " + stackStatus + "]...");
+            log.info(String.join("", "Waiting for stack to finish ", action, " [", stackName, ", ", stackStatus.toString(), "]..."));
 
             ioHelper.sleep(10000);
 
@@ -138,6 +138,6 @@ public class BasicCloudFormationHelper implements CloudFormationHelper {
             stackStatus = describeStacksResponse.stacks().get(0).stackStatus();
         }
 
-        log.info("CloudFormation stack ready [" + stackName + "]");
+        log.info(String.join("", "CloudFormation stack ready [", stackName, "]"));
     }
 }

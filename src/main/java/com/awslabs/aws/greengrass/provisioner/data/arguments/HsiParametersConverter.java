@@ -25,7 +25,7 @@ public class HsiParametersConverter implements IStringConverter<HsiParameters> {
             List<String> keyAndValue = Arrays.asList(keyValuePair.split("="));
 
             if (keyAndValue.size() != 2) {
-                throw new RuntimeException("Key value pair in HSI parameters [" + keyValuePair + "] is not valid");
+                throw new RuntimeException(String.join("", "Key value pair in HSI parameters [", keyValuePair, "] is not valid"));
             }
 
             String key = keyAndValue.get(0);
@@ -39,7 +39,7 @@ public class HsiParametersConverter implements IStringConverter<HsiParameters> {
                     Case($(PKCS11ENGINE_FOR_CURL::equals), matched -> immutableHsiParametersBuilder.pkcs11EngineForCurl(value)),
                     // Always fail if there was no match
                     Case($(), matched -> {
-                        throw new RuntimeException(String.format("No match for HSI option [%s], valid options are [" + String.join(", ", optionList) + "]", matched));
+                        throw new RuntimeException(String.format(String.join("", "No match for HSI option [%s], valid options are [", String.join(", ", optionList), "]"), matched));
                     }));
         }
 

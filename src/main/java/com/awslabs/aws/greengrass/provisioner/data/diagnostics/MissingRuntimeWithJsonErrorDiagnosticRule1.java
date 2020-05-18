@@ -31,7 +31,8 @@ public class MissingRuntimeWithJsonErrorDiagnosticRule1 implements MissingRuntim
 
     @Override
     public Optional<List<String>> buildErrorString(Map error, String runtime) {
-        return Optional.of(Collections.singletonList(String.join("\n\t", "The runtime [" + runtime + "] appears to be missing.",
+        return Optional.of(Collections.singletonList(String.join("\n\t",
+                String.join("", "The runtime [", runtime, "] appears to be missing."),
                 "This will prevent some functions from running.")));
     }
 }

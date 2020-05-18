@@ -69,12 +69,12 @@ public class BasicLambdaHelper implements LambdaHelper {
         File zipFile = new File(zipFilePath);
 
         if (!zipFile.exists()) {
-            log.warn(ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT + "[" + zipFile.getName() + "], attempting build");
+            log.warn(String.join("", ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT, "[", zipFile.getName(), "], attempting build"));
             executableBuilder.buildExecutableFunctionIfNecessary(functionConf);
         }
 
         if (!zipFile.exists()) {
-            throw new RuntimeException(ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT + "[" + zipFile.getName() + "]");
+            throw new RuntimeException(String.join("", ZIP_ARCHIVE_FOR_EXECUTABLE_NATIVE_FUNCTION_NOT_PRESENT, "[", zipFile.getName(), "]"));
         }
 
         return ImmutableZipFilePathAndFunctionConf.builder()
@@ -91,7 +91,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             return buildGradleFunction(functionConf);
 
         } else {
-            throw new RuntimeException("This function [" + functionConf.getFunctionName() + "] is not a Gradle project.  It cannot be built automatically.");
+            throw new RuntimeException(String.join("", "This function [", functionConf.getFunctionName().getName(), "] is not a Gradle project.  It cannot be built automatically."));
         }
     }
 
@@ -218,7 +218,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
-        String baseArn = qualifiedArn.replaceAll(":" + qualifier + "$", "");
+        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
 
         return ImmutableLambdaFunctionArnInfo.builder()
                 .qualifier(qualifier)
@@ -325,7 +325,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         String partialNameWithoutAlias = partialName.substring(0, partialName.lastIndexOf(":"));
         String escapedPartialName = StringEscapeUtils.escapeJava(partialNameWithoutAlias);
-        String patternString = "^" + escapedPartialName.replaceAll("~", ".*") + "$";
+        String patternString = String.join("", "^", escapedPartialName.replaceAll("~", ".*"), "$");
         Pattern pattern = Pattern.compile(patternString);
 
         String alias = partialName.substring(partialName.lastIndexOf(":") + 1);
@@ -358,21 +358,21 @@ public class BasicLambdaHelper implements LambdaHelper {
         } while (optionalNextMarker.isPresent());
 
         if (optionalFunctionArn.isPresent()) {
-            String fullFunctionArn = optionalFunctionArn.get() + ":" + alias;
+            String fullFunctionArn = String.join("", optionalFunctionArn.get(), ":", alias);
 
             FunctionAliasArn functionAliasArn = ImmutableFunctionAliasArn.builder().aliasArn(fullFunctionArn).build();
 
             if (!v2LambdaHelper.functionExists(functionAliasArn)) {
-                throw new RuntimeException("The specified Lambda ARN [" + fullFunctionArn + "] does not exist");
+                throw new RuntimeException(String.join("", "The specified Lambda ARN [", fullFunctionArn, "] does not exist"));
             }
 
             return functionAliasArn;
         }
 
-        throw new RuntimeException("No Lambda function matched the partial name [" + partialName + "]");
+        throw new RuntimeException(String.join("", "No Lambda function matched the partial name [", partialName, "]"));
     }
 
     private FunctionAliasArn throwMoreThanOneLambdaMatchedException(String partialName) {
-        throw new RuntimeException("More than one Lambda function matched the partial name [" + partialName + "]");
+        throw new RuntimeException(String.join("", "More than one Lambda function matched the partial name [", partialName, "]"));
     }
 }

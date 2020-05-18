@@ -18,14 +18,14 @@ import java.util.regex.Matcher;
 public class BasicScriptHelper implements ScriptHelper {
     private static final String LIB_SYSTEMD_SYSTEM_PATH = "/lib/systemd/system";
     private final String shellPath = "shell/";
-    private final String startTemplatePath = shellPath + getStartScriptName() + ".in";
-    private final String stopTemplatePath = shellPath + getStopScriptName() + ".in";
-    private final String cleanTemplatePath = shellPath + getCleanScriptName() + ".in";
-    private final String credentialsScriptPath = shellPath + getCredentialsScriptName();
-    private final String updateDependenciesScriptPath = shellPath + getUpdateDependenciesScriptName() + ".in";
-    private final String ggScriptTemplatePath = shellPath + "template.sh.in";
-    private final String monitorTemplatePath = shellPath + getMonitorScriptName() + ".in";
-    private final String systemdTemplatePath = shellPath + getSystemdScriptName() + ".in";
+    private final String startTemplatePath = String.join("", shellPath, getStartScriptName(), ".in");
+    private final String stopTemplatePath = String.join("", shellPath, getStopScriptName(), ".in");
+    private final String cleanTemplatePath = String.join("", shellPath, getCleanScriptName(), ".in");
+    private final String credentialsScriptPath = String.join("", shellPath, getCredentialsScriptName());
+    private final String updateDependenciesScriptPath = String.join("", shellPath, getUpdateDependenciesScriptName(), ".in");
+    private final String ggScriptTemplatePath = String.join("", shellPath, "template.sh.in");
+    private final String monitorTemplatePath = String.join("", shellPath, getMonitorScriptName(), ".in");
+    private final String systemdTemplatePath = String.join("", shellPath, getSystemdScriptName(), ".in");
     @Inject
     GGConstants ggConstants;
     @Inject
@@ -162,7 +162,7 @@ public class BasicScriptHelper implements ScriptHelper {
         String output = input;
 
         for (Map.Entry<String, String> entry : variables.entrySet()) {
-            String pattern = "\\$\\{" + entry.getKey() + "\\}";
+            String pattern = String.join("", "\\$\\{", entry.getKey(), "\\}");
             String replacement = Matcher.quoteReplacement(entry.getValue());
             output = output.replaceAll(pattern, replacement);
         }

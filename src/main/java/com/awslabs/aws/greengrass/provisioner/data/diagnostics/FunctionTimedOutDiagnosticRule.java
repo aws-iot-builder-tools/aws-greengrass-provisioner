@@ -46,7 +46,8 @@ public class FunctionTimedOutDiagnosticRule implements DiagnosticRule {
 
         String funcArn = (String) Optional.ofNullable(error.get("funcArn")).orElse("UNKNOWN");
 
-        return Optional.of(Collections.singletonList(String.join("\n\t", "The function [" + funcArn + "] timed out and was killed.",
+        return Optional.of(Collections.singletonList(String.join("\n\t",
+                String.join("", "The function [", funcArn, "] timed out and was killed."),
                 "This could be because the function handler did not return before the timeoutInSeconds value for the function.",
                 "All event-based invocations of a function must return before the timeoutInSeconds value.",
                 "If the function has a long running task it must complete try starting the task in a thread and returning from the function handler.")));

@@ -93,7 +93,7 @@ public class BasicIotHelper implements IotHelper {
         // Let them know that they'll need to re-run the bootstrap script because the core's keys changed
         boolean isCore = CORE_DEVICE_NAME.equals(deviceName);
         String supplementalMessage = isCore ? "  If you have an existing deployment for this group you'll need to re-run the bootstrap script since the core certificate ARN will change." : "";
-        log.info("- Creating new keys." + supplementalMessage);
+        log.info(String.join("", "- Creating new keys.", supplementalMessage));
         CreateKeysAndCertificateRequest createKeysAndCertificateRequest = CreateKeysAndCertificateRequest.builder()
                 .setAsActive(true)
                 .build();
@@ -110,7 +110,7 @@ public class BasicIotHelper implements IotHelper {
     public void writeKeysAndCertificateFile(KeysAndCertificate keysAndCertificate, GreengrassGroupName greengrassGroupName, String subName) {
         String createKeysAndCertificateFilename = getCreateKeysAndCertificateFilenameForGroupName(greengrassGroupName, subName);
         ioHelper.writeFile(createKeysAndCertificateFilename, jsonHelper.toJson(keysAndCertificate).getBytes());
-        log.info("Keys and certificate data written to [" + createKeysAndCertificateFilename + "]");
+        log.info(String.join("", "Keys and certificate data written to [", createKeysAndCertificateFilename, "]"));
     }
 
     @Override
@@ -122,7 +122,7 @@ public class BasicIotHelper implements IotHelper {
     public void writePublicSignedCertificateFile(KeysAndCertificate keysAndCertificate, GreengrassGroupName greengrassGroupName, String deviceName) {
         String publicSignedCertificateFilename = getPublicSignedCertificateFilename(greengrassGroupName, deviceName);
         ioHelper.writeFile(publicSignedCertificateFilename, keysAndCertificate.getCertificatePem().getPem().getBytes());
-        log.info("Device public signed certificate key written to [" + publicSignedCertificateFilename + "]");
+        log.info(String.join("", "Device public signed certificate key written to [", publicSignedCertificateFilename, "]"));
     }
 
     @Override
@@ -134,14 +134,14 @@ public class BasicIotHelper implements IotHelper {
     public void writePrivateKeyFile(KeysAndCertificate keysAndCertificate, GreengrassGroupName greengrassGroupName, String deviceName) {
         String privateKeyFilename = getPrivateKeyFilename(greengrassGroupName, deviceName);
         ioHelper.writeFile(privateKeyFilename, keysAndCertificate.getKeyPair().privateKey().getBytes());
-        log.info("Device private key written to [" + privateKeyFilename + "]");
+        log.info(String.join("", "Device private key written to [", privateKeyFilename, "]"));
     }
 
     @Override
     public void writeRootCaFile(GreengrassGroupName greengrassGroupName) {
         String rootCaFilename = getRootCaFilename(greengrassGroupName);
         ioHelper.writeFile(rootCaFilename, ioHelper.download(ggConstants.getRootCaUrl()).getBytes());
-        log.info("Root CA certificate written to [" + rootCaFilename + "]");
+        log.info(String.join("", "Root CA certificate written to [", rootCaFilename, "]"));
     }
 
     @Override
@@ -159,7 +159,7 @@ public class BasicIotHelper implements IotHelper {
                 .of(fileOutputStream -> storeProperties(fileOutputStream, properties))
                 .get();
 
-        log.info("IoT Credentials Provider properties written to [" + getIotCpPropertiesFilename(greengrassGroupName) + "]");
+        log.info(String.join("", "IoT Credentials Provider properties written to [", getIotCpPropertiesFilename(greengrassGroupName), "]"));
     }
 
     private String toRelativePath(String filename) {

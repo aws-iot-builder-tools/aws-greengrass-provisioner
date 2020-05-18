@@ -123,7 +123,7 @@ public class AwsGreengrassProvisionerLambda implements RequestHandler<LambdaInpu
         boolean certificateArnPresent = !Optional.ofNullable(lambdaInput.CertificateArn).orElse("").isEmpty();
 
         if (csrPresent && certificateArnPresent) {
-            throw new RuntimeException("Either specify a CSR [" + lambdaInput.Csr + "], a certificate ARN [" + lambdaInput.CertificateArn + "], or neither. Both CSR and certificate ARN options can not be present simultaneously.");
+            throw new RuntimeException(String.join("", "Either specify a CSR [", lambdaInput.Csr, "], a certificate ARN [", lambdaInput.CertificateArn, "], or neither. Both CSR and certificate ARN options can not be present simultaneously."));
         }
 
         if ((lambdaInput.AccessKeyId != null) && (lambdaInput.SecretAccessKey != null)) {

@@ -62,7 +62,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
 
     private boolean printDockerNotAvailableErrorAndReturnFalse(Throwable throwable) {
         log.error("Failed to connect to Docker.  Is it running on this host?  Is it listening on the standard Unix socket?");
-        log.error("Docker exception message [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Docker exception message [", throwable.getMessage(), "]"));
 
         return false;
     }
@@ -96,11 +96,11 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                         .build());
 
         if (describeRepositoriesResponse.repositories().size() == 1) {
-            log.info("ECR repository [" + ecrRepositoryName.get() + "] already exists");
+            log.info(String.join("", "ECR repository [", ecrRepositoryName.get(), "] already exists"));
             return;
         }
 
-        log.info("More than one repository found that matched [" + ecrRepositoryName.get() + "], cannot continue");
+        log.info(String.join("", "More than one repository found that matched [", ecrRepositoryName.get(), "], cannot continue"));
 
         throw new RuntimeException("More than one matching ECR repository");
     }
@@ -114,7 +114,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     protected abstract ExceptionHelper getExceptionHelper();
 
     public Void createEcrRepository() {
-        log.info("Creating ECR repository [" + ecrRepositoryName.get() + "]");
+        log.info(String.join("", "Creating ECR repository [", ecrRepositoryName.get(), "]"));
         getEcrClient().createRepository(CreateRepositoryRequest.builder()
                 .repositoryName(ecrRepositoryName.get())
                 .build());
@@ -144,17 +144,17 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                 .recover(InterruptedException.class, this::printFailedToListImagesFromDockerAndReturnEmpty)
                 .get();
 
-        optionalImage.ifPresent(image -> log.info("Found tag [" + tag + "] with ID [" + optionalImage.get().id() + "]"));
+        optionalImage.ifPresent(image -> log.info(String.join("", "Found tag [", tag, "] with ID [", optionalImage.get().id(), "]")));
 
         if (!optionalImage.isPresent()) {
-            log.info("Tag [" + tag + "] not found");
+            log.info(String.join("", "Tag [", tag, "] not found"));
         }
 
         return optionalImage;
     }
 
     private Optional<Image> printFailedToListImagesFromDockerAndReturnEmpty(Throwable throwable) {
-        log.error("Failed to list images from Docker [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Failed to list images from Docker [", throwable.getMessage(), "]"));
         return Optional.empty();
     }
 
@@ -173,7 +173,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                     .image(image.id())
                     .build(), greengrassGroupName.getGroupName()).id());
         } catch (DockerException | InterruptedException e) {
-            log.error("Couldn't create container [" + e.getMessage() + "]");
+            log.error(String.join("", "Couldn't create container [", e.getMessage(), "]"));
             throw new RuntimeException(e);
         }
     }
@@ -182,7 +182,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         Optional<String> optionalContainerId = createContainer(tag, greengrassGroupName);
 
         if (!optionalContainerId.isPresent()) {
-            log.warn("Container [" + tag + "] not started because it couldn't be created");
+            log.warn(String.join("", "Container [", tag, "] not started because it couldn't be created"));
             return;
         }
 
@@ -195,7 +195,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                 log.info("The Docker container for this core is already running locally, the core should be redeploying now");
             }
         } catch (DockerException | InterruptedException e) {
-            log.error("Couldn't start container [" + e.getMessage() + "]");
+            log.error(String.join("", "Couldn't start container [", e.getMessage(), "]"));
             throw new RuntimeException(e);
         }
     }
@@ -225,17 +225,17 @@ public abstract class AbstractDockerHelper implements DockerHelper {
                 .recover(InterruptedException.class, this::printFailedToGetContainerFromImageAndThrow)
                 .get();
 
-        optionalContainer.ifPresent(container -> log.info("Found container [" + container.id() + "] with image ID [" + imageId + "]"));
+        optionalContainer.ifPresent(container -> log.info(String.join("", "Found container [", container.id(), "] with image ID [", imageId, "]")));
 
         if (!optionalContainer.isPresent()) {
-            log.info("No container running image [" + imageId + "] found");
+            log.info(String.join("", "No container running image [", imageId, "] found"));
         }
 
         return optionalContainer;
     }
 
     private Optional<Container> printFailedToGetContainerFromImageAndThrow(Throwable throwable) {
-        log.error("Failed to get container from image [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Failed to get container from image [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 
@@ -243,9 +243,9 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     public void dumpImagesInfo() {
         // Do not call get() on this Try so we can fail and keep going
         Try.of(() -> listImages().stream()
-                .map(image -> image.id() + " [" + image.repoTags().stream().collect(Collectors.joining("|")) + "]")
+                .map(image -> String.join("", image.id(), " [", image.repoTags().stream().collect(Collectors.joining("|")), "]"))
                 .collect(Collectors.joining(", ")))
-                .onSuccess(string -> log.info("Images [" + string + "]"))
+                .onSuccess(string -> log.info(String.join("", "Images [", string, "]")))
                 .onFailure(Throwable::printStackTrace);
     }
 
@@ -258,16 +258,16 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     @Override
     public void dumpContainersInfo() {
         Try.of(() -> listContainers().stream()
-                .map(container -> container.id())
+                .map(Container::id)
                 .collect(Collectors.joining(", ")))
-                .onSuccess(string -> log.info("Containers [" + string + "]"))
+                .onSuccess(string -> log.info(String.join("", "Containers [", string, "]")))
                 .recover(DockerException.class, this::printFailedToListContainersAndThrow)
                 .recover(InterruptedException.class, this::printFailedToListContainersAndThrow)
                 .get();
     }
 
     private String printFailedToListContainersAndThrow(Throwable throwable) {
-        log.error("Failed to list containers [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Failed to list containers [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 
@@ -304,7 +304,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
     }
 
     private Void printFailedToStopContainerAndThrow(Throwable throwable) {
-        log.error("Failed to stop container [" + throwable.getMessage() + "]");
+        log.error(String.join("", "Failed to stop container [", throwable.getMessage(), "]"));
         throw new RuntimeException(throwable);
     }
 
@@ -313,7 +313,7 @@ public abstract class AbstractDockerHelper implements DockerHelper {
         try (DockerClient dockerClient = getDockerClient()) {
             dockerClient.pull(name, getDockerClientProvider().getRegistryAuthSupplier().authFor(""), getProgressHandler());
         } catch (DockerException | InterruptedException e) {
-            log.error("Couldn't pull image [" + e.getMessage() + "]");
+            log.error(String.join("", "Couldn't pull image [", e.getMessage(), "]"));
             throw new RuntimeException(e);
         }
     }

@@ -79,7 +79,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         Optional<GroupInformation> optionalGroupInformation = v2GreengrassHelper.getGroupInformation(greengrassGroupName).findFirst();
 
         if (!optionalGroupInformation.isPresent()) {
-            throw new RuntimeException("Group [" + queryArguments.groupName + "] not found");
+            throw new RuntimeException(String.join("", "Group [", queryArguments.groupName, "] not found"));
         }
 
         GroupInformation groupInformation = optionalGroupInformation.get();
@@ -92,9 +92,9 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             }
 
             String pem = optionalGetGroupCertificateAuthorityResponse.get().pemEncodedCertificate();
-            log.info("Group CA for group [" + queryArguments.groupName + "]\n" + pem);
+            log.info(String.join("", "Group CA for group [", queryArguments.groupName, "]\n", pem));
 
-            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_Core_CA.pem";
+            String outputFilename = String.join("", BUILD_DIRECTORY, queryArguments.groupName, "_Core_CA.pem");
 
             writeToFile(queryArguments, pem, outputFilename);
 
@@ -109,7 +109,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(subscriptions);
             log.info(output);
 
-            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_subscription_table.json";
+            String outputFilename = String.join("", BUILD_DIRECTORY, queryArguments.groupName, "_subscription_table.json");
 
             writeToFile(queryArguments, output, outputFilename);
 
@@ -124,7 +124,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(functions);
             log.info(output);
 
-            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_function_table.json";
+            String outputFilename = String.join("", BUILD_DIRECTORY, queryArguments.groupName, "_function_table.json");
 
             writeToFile(queryArguments, output, outputFilename);
 
@@ -139,7 +139,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             String output = jsonHelper.toJson(devices);
             log.info(output);
 
-            String outputFilename = BUILD_DIRECTORY + queryArguments.groupName + "_device_table.json";
+            String outputFilename = String.join("", BUILD_DIRECTORY, queryArguments.groupName, "_device_table.json");
 
             writeToFile(queryArguments, output, outputFilename);
 
@@ -154,10 +154,10 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
             logs.forEach(events -> saveLogEvents(directory, events));
 
             if (!ioHelper.isRunningInDocker()) {
-                log.info("Logs written to [" + directory.getPath() + "]");
+                log.info(String.join("", "Logs written to [", directory.getPath(), "]"));
             } else {
                 // Remove the leading slash
-                log.info("Logs copied to host in [" + directory.getPath().substring(1) + "]");
+                log.info(String.join("", "Logs copied to host in [", directory.getPath().substring(1), "]"));
             }
 
             return;
@@ -239,7 +239,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
         LogGroup logGroup = logGroupStreamAndEvents._1;
         String trimmedLogGroupName = diagnosticsHelper.trimLogGroupName(logGroup);
 
-        String header = trimmedLogGroupName + " - ";
+        String header = String.join("", trimmedLogGroupName, " - ");
 
         outputLogEvents.forEach(event -> printLogEvent(header, event.message()));
     }
@@ -328,13 +328,13 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
 
         if (ioHelper.isRunningInDocker()) {
             // Logs are written into the root in Docker so they show up in the host
-            directoryName = "/" + directoryName;
+            directoryName = String.join("", "/", directoryName);
         }
 
         File directory = new File(directoryName);
 
         if (directory.exists()) {
-            log.warn("Directory for logs [" + directoryName + "] already exists. Removing old logs.");
+            log.warn(String.join("", "Directory for logs [", directoryName, "] already exists. Removing old logs."));
             Try.run(() -> FileUtils.deleteDirectory(directory))
                     .recover(IOException.class, this::throwFailedToDeleteDirectoryException)
                     .get();
@@ -391,7 +391,7 @@ public class BasicGroupQueryHelper implements GroupQueryHelper {
     private void writeToFile(QueryArguments queryArguments, String output, String outputFilename) {
         if (queryArguments.writeToFile) {
             ioHelper.writeFile(outputFilename, output.getBytes());
-            log.info("This data was also written to [" + outputFilename + "]");
+            log.info(String.join("", "This data was also written to [", outputFilename, "]"));
         }
     }
 

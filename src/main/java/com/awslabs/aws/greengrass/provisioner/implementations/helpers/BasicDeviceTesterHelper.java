@@ -152,7 +152,7 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
         String output = addTestCaseId("FAILED", optionalTestCaseId);
 
         if (optionalDuration.isPresent()) {
-            output = output + " [" + optionalDuration.get().toString() + "]";
+            output = String.join("", output, " [", optionalDuration.get().toString(), "]");
         }
 
         log.warn(output);
@@ -188,7 +188,7 @@ public class BasicDeviceTesterHelper implements DeviceTesterHelper {
         }
 
         string = StringUtils.rightPad(string, 30);
-        string = string + "| " + optionalTestCaseId.get();
+        string = String.join("", string, "| ", optionalTestCaseId.get());
         return string;
     }
 

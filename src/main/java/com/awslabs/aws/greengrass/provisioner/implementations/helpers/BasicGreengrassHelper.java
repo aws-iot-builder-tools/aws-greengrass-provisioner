@@ -347,7 +347,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private Function scrubFunctionForNoContainer(Function function) {
-        log.warn("Scrubbing function configuration for [" + function.functionArn() + "] to run without the Greengrass container");
+        log.warn(String.join("", "Scrubbing function configuration for [", function.functionArn(), "] to run without the Greengrass container"));
 
         Function.Builder functionBuilder = function.toBuilder();
         FunctionConfiguration.Builder functionConfigurationBuilder = function.functionConfiguration().toBuilder();
@@ -472,7 +472,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         GroupVersion currentGroupVersion;
 
         if (!optionalGroupInformation.isPresent()) {
-            log.warn("Group [" + greengrassGroupId.getGroupId() + "] not found or has no previous versions, creating group version from scratch");
+            log.warn(String.join("", "Group [", greengrassGroupId.getGroupId(), "] not found or has no previous versions, creating group version from scratch"));
 
             // There is no current version so just use the new version as our reference
             currentGroupVersion = newGroupVersion;
@@ -613,7 +613,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
                 return DeploymentStatus.FAILED;
         }
 
-        throw new RuntimeException("Unexpected deployment status [" + deploymentStatus + "]");
+        throw new RuntimeException(String.join("", "Unexpected deployment status [", deploymentStatus, "]"));
     }
 
     private boolean throwIamReassociationExceptionIfNecessary(GetDeploymentStatusResponse getDeploymentStatusResponse, String expectedPartialErrorString, String logMessage) {
@@ -860,7 +860,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
     }
 
     private void logLocalResourcesScrubbed(FunctionConf functionConf) {
-        log.warn("Scrubbing local resources from [" + functionConf.getFunctionName().getName() + "] because it is not running in the Greengrass container");
+        log.warn(String.join("", "Scrubbing local resources from [", functionConf.getFunctionName().getName(), "] because it is not running in the Greengrass container"));
     }
 
     private Resource createResource(ResourceDataContainer resourceDataContainer, String name, String id) {
@@ -908,7 +908,7 @@ public class BasicGreengrassHelper implements GreengrassHelper {
      * @return
      */
     public String rethrowResourceNotFoundException(String thingName) {
-        throw new RuntimeException("Thing [" + thingName + "] does not exist");
+        throw new RuntimeException(String.join("", "Thing [", thingName, "] does not exist"));
     }
 
     @Override

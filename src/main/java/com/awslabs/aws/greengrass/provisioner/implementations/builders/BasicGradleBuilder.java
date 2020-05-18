@@ -23,7 +23,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public String getArchivePath(FunctionConf functionConf) {
         // The gradle build output is expected in the /build/libs directory in an artifact that ends with "-1.0-SNAPSHOT-all.jar"
-        return functionConf.getBuildDirectory().get().toString() + "/build/libs/" + functionConf.getFunctionName().getName() + "-1.0-SNAPSHOT-all.jar";
+        return String.join("", functionConf.getBuildDirectory().get().toString(), "/build/libs/", functionConf.getFunctionName().getName(), "-1.0-SNAPSHOT-all.jar");
     }
 
     @Override
@@ -34,7 +34,7 @@ public class BasicGradleBuilder implements GradleBuilder {
     @Override
     public boolean isGradleFunction(FunctionConf functionConf) {
         // If we find build.gradle in the expected location, assume this is a gradle function
-        return new File(getGradleBuildPath(functionConf) + "/" + BUILD_GRADLE).exists();
+        return new File(String.join("", getGradleBuildPath(functionConf), "/", BUILD_GRADLE)).exists();
     }
 
     @Override

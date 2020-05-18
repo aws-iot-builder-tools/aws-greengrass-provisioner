@@ -74,7 +74,7 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
                 .collect(Collectors.toList());
 
         subscriptions.forEach(subscription ->
-                log.info("Connecting [" + subscription.source() + "] to [" + subscription.target() + "] on topic [" + subscription.subject() + "]"));
+                log.info(String.join("", "Connecting [", subscription.source(), "] to [", subscription.target(), "] on topic [", subscription.subject(), "]")));
 
         return subscriptions;
     }
@@ -249,12 +249,12 @@ public class BasicSubscriptionHelper implements SubscriptionHelper {
         List<Subscription> subscriptions = new ArrayList<>();
 
         for (String subscriptionToCloud : toCloudSubscriptions) {
-            log.info("- Creating subscription to cloud [" + arn + "] to [" + subscriptionToCloud + "]");
+            log.info(String.join("", "- Creating subscription to cloud [", arn, "] to [", subscriptionToCloud, "]"));
             subscriptions.add(createSubscriptionToCloud(arn, subscriptionToCloud));
         }
 
         for (String subscriptionFromCloud : fromCloudSubscriptions) {
-            log.info("- Creating subscription from cloud [" + arn + "] to [" + subscriptionFromCloud + "]");
+            log.info(String.join("", "- Creating subscription from cloud [", arn, "] to [", subscriptionFromCloud, "]"));
             subscriptions.add(createSubscriptionFromCloud(arn, subscriptionFromCloud));
         }
 

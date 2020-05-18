@@ -46,7 +46,7 @@ public class SoftwareDownloadTest {
                 .collect(Collectors.toList());
 
         if (failedUrls.size() != 0) {
-            failedUrls.forEach(url -> log.error("URL [" + url + "] failed to download"));
+            failedUrls.forEach(url -> log.error(String.join("", "URL [", url, "] failed to download")));
             throw new RuntimeException("At least one Greengrass URL failed to download.");
         }
     }
@@ -65,7 +65,7 @@ public class SoftwareDownloadTest {
                 .filter(file -> !file.exists())
                 .collect(Collectors.toList());
 
-        missingFiles.forEach(file -> log.error("Greengrass distribution file [" + file.getName() + "] is missing"));
+        missingFiles.forEach(file -> log.error(String.join("", "Greengrass distribution file [", file.getName(), "] is missing")));
 
         MatcherAssert.assertThat("Some Greengrass distributions are missing, this means the Greengrass software list is not configured properly", missingFiles, is(empty()));
     }

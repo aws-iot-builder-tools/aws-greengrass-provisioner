@@ -86,7 +86,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private static final String DOES_NOT_EXIST = "does not exist";
     private static final String SCREEN_NOT_AVAILABLE_ERROR_MESSAGE = "screen is not available on the host. Screen must be available to use this feature";
     private static final String GREENGRASS_SESSION_NAME = "greengrass";
-    private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = "A screen session with the specified name [" + GREENGRASS_SESSION_NAME + "] already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.";
+    private static final String SCREEN_SESSION_NAME_IN_USE_ERROR_MESSAGE = String.join("", "A screen session with the specified name [", GREENGRASS_SESSION_NAME, "] already exists. Maybe Greengrass is already running on this host. If so, connect to the system and close the screen session before trying again.");
     private static final String GREENGRASS_EC2_INSTANCE_TAG_PREFIX = "greengrass";
     private final Logger log = LoggerFactory.getLogger(BasicDeploymentHelper.class);
     private final int normalFilePermissions = 0644;
@@ -168,7 +168,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         File deploymentConfigFile = new File(deploymentConfigFilename);
 
         if (!deploymentConfigFile.exists()) {
-            throw new RuntimeException("The specified deployment configuration file [" + deploymentConfigFilename + "] does not exist.");
+            throw new RuntimeException(String.join("", "The specified deployment configuration file [", deploymentConfigFilename, "] does not exist."));
         }
 
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
@@ -251,7 +251,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         LoggerComponent loggerComponent = LoggerComponent.fromValue(removeQuotes(componentString.get()));
 
         if (loggerComponent == null) {
-            throw new RuntimeException("Failed to parse logger component [" + componentString.get() + "]");
+            throw new RuntimeException(String.join("", "Failed to parse logger component [", componentString.get(), "]"));
         }
 
         if (!loggerLevelString.isPresent()) {
@@ -261,7 +261,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         LoggerLevel loggerLevel = LoggerLevel.fromValue(removeQuotes(loggerLevelString.get()));
 
         if (loggerLevel == null) {
-            throw new RuntimeException("Failed to parse logger level [" + loggerLevelString.get() + "]");
+            throw new RuntimeException(String.join("", "Failed to parse logger level [", loggerLevelString.get(), "]"));
         }
 
         if (!loggerTypeString.isPresent()) {
@@ -271,7 +271,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         LoggerType loggerType = LoggerType.fromValue(removeQuotes(loggerTypeString.get()));
 
         if (loggerType == null) {
-            throw new RuntimeException("Failed to parse logger type [" + loggerTypeString.get() + "]");
+            throw new RuntimeException(String.join("", "Failed to parse logger type [", loggerTypeString.get(), "]"));
         }
 
         if (loggerType.equals(LoggerType.FILE_SYSTEM) && !spaceString.isPresent()) {
@@ -337,10 +337,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     @Override
     public void createAndWaitForDeployment(Optional<Role> serviceRole, Optional<Role> coreRole, GreengrassGroupId greengrassGroupId, String groupVersionId) {
         log.info("Creating a deployment");
-        log.info("Group ID [" + greengrassGroupId.getGroupId() + "]");
-        log.info("Group version ID [" + groupVersionId + "]");
+        log.info(String.join("", "Group ID [", greengrassGroupId.getGroupId(), "]"));
+        log.info(String.join("", "Group version ID [", groupVersionId, "]"));
         String initialDeploymentId = greengrassHelper.createDeployment(greengrassGroupId, groupVersionId);
-        log.info("Deployment created [" + initialDeploymentId + "]");
+        log.info(String.join("", "Deployment created [", initialDeploymentId, "]"));
 
         DeploymentStatus deploymentStatus = getDeploymentStatus(serviceRole, coreRole, greengrassGroupId, groupVersionId, initialDeploymentId);
 
@@ -424,7 +424,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.warn("Trying another deployment");
         deploymentId = greengrassHelper.createDeployment(greengrassGroupId, groupVersionId);
-        log.warn("Deployment created [" + deploymentId + "]");
+        log.warn(String.join("", "Deployment created [", deploymentId, "]"));
 
         log.warn("Letting deployment settle...");
 
@@ -474,7 +474,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         ///////////////////////////////////////////////////
 
         if (v2GreengrassHelper.groupExists(greengrassGroupName) && (deploymentArguments.ec2LinuxVersion != null)) {
-            throw new RuntimeException("Group [" + deploymentArguments.groupName + "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option.");
+            throw new RuntimeException(String.join("", "Group [", deploymentArguments.groupName, "] already exists, cannot launch another EC2 instance for this group.  You can update the group configuration by not specifying the EC2 launch option."));
         }
 
         log.info("Creating a Greengrass group, if necessary");
@@ -609,7 +609,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             Optional<Role> optionalCoreRole = iamHelper.getRole(coreRoleName);
 
             if (!optionalCoreRole.isPresent()) {
-                throw new RuntimeException("Greengrass core role is not present or GetRole failed due to insufficient permissions on [" + deploymentArguments.coreRoleName + "]");
+                throw new RuntimeException(String.join("", "Greengrass core role is not present or GetRole failed due to insufficient permissions on [", deploymentArguments.coreRoleName, "]"));
             }
 
             coreRole = optionalCoreRole.get();
@@ -628,11 +628,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         // Create the role alias so we can use IoT as a credentials provider with certificate based authentication
         if (!deploymentConf.getCoreRoleConf().getAlias().isPresent()) {
-            throw new RuntimeException("No role alias specified for the Greengrass core role [" + deploymentConf.getCoreRoleConf().getName());
+            throw new RuntimeException(String.join("", "No role alias specified for the Greengrass core role [", deploymentConf.getCoreRoleConf().getName(), "]"));
         }
 
         ImmutableRoleAlias coreRoleAlias = ImmutableRoleAlias.builder().name(deploymentConf.getCoreRoleConf().getAlias().get()).build();
-        log.info("Creating core role alias [" + coreRoleAlias.getName() + "]");
+        log.info(String.join("", "Creating core role alias [", coreRoleAlias.getName(), "]"));
         optionalCreateRoleAliasResponse = Optional.of(v2IotHelper.forceCreateRoleAlias(coreRole, coreRoleAlias));
 
         //////////////////////////////////
@@ -646,7 +646,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.certificateArn != null) {
             // Use the certificate ARN supplied by the user, new or existing group
-            log.info("Using user supplied certificate ARN for core certificate [" + deploymentArguments.certificateArn + "]");
+            log.info(String.join("", "Using user supplied certificate ARN for core certificate [", deploymentArguments.certificateArn, "]"));
             optionalCoreCertificateArn = Optional.of(ImmutableCertificateArn.builder().arn(deploymentArguments.certificateArn).build());
         } else if (deploymentArguments.csr != null) {
             // Sign the CSR supplied by the user, new or existing group
@@ -691,8 +691,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             // We need the certificate ARN at this point, fail if we don't have it
             StringBuilder message = new StringBuilder();
             message.append("Core certificate information/ARN could not be found. ");
-            message.append("If you would like to recreate the keys you must specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option. ");
-            message.append("If you'd like to reuse an existing certificate you must specify the [" + DeploymentArguments.LONG_CERTIFICATE_ARN_OPTION + "] option.");
+            message.append(String.join("", "If you would like to recreate the keys you must specify the [", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, "] option. "));
+            message.append(String.join("", "If you'd like to reuse an existing certificate you must specify the [", DeploymentArguments.LONG_CERTIFICATE_ARN_OPTION, "] option."));
 
             throw new RuntimeException(message.toString());
         }
@@ -707,7 +707,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (deploymentArguments.corePolicyName == null) {
             if (!deploymentConf.getCoreRoleConf().getIotPolicy().isPresent()) {
-                throw new RuntimeException("No IoT policy specified for core role [" + deploymentConf.getCoreRoleConf().getName() + "]");
+                throw new RuntimeException(String.join("", "No IoT policy specified for core role [", deploymentConf.getCoreRoleConf().getName(), "]"));
             }
 
             log.info("Creating policy for core");
@@ -808,7 +808,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.error("The following functions are marked to run in the Greengrass container:");
 
             functionsRunningInGreengrassContainer
-                    .forEach(name -> log.error("  " + name));
+                    .forEach(name -> log.error(String.join("", "  ", name.getName())));
 
             log.error("When running in Docker all functions must be running without the Greengrass container.");
             log.error("Set the greengrassContainer option to false in the functions.default.conf and/or the individual function configurations and try again.");
@@ -1067,7 +1067,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             }
 
             if (!username.isPresent()) {
-                throw new RuntimeException("Unexpected EC2 Linux version requested [" + deploymentArguments.ec2LinuxVersion + "], this is a bug 2 [couldn't determine SSH username]");
+                throw new RuntimeException(String.join("", "Unexpected EC2 Linux version requested [", deploymentArguments.ec2LinuxVersion.name(), "], this is a bug 2 [couldn't determine SSH username]"));
             }
 
             attemptBootstrap(deploymentArguments, publicIpAddress, username.get());
@@ -1215,7 +1215,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             return;
         }
 
-        throw new RuntimeException("Assume role policy not specified when creating Greengrass " + type + " role");
+        throw new RuntimeException(String.join("", "Assume role policy not specified when creating Greengrass ", type, " role"));
     }
 
     public boolean isEmptyDeployment(DeploymentArguments deploymentArguments) {
@@ -1223,7 +1223,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private DeploymentConf getEmptyDeploymentConf(DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName) {
-        String coreRoleAlias = deploymentArguments.coreRoleName + "Alias";
+        String coreRoleAlias = String.join("", deploymentArguments.coreRoleName, "Alias");
 
         RoleConf coreRoleConf = ImmutableRoleConf.builder()
                 .name(deploymentArguments.coreRoleName)
@@ -1266,9 +1266,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         String remoteFilename = filename;
         log.info("Copying bootstrap script to host via scp...");
         ioHelper.sendFile(session, localFilename, remoteFilename);
-        ioHelper.runCommand(session, String.join(" ", "chmod", "+x", "./" + remoteFilename));
-        log.info("Running bootstrap script on target host in screen, connect to the target host [" + user + "@" + host + "] and run 'screen -r' to see the progress");
-        runCommandInScreen(session, String.join(" ", "./" + remoteFilename, "--now"), Optional.of(GREENGRASS_SESSION_NAME), true);
+        ioHelper.runCommand(session, String.join(" ", "chmod", "+x", String.join("", "./", remoteFilename)));
+        log.info(String.join("", "Running bootstrap script on target host in screen, connect to the target host [", user, "@", host, "] and run 'screen -r' to see the progress"));
+        runCommandInScreen(session, String.join(" ", String.join("", "./", remoteFilename), "--now"), Optional.of(GREENGRASS_SESSION_NAME), true);
         session.disconnect();
         return true;
     }
@@ -1304,7 +1304,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
 
         if (keepSessionOpen) {
-            command = "bash -c \"" + command + "; exec bash\"";
+            command = String.join("", "bash -c \"", command, "; exec bash\"");
         }
 
         ioHelper.runCommand(session, String.join(" ", "screen", sessionNameOptions, "-d", "-m", command));
@@ -1352,17 +1352,17 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<String> optionalNameFilter = getNameFilter(architecture, ec2LinuxVersion);
 
         if (!optionalAccountId.isPresent()) {
-            throw new RuntimeException("Unexpected EC2 Linux version requested [" + ec2LinuxVersion + "], this is a bug 1 [couldn't determine which AMI to use]");
+            throw new RuntimeException(String.join("", "Unexpected EC2 Linux version requested [", ec2LinuxVersion.name(), "], this is a bug 1 [couldn't determine which AMI to use]"));
         }
 
         if (!optionalNameFilter.isPresent() || !instanceType.isPresent()) {
-            throw new RuntimeException("Unexpected architecture [" + architecture + "] for EC2 launch");
+            throw new RuntimeException(String.join("", "Unexpected architecture [", architecture.toString(), "] for EC2 launch"));
         }
 
         Optional<Image> optionalImage = getImage(optionalNameFilter.get(), optionalAccountId.get());
 
         if (!optionalImage.isPresent()) {
-            log.error("No [" + ec2LinuxVersion + "] image found in this region, not launching the instance");
+            log.error(String.join("", "No [", ec2LinuxVersion.name(), "] image found in this region, not launching the instance"));
             return Optional.empty();
         }
 
@@ -1378,7 +1378,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         KeyPairInfo keyPairInfo = optionalKeyPairInfo.get();
 
-        log.warn("Automatically chose the first key pair available [" + keyPairInfo.keyName() + "]");
+        log.warn(String.join("", "Automatically chose the first key pair available [", keyPairInfo.keyName(), "]"));
 
         Image image = optionalImage.get();
 
@@ -1386,7 +1386,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         CreateSecurityGroupRequest createSecurityGroupRequest = CreateSecurityGroupRequest.builder()
                 .groupName(securityGroupName)
-                .description("Security group for Greengrass Core [" + instanceTagName + "]")
+                .description(String.join("", "Security group for Greengrass Core [", instanceTagName, "]"))
                 .build();
 
         ec2Client.createSecurityGroup(createSecurityGroupRequest);
@@ -1459,13 +1459,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Failsafe.with(createTagsResponseRetryPolicy).get(() ->
                 ec2Client.createTags(createTagsRequest));
 
-        log.info("Launched instance [" + instanceId + "] with tag [" + instanceTagName + "]");
+        log.info(String.join("", "Launched instance [", instanceId, "] with tag [", instanceTagName, "]"));
 
         return Optional.of(instanceId);
     }
 
     private IpPermission openTcpPortToWorld(int port) {
-        log.warn("Opening security group for inbound TCP traffic on all IPs on port [" + port + "]");
+        log.warn(String.join("", "Opening security group for inbound TCP traffic on all IPs on port [", String.valueOf(port), "]"));
 
         return IpPermission.builder()
                 .fromPort(port)
@@ -1476,7 +1476,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     private IpPermission openUdpRangeToWorld(int fromPort, int toPort) {
-        log.warn("Opening security group for inbound UDP traffic on all IPs from port [" + fromPort + "] to port [" + toPort + "]");
+        log.warn(String.join("", "Opening security group for inbound UDP traffic on all IPs from port [", String.valueOf(fromPort), "] to port [", String.valueOf(toPort), "]"));
 
         return IpPermission.builder()
                 .fromPort(fromPort)
@@ -1563,11 +1563,11 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     private Role createRoleFromRoleConfAndAttachPolicies(String type, RoleConf roleConf) {
         String name = roleConf.getName();
 
-        log.info("Creating Greengrass " + type + " role [" + name + "]");
+        log.info(String.join("", "Creating Greengrass ", type, " role [", name, "]"));
 
         Role role = createRoleFromRoleConf(roleConf);
 
-        log.info("Attaching role policies to Greengrass " + type + " role [" + name + "]");
+        log.info(String.join("", "Attaching role policies to Greengrass ", type, " role [", name, "]"));
 
         Optional<List<ManagedPolicyArn>> managedPolicyArns = Optional.empty();
 
@@ -1620,7 +1620,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         if (!optionalCoreKeysAndCertificate.isPresent() && (deploymentArguments.hsiParameters == null) && installScriptVirtualTarEntries.isPresent()) {
             // We don't have the keys, HSI parameters weren't set, and the user wants an installation script. This will not work.
-            throw new RuntimeException("Could not find the core keys and certificate and no HSI options were set, cannot build a complete output file. Specify the [" + DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION + "] option if you need to regenerate the output files.");
+            throw new RuntimeException(String.join("", "Could not find the core keys and certificate and no HSI options were set, cannot build a complete output file. Specify the [", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, "] option if you need to regenerate the output files."));
         }
 
         log.info("Adding keys and certificate files to archive");
@@ -1726,12 +1726,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             // Use ifPresent here to avoid reading the file if it isn't necessary
             installScriptVirtualTarEntries.ifPresent(archive -> archiveHelper.addVirtualTarEntry(archive, architecture.getFilename(), ioHelper.readFile(architectureUrl), normalFilePermissions));
 
-            log.info("Building script [" + ggShScriptName + "]");
+            log.info(String.join("", "Building script [", ggShScriptName, "]"));
             ByteArrayOutputStream ggScriptTemplate = new ByteArrayOutputStream();
 
             Try.run(() -> writePayload(architecture, ggScriptTemplate)).get();
 
-            log.info("Writing script [" + ggShScriptName + "]");
+            log.info(String.join("", "Writing script [", ggShScriptName, "]"));
             ioHelper.writeFile(ggShScriptName, ggScriptTemplate.toByteArray());
             ioHelper.makeExecutable(ggShScriptName);
 
@@ -1749,7 +1749,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                 writeOemJsonOutput(oemVirtualTarEntries.get(), deploymentArguments.oemJsonOutput);
             } else {
                 String oemArchiveName = ggVariables.getOemArchiveName(greengrassGroupName);
-                log.info("Writing OEM file [" + oemArchiveName + "]");
+                log.info(String.join("", "Writing OEM file [", oemArchiveName, "]"));
                 ioHelper.writeFile(oemArchiveName, getByteArrayOutputStream(oemVirtualTarEntries).get().toByteArray());
                 ioHelper.makeExecutable(oemArchiveName);
 
@@ -1793,7 +1793,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Map<String, String> oemJson = oemVirtualTarEntries.stream()
                 .collect(Collectors.toMap(VirtualTarEntry::getFilename, entry -> new String(entry.getContent())));
 
-        log.info("Writing OEM JSON output to [" + oemJsonFilename + "]");
+        log.info(String.join("", "Writing OEM JSON output to [", oemJsonFilename, "]"));
         ioHelper.writeFile(oemJsonFilename, jsonHelper.toJson(oemJson).getBytes());
     }
 
@@ -1824,8 +1824,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
                     .get();
         }
 
-        String containerName = shortEcrEndpointAndRepo + ":" + deploymentArguments.groupName;
-        log.info("Container pushed to [" + containerName + "]");
+        String containerName = String.join("", shortEcrEndpointAndRepo, ":", deploymentArguments.groupName);
+        log.info(String.join("", "Container pushed to [", containerName, "]"));
 
         /* Temporarily removed until Ubuntu issues are sorted out
         String baseDockerScriptName = String.join(".", "docker", deploymentArguments.groupName, "sh");
@@ -1833,7 +1833,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         log.info("To run this container on Ubuntu on EC2 do the following:");
         log.info(" - Attach a role to the EC2 instance that gives it access to ECR");
-        log.info(" - Run the Docker script [" + dockerShScriptName + "]");
+        log.info(String.join("", " - Run the Docker script [" , dockerShScriptName , "]"));
 
         if (!deploymentArguments.dockerScriptOutput == true) {
             log.warn("The Docker script was NOT built on this run");
@@ -1848,10 +1848,10 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             stringBuilder.append("  sudo apt update && sudo apt install -y awscli\n");
             stringBuilder.append("  curl -fsSL get.docker.com -o get-docker.sh && sudo sh get-docker.sh && sudo usermod -aG docker ubuntu\n");
             stringBuilder.append("  sudo sh -c 'echo {\\\"storage-driver\\\":\\\"devicemapper\\\"} > /etc/docker/daemon.json' && sudo systemctl restart docker\n");
-            stringBuilder.append("  sudo $(AWS_DEFAULT_REGION=" + awsHelper.getCurrentRegion() + " aws ecr get-login | sed -e 's/-e none //')\n");
+            stringBuilder.append(String.join("", "  sudo $(AWS_DEFAULT_REGION=" , awsHelper.getCurrentRegion() , " aws ecr get-login | sed -e 's/-e none //')\n"));
             stringBuilder.append("  touch docker.configured\n");
             stringBuilder.append("fi\n");
-            stringBuilder.append("sudo docker run -it --network host --privileged " + containerName + "\n");
+            stringBuilder.append(String.join("", "sudo docker run -it --network host --privileged " , containerName , "\n"));
 
             ioHelper.writeFile(dockerShScriptName, stringBuilder.toString().getBytes());
             ioHelper.makeExecutable(dockerShScriptName);
@@ -1859,9 +1859,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         */
     }
 
-    private Void logDockerPushFailedAndThrow(DockerException x) {
-        log.error("Docker push failed [" + x.getMessage() + "]");
-        throw new RuntimeException(x);
+    private Void logDockerPushFailedAndThrow(DockerException dockerException) {
+        log.error(String.join("", "Docker push failed [", dockerException.getMessage(), "]"));
+        throw new RuntimeException(dockerException);
     }
 
     private void push(String shortEcrEndpointAndRepo, DockerClient dockerClient) throws DockerException, InterruptedException {
@@ -1906,7 +1906,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         Optional<URL> architectureUrlOptional = architecture.flatMap(Architecture::getResourceUrl);
 
         if (architecture.isPresent() && !architectureUrlOptional.isPresent()) {
-            log.error("The GG software for your architecture [" + architecture.get().getFilename() + "] is not available, please download it from the Greengrass console and put it in the [" + architecture.get().getDIST() + "] directory");
+            log.error(String.join("", "The GG software for your architecture [", architecture.get().getFilename(), "] is not available, please download it from the Greengrass console and put it in the [", architecture.get().getDIST(), "] directory"));
             System.exit(3);
         }
 
