@@ -47,7 +47,7 @@ or a system running Amazon Linux.
 
 Redeployments of an existing group will happen without re-running the bootstrap script.
 
-### Deploy or redeploy a group with the Python Hello World function
+### Deploy a group with the Python Hello World function
 
 X86_64:
 
@@ -61,7 +61,16 @@ ARM32:
 GGP -g test-group -a ARM32 -d deployments/python3-hello-world.conf --script
 ```
 
-Redeployments of an existing group will happen without re-running the bootstrap script.
+### Redeploy a group with the Python Hello World function
+
+All architectures:
+
+```bash
+GGP -g test-group -d deployments/python3-hello-world.conf
+```
+
+Redeployments of an existing group will happen without re-running the bootstrap script and therefore the architecture
+does not need to be specified.
 
 ## Create a Docker container for a group deployment
 
