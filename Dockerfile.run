@@ -35,14 +35,14 @@ RUN yum install -y unzip
 # Install latest version of Gradle with sources to speed up Java builds. Lambda function developers need sources but we don't so we clear them out.
 #   If we just install the version without sources though it will still attempt to download the distribution each time since it is named differently.
 #   Therefore we download the sources distribution but clean out the components we don't need.
-RUN wget -c https://services.gradle.org/distributions/gradle-6.1.1-all.zip && \
+RUN wget -c https://services.gradle.org/distributions/gradle-6.5-all.zip && \
     mkdir -p /opt/gradle && \
-    unzip -d /opt/gradle gradle-6.1.1-all.zip
+    unzip -d /opt/gradle gradle-6.5-all.zip
 
 RUN mkdir temp && \
     cd temp && \
-    /opt/gradle/gradle-6.1.1/bin/gradle init && \
-    /opt/gradle/gradle-6.1.1/bin/gradle wrapper --gradle-version 6.1.1 --distribution-type all && \
+    /opt/gradle/gradle-6.5/bin/gradle init && \
+    /opt/gradle/gradle-6.5/bin/gradle wrapper --gradle-version 6.5 --distribution-type all && \
     ./gradlew tasks && \
     cd .. && \
     rm -rf temp && \
