@@ -259,15 +259,15 @@ For GGP to work you need to setup the following folder structure:
 | |____function.defaults.conf
 ```
 
-Where the conf file ```existingLambda.conf``` contains the name of the existing Lambda functions.
+Where the conf file ```existingLambda.conf``` contains the ARN of the existing Lambda functions.
 
 ```bash
 conf {
-  functions = ["HelloWorldPython1:live","HelloWorldPython2:live"]
+  functions = ["arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython1:live","arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython2:live"]
 }
 ```
 
-If the name of your lambda contains additional characters (e.g. dynamically appended by Cloud Formation), you can use the wildcard symbol ```~``` to uniquely identify your lambda. For example, the following code will find the Lambda function named `123_lambda_123`:
+If the ARN of your lambda contains additional characters (e.g. dynamically appended by Cloud Formation), you can use the wildcard symbol ```~``` to uniquely identify your lambda. For example, the following code will find the Lambda function named `123_lambda_123`:
  ```bash
 conf {
   functions = ["~lambda~:live"]
