@@ -1,9 +1,6 @@
 import com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.IoHelper;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +42,9 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
     }
 
     // Test set 3: Expected success with Python 2 Hello World without Docker
+    // NOTE: Only testing Python 2 in Docker now as many hosts no longer support it
     @Test
+    @Ignore
     public void shouldBuildPython2FunctionWithoutDocker() {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty())));
     }
