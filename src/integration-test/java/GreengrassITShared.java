@@ -42,7 +42,6 @@ class GreengrassITShared {
     static final String ARM32_OPTION = String.join(" ", Arguments.SHORT_ARCHITECTURE_OPTION, "ARM32");
     static final String EC2_LAUNCH_OPTION = DeploymentArguments.LONG_EC2_LAUNCH_OPTION;
     static final String CDD_SKELETON_DEPLOYMENT = "cdd-skeleton.conf";
-    static final String PYTHON2_HELLO_WORLD_DEPLOYMENT = "python2-hello-world.conf";
     static final String PYTHON3_HELLO_WORLD_DEPLOYMENT = "python3-hello-world.conf";
     static final String BENCHMARK_DEPLOYMENT = "benchmark.conf";
     static final String LIFX_DEPLOYMENT = "lifx.conf";
@@ -109,10 +108,6 @@ class GreengrassITShared {
                 UpdateArguments.LONG_UPDATE_GROUP_OPTION,
                 UpdateArguments.LONG_REMOVE_FUNCTION_OPTION, functionName.getName(),
                 UpdateArguments.LONG_FUNCTION_ALIAS_OPTION, functionAlias.getAlias());
-    }
-
-    String getPython2HelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {
-        return String.join("", FORCE_CREATE_NEW_KEYS_DEPLOYMENT_OPTION, PYTHON2_HELLO_WORLD_DEPLOYMENT, " ", getGroupOption(greengrassGroupName));
     }
 
     String getPython3HelloWorldDeploymentCommand(Optional<GreengrassGroupName> greengrassGroupName) {

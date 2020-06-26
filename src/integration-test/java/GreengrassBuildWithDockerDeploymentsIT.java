@@ -157,11 +157,7 @@ public class GreengrassBuildWithDockerDeploymentsIT {
         runContainer(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
     }
 
-    // Test set 3: Expected success with Python 2 Hello World with Docker
-    @Test
-    public void shouldBuildPython2FunctionWithDocker() {
-        runContainer(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty()), EXIT_CODE_IS_ZERO);
-    }
+    // Test set 3: Removed
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) with Docker
     @Test

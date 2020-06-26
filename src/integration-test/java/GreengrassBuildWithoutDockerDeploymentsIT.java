@@ -41,13 +41,7 @@ public class GreengrassBuildWithoutDockerDeploymentsIT {
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getCddSkeletonDeploymentCommand(Optional.empty())));
     }
 
-    // Test set 3: Expected success with Python 2 Hello World without Docker
-    // NOTE: Only testing Python 2 in Docker now as many hosts no longer support it
-    @Test
-    @Ignore
-    public void shouldBuildPython2FunctionWithoutDocker() {
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(Optional.empty())));
-    }
+    // Test set 3: Removed
 
     // Test set 4: Expected success with Python LiFX function (has dependencies to fetch) without Docker
     @Test

@@ -53,7 +53,7 @@ public class GreengrassUpdateWithoutDockerIT {
         Optional<GreengrassGroupName> optionalGroup1Name = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
         Optional<GreengrassGroupName> optionalGroup2Name = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
 
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroup1Name)));
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommand(optionalGroup1Name)));
         AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getNodeHelloWorldDeploymentCommand(optionalGroup2Name)));
 
         GreengrassGroupName group1Name = optionalGroup1Name.get();
@@ -100,7 +100,7 @@ public class GreengrassUpdateWithoutDockerIT {
         // Create one group with a known name
         Optional<GreengrassGroupName> optionalGroupName = Optional.of(ImmutableGreengrassGroupName.builder().groupName(ioHelper.getUuid()).build());
 
-        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython2HelloWorldDeploymentCommand(optionalGroupName)));
+        AwsGreengrassProvisioner.main(greengrassITShared.split(greengrassITShared.getPython3HelloWorldDeploymentCommand(optionalGroupName)));
 
         GreengrassGroupName groupName = optionalGroupName.get();
 
