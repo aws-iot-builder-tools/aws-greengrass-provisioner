@@ -22,7 +22,7 @@ import java.util.Optional;
 
 public class GreengrassUpdateWithoutDockerIT {
     private static final String HELLO_WORLD_NODE = "HelloWorldNode";
-    private static final String HELLO_WORLD_PYTHON2 = "HelloWorldPython2";
+    private static final String HELLO_WORLD_PYTHON3 = "HelloWorldPython3";
     private static Logger log = LoggerFactory.getLogger(GreengrassUpdateWithoutDockerIT.class);
     @Rule
     public ExpectedSystemExit expectedSystemExit = ExpectedSystemExit.none();
@@ -109,7 +109,7 @@ public class GreengrassUpdateWithoutDockerIT {
                 .orElseThrow(() -> new RuntimeException("Group information not present"));
 
         // Pull the Hello World function out of the group
-        Optional<Function> optionalGroupHelloWorldPythonFunction = getFunctionFromGroupInformation(groupInformation, HELLO_WORLD_PYTHON2);
+        Optional<Function> optionalGroupHelloWorldPythonFunction = getFunctionFromGroupInformation(groupInformation, HELLO_WORLD_PYTHON3);
 
         // Make sure the function is present
         Assert.assertTrue(optionalGroupHelloWorldPythonFunction.isPresent());
@@ -126,7 +126,7 @@ public class GreengrassUpdateWithoutDockerIT {
         GroupInformation groupInformationAfterUpdate = v2GreengrassHelper.getGroupInformation(groupName).findFirst()
                 .orElseThrow(() -> new RuntimeException("Group information not present after update"));
 
-        Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON2);
+        Optional<Function> optionalGroupHelloWorldPythonFunctionAfterUpdate = getFunctionFromGroupInformation(groupInformationAfterUpdate, HELLO_WORLD_PYTHON3);
 
         Assert.assertFalse(optionalGroupHelloWorldPythonFunctionAfterUpdate.isPresent());
     }
