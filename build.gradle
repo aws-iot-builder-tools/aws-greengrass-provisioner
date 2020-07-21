@@ -58,7 +58,7 @@ def jschVersion = '0.1.55'
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
 
-def greengrassVersion = '1.10.1'
+def greengrassVersion = '1.10.2'
 
 task downloadGreengrassBinaries(type: Download) {
     // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR

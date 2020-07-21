@@ -20,7 +20,7 @@ public enum Architecture {
     ARMV6L_RASPBIAN("greengrass-linux-armv6l-VERSION.tar.gz"),
     X86_64("greengrass-linux-x86-64-VERSION.tar.gz");
 
-    private final String currentVersion = "1.10.1";
+    private final String currentVersion = "1.10.2";
     private final String filename;
 
     Architecture(String filename) {
