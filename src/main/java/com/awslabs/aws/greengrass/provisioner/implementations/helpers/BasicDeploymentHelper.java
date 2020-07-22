@@ -869,6 +869,12 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
         subscriptions.addAll(subscriptionHelper.connectFunctionsToShadows(functionToConfMap));
 
+        ////////////////////////////////////////
+        // Connection functions to each other //
+        ////////////////////////////////////////
+
+        subscriptions.addAll(subscriptionHelper.connectFunctions(functionToConfMap));
+
         //////////////////////////////////////////////////////
         // Get a list of all of the connected thing shadows //
         //////////////////////////////////////////////////////
