@@ -18,6 +18,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Scanner;
 import java.util.UUID;
 import java.util.concurrent.Callable;
@@ -48,6 +49,29 @@ public interface IoHelper {
         makeWritable(file);
     }
 
+    default void writeProperties(File file, Properties properties){
+        if ((isRunningInLambda()) && (!file.getAbsolutePath().startsWith(TEMP_DIRECTORY))) {
+            // If we are running in Lambda we can only put files in the temp directory
+            file = new File(TEMP_DIRECTORY + file.getAbsolutePath());
+        }
+
+        final File finalFile = file;
+
+        createDirectoryIfNecessary(file.getParentFile().getPath());
+
+        Try.withResources(() -> new FileOutputStream(finalFile))
+                .of(fileOutputStream -> storeProperties(fileOutputStream, properties))
+                .get();
+
+        makeWritable(file);
+    }
+
+    default Void storeProperties(FileOutputStream fileOutputStream, Properties properties) throws IOException {
+        properties.store(fileOutputStream, null);
+
+        return null;
+    }
+
     default Void writeFile(FileOutputStream fileOutputStream, byte[] contents) throws IOException {
         fileOutputStream.write(contents);
 
@@ -56,6 +80,10 @@ public interface IoHelper {
 
     default void writeFile(String filename, byte[] contents) {
         writeFile(new File(filename), contents);
+    }
+
+    default void writeProperties(String filename, Properties properties) {
+        writeProperties(new File(filename), properties);
     }
 
     default String getUuid() {

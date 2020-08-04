@@ -9,7 +9,6 @@ import com.awslabs.iot.data.GreengrassGroupName;
 import com.awslabs.iot.data.RoleAlias;
 import com.awslabs.iot.data.ThingName;
 import com.awslabs.iot.helpers.interfaces.V2IotHelper;
-import io.vavr.control.Try;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,8 +18,6 @@ import software.amazon.awssdk.services.iot.model.CreateKeysAndCertificateRespons
 
 import javax.inject.Inject;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -155,21 +152,13 @@ public class BasicIotHelper implements IotHelper {
         properties.setProperty(AWS_CLIENT_CERT_FILENAME, toRelativePath(getPublicSignedCertificateFilenameForCore(greengrassGroupName)));
         properties.setProperty(AWS_CLIENT_PRIVATE_KEY_FILENAME, toRelativePath(getPrivateKeyFilenameForCore(greengrassGroupName)));
 
-        Try.withResources(() -> new FileOutputStream(getIotCpPropertiesFilename(greengrassGroupName)))
-                .of(fileOutputStream -> storeProperties(fileOutputStream, properties))
-                .get();
+        ioHelper.writeProperties(getIotCpPropertiesFilename(greengrassGroupName), properties);
 
         log.info(String.join("", "IoT Credentials Provider properties written to [", getIotCpPropertiesFilename(greengrassGroupName), "]"));
     }
 
     private String toRelativePath(String filename) {
         return new File(filename).getName();
-    }
-
-    private Void storeProperties(FileOutputStream fileOutputStream, Properties properties) throws IOException {
-        properties.store(fileOutputStream, null);
-
-        return null;
     }
 
     @NotNull
