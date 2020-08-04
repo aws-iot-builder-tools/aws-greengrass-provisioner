@@ -86,6 +86,13 @@ public class AwsGreengrassProvisionerLambda implements RequestHandler<LambdaInpu
         System.setProperty("aws.accessKeyId", lambdaInput.AccessKeyId);
         System.setProperty("aws.secretAccessKey", lambdaInput.SecretAccessKey);
         System.setProperty("aws.sessionToken", lambdaInput.SessionToken);
+
+        if (lambdaInput.Region == null) {
+            return;
+        }
+        else {
+            System.setProperty("aws.region", lambdaInput.Region);
+        }
     }
 
     private void addCsrOption(List<String> args, String csr) {
