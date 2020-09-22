@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+BRANCH=$(git symbolic-ref --short HEAD | tr -cd '[:alnum:]._-')
+
+if [ -z "$BRANCH" ]; then
+  BRANCH=$(git rev-parse HEAD)
+fi
+
+if [[ "master" -eq $BRANCH ]]; then
+  echo "Integration tests cannot be run on master or they will fail to test the Docker build properly. Switch to another branch like 'update-temp' and try again."
+  exit 1
+fi
+
 CWD=`basename $PWD`
 
 if [ "$CWD" == "testing" ]; then
