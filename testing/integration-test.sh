@@ -6,7 +6,7 @@ if [ -z "$BRANCH" ]; then
   BRANCH=$(git rev-parse HEAD)
 fi
 
-if [[ "master" -eq $BRANCH ]]; then
+if [[ "master" == "$BRANCH" ]]; then
   echo "Integration tests cannot be run on master or they will fail to test the Docker build properly. Switch to another branch like 'update-temp' and try again."
   exit 1
 fi
