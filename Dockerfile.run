@@ -54,10 +54,7 @@ RUN mkdir temp && \
            /root/.gradle/wrapper/dists/*/*/*/docs
 
 # Added Docker CLI to allow Docker builds of native functions inside of the container
-RUN yum install -y yum-utils && \
-    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo && \
-    yum install -y docker-ce-cli && \
-    yum clean all && rm -rf /var/cache/yum
+RUN amazon-linux-extras install docker
 
 # Install zip since native builds require it
 RUN yum install -y zip && \
