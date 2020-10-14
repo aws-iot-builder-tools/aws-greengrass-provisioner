@@ -8,6 +8,7 @@ import com.awslabs.iot.data.GreengrassGroupName;
 import com.awslabs.iot.data.ImmutableGreengrassGroupName;
 import com.awslabs.lambda.data.FunctionAlias;
 import com.awslabs.lambda.data.FunctionName;
+import io.vavr.control.Try;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -15,9 +16,20 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 
 class GreengrassITShared {
+    static {
+        // Need to disable Ryuk because the latest Docker Desktop update appears to have broken some things
+        Map<String, String> environment = new HashMap<>(System.getenv());
+        environment.put("TESTCONTAINERS_RYUK_DISABLED", "true");
+        Try.run(() -> setEnv(environment)).get();
+    }
+
     static final String HELLO_WORLD_PYTHON_3_PROD_PARTIAL = "~HelloWorldPython3:PROD";
     static final String BENCHMARK_JAVA_PROD_PARTIAL = "~CDDBenchmarkJava:PROD";
     static final String BENCHMARK_PROD_PARTIAL = "~Benchmark~:PROD";
@@ -179,5 +191,33 @@ class GreengrassITShared {
     @NotNull
     String getReusedFunctionDeploymentCommand(File tempDeploymentConfFile) {
         return String.join("", DeploymentArguments.LONG_FORCE_CREATE_NEW_KEYS_OPTION, " ", "--oem", " ", "-d", " ", "deployments/", tempDeploymentConfFile.getName(), " ", "-g", " ", ioHelper.getUuid());
+    }
+
+    // Hack from https://stackoverflow.com/a/7201825/796579
+    protected static void setEnv(Map<String, String> newenv) throws Exception {
+        try {
+            Class<?> processEnvironmentClass = Class.forName("java.lang.ProcessEnvironment");
+            Field theEnvironmentField = processEnvironmentClass.getDeclaredField("theEnvironment");
+            theEnvironmentField.setAccessible(true);
+            Map<String, String> env = (Map<String, String>) theEnvironmentField.get(null);
+            env.putAll(newenv);
+            Field theCaseInsensitiveEnvironmentField = processEnvironmentClass.getDeclaredField("theCaseInsensitiveEnvironment");
+            theCaseInsensitiveEnvironmentField.setAccessible(true);
+            Map<String, String> cienv = (Map<String, String>) theCaseInsensitiveEnvironmentField.get(null);
+            cienv.putAll(newenv);
+        } catch (NoSuchFieldException e) {
+            Class[] classes = Collections.class.getDeclaredClasses();
+            Map<String, String> env = System.getenv();
+            for (Class cl : classes) {
+                if ("java.util.Collections$UnmodifiableMap".equals(cl.getName())) {
+                    Field field = cl.getDeclaredField("m");
+                    field.setAccessible(true);
+                    Object obj = field.get(env);
+                    Map<String, String> map = (Map<String, String>) obj;
+                    map.clear();
+                    map.putAll(newenv);
+                }
+            }
+        }
     }
 }
