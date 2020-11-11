@@ -54,6 +54,7 @@ def awsLambdaJavaCoreVersion = '1.2.1'
 def resultsIteratorForAwsJavaSdkVersion = '11.0.2'
 def nomenEstOmenVersion = '2.0.0'
 def jschVersion = '0.1.55'
+def jetbrainsAnnotationVersion = '20.1.0'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
@@ -192,6 +193,8 @@ dependencies {
     implementation "commons-io:commons-io:$commonsIoVersion"
     implementation "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
 
+    implementation "org.jetbrains:annotations:$jetbrainsAnnotationVersion"
+
     // Dependency added to fix - https://github.com/aws/aws-sdk-java-v2/issues/652
     implementation "org.apache.httpcomponents:httpclient:$httpClientVersion"
 
@@ -216,4 +219,3 @@ dependencies {
     integrationTestImplementation "org.mockito:mockito-core:$mockitoVersion"
     integrationTestImplementation "com.github.awslabs:aws-iot-core-websockets:$awsIotCoreWebsocketsVersion"
 }
-
