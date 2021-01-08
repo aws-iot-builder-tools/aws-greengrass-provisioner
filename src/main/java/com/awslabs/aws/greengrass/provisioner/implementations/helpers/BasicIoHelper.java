@@ -122,10 +122,13 @@ public class BasicIoHelper implements IoHelper {
         URL website = new URL(url);
         URLConnection urlConnection = website.openConnection();
         optionalReferer.ifPresent(referer -> urlConnection.setRequestProperty("Referer", referer));
-        InputStream inputStream = urlConnection.getInputStream();
-        ReadableByteChannel rbc = Channels.newChannel(inputStream);
-        FileOutputStream fos = new FileOutputStream(file);
-        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+        Try.withResources(urlConnection::getInputStream)
+                .of(inputStream -> {
+                    ReadableByteChannel rbc = Channels.newChannel(inputStream);
+                    FileOutputStream fos = new FileOutputStream(file);
+                    fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+                    return null;
+                });
     }
 
     @Override
