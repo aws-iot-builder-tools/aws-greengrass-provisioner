@@ -69,11 +69,11 @@ public class BasicProcessHelper implements ProcessHelper {
         return Optional.empty();
     }
 
-    private Optional<Integer> innerGetOutputFromProcess(ProcessBuilder pb, boolean waitForExit, Optional<Consumer<String>> stdoutConsumer, Optional<Consumer<String>> stderrConsumer) throws IOException, InterruptedException {
-        Process p = pb.start();
+    private Optional<Integer> innerGetOutputFromProcess(ProcessBuilder processBuilder, boolean waitForExit, Optional<Consumer<String>> stdoutConsumer, Optional<Consumer<String>> stderrConsumer) throws IOException, InterruptedException {
+        Process process = processBuilder.start();
 
-        BufferedReader stdout = new BufferedReader(new InputStreamReader(p.getInputStream()));
-        BufferedReader stderr = new BufferedReader(new InputStreamReader(p.getErrorStream()));
+        BufferedReader stdout = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        BufferedReader stderr = new BufferedReader(new InputStreamReader(process.getErrorStream()));
 
         Thread stdoutThread = new Thread(() -> stdout.lines().forEach(stdoutConsumer.orElse(NOOP)));
         stdoutThread.start();
@@ -84,7 +84,7 @@ public class BasicProcessHelper implements ProcessHelper {
         // Did they want to wait for the process to exit?
         if (waitForExit) {
             // Yes, wait for the process to exit
-            p.waitFor();
+            process.waitFor();
 
             // Wait for the processing of the STDOUT stream to finish
             stdoutThread.join();
@@ -92,7 +92,7 @@ public class BasicProcessHelper implements ProcessHelper {
             // Wait for the processing of the STDERR stream to finish
             stderrThread.join();
 
-            return Optional.of(p.exitValue());
+            return Optional.of(process.exitValue());
         } else {
             return Optional.empty();
         }
