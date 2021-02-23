@@ -213,6 +213,9 @@ dependencies {
     testImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
 
+    // To force dependabot to update the Gradle wrapper dependency
+    testImplementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+
     integrationTestImplementation "junit:junit:$junitVersion"
     integrationTestImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
     integrationTestImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
