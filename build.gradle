@@ -59,7 +59,7 @@ def jetbrainsAnnotationVersion = '20.1.0'
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
 
-def greengrassVersion = '1.10.2'
+def greengrassVersion = '1.11.0'
 
 task downloadGreengrassBinaries(type: Download) {
     // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR

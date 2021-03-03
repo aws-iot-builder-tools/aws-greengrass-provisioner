@@ -8,7 +8,7 @@ Note: Greengrass v2 support is underway now. [Greengrass v1 support is now in it
 [![Open Issues](https://img.shields.io/github/issues-raw/awslabs/aws-greengrass-provisioner.svg)](https://github.com/awslabs/aws-greengrass-provisioner/issues)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://github.com/awslabs/aws-greengrass-provisioner/blob/master/LICENSE)
 
-**Note: GGP expects to be used with Greengrass Core 1.10.2 only!**
+**Note: GGP expects to be used with Greengrass Core 1.11.0 only!**
 
 #### Just here for a quick way to get the Greengrass dependencies installed on Raspbian, Amazon Linux 2, CentOS, Debian, or Ubuntu?
 
