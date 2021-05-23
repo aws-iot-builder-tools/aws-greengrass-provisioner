@@ -1,4 +1,5 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
 Description: Lambda stack for GGP
 
 Resources:
@@ -67,7 +68,7 @@ Resources:
           - Effect: Allow
             Action: greengrass:UpdateCoreDeploymentStatus
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*" ] ]
           - Effect: Allow
             Action:
               - greengrass:GetConnectivityInfo
@@ -141,22 +142,50 @@ Resources:
               - Effect: Allow
                 Action: iam:GetRole
                 Resource: !GetAtt GreengrassServiceRole.Arn
-  ProvisionerLambdaFunction:
-    Type: AWS::Lambda::Function
+  NpmLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
     Properties:
-      Code: ../build/libs/AwsGreengrassProvisioner.jar
-      Handler: com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda::handleRequest
+      LayerName: npm
+      Description: "nodejs/npm layer for ggp lambda"
+      ContentUri: ./layers/npm-layer.zip
+      CompatibleRuntimes:
+        - java8
+      RetentionPolicy: Delete
+  AwsSdkLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: aws-sdk
+      Description: "AWS SDK for java V2"
+      ContentUri: ./layers/aws-sdk-layer/
+      CompatibleRuntimes:
+        - java8
+      RetentionPolicy: Delete
+  GgpConfigLambdaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: ggp-config
+      Description: "AwsGreengrassProvisioner Config"
+      ContentUri: ./layers/ggp-config-layer/
+      CompatibleRuntimes:
+        - java8
+      RetentionPolicy: Delete
+  ProvisionerPolymorphLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      # FunctionName: !Sub 'ProvisionerPolymorphLambdaFunction'
+      CodeUri: ../build/libs/AwsGreengrassProvisioner.jar
+      Handler: com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda::handleRequest
+      Layers:
+        - !Ref GgpConfigLambdaLayer
+        - !Ref AwsSdkLambdaLayer
+        - !Ref NpmLambdaLayer
+      MemorySize: 3008
       Role: !GetAtt ProvisionerLambdaRole.Arn
       Runtime: java8
       Timeout: 900
-      MemorySize: 3008
       Environment:
         Variables:
           ServiceRoleName: !Ref ServiceRoleAssociation
-  ProvisionerLambdaFunctionVersion:
-    Type: AWS::Lambda::Version
-    Properties:
-      FunctionName: !GetAtt ProvisionerLambdaFunction.Arn
   ServiceRoleDetection:
     Type: Custom::ServiceRoleDetectionLambda
     Properties:

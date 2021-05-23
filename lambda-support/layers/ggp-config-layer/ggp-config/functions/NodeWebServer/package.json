@@ -1,0 +1,13 @@
+{
+  "name": "NodeWebServer",
+  "version": "1.0.0",
+  "description": "## Greengrass function to start a local web server ",
+  "main": "index.js",
+  "keywords": [],
+  "author": "",
+  "license": "Apache",
+  "dependencies": {
+    "greengrass-core-sdk": "1.6.1",
+    "express": "4.17.1"
+  }
+}

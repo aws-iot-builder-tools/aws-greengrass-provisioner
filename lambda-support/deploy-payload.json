@@ -1,0 +1,6 @@
+{
+  "eventType": "Deploy",
+  "groupName": "g1",
+  "deploymentConfigFilename": "/opt/ggp-config/deployments/node-webserver.conf"
+}
+

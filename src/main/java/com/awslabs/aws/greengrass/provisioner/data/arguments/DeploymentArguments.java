@@ -40,6 +40,9 @@ public class DeploymentArguments extends Arguments {
     public String groupName;
     @Parameter(names = {SHORT_DEPLOYMENT_CONFIG_OPTION}, description = "The location of the deployment configuration file")
     public String deploymentConfigFilename;
+    public String deploymentConfigFolderPath;
+    public String functionConfigPath;
+    public String connectorConfigPath;
     @Parameter(names = {LONG_BUILD_CONTAINER_OPTION, SHORT_BUILD_CONTAINER_OPTION}, description = "Build a container with this Greengrass configuration")
     public boolean buildContainer;
     @Parameter(names = {LONG_PUSH_CONTAINER_OPTION, SHORT_PUSH_CONTAINER_OPTION}, description = "Push a container with this Greengrass configuration to ECR (implies " + LONG_BUILD_CONTAINER_OPTION + ")")

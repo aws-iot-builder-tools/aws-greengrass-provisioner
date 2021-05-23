@@ -20,6 +20,8 @@ import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.ecr.EcrClient;
 import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
 
+import com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.service.*;
+
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
@@ -318,5 +320,14 @@ public class AwsGreengrassProvisionerModule {
     @Provides
     public ObjectMapper provideObjectMapper() {
         return new ObjectMapper();
+    }
+
+    @Provides
+    @ElementsIntoSet
+    public Set<BaseService> provideBaseServices(ProvisionService provisionService,
+                                                DeployService deployService) {
+        return new HashSet<>(Arrays.asList(provisionService,
+            deployService
+        ));
     }
 }

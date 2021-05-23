@@ -13,6 +13,8 @@ import software.amazon.awssdk.services.s3.model.Bucket;
 
 import javax.inject.Inject;
 import java.util.Optional;
+import java.io.File;
+import java.nio.file.*;
 
 public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
     public static final int DEFAULT_MQTT_PORT = 8883;
@@ -172,6 +174,14 @@ public class BasicDeploymentArgumentHelper implements DeploymentArgumentHelper {
 
         if (deploymentArguments.deploymentConfigFilename == null) {
             throw new RuntimeException("A deployment configuration file name is required");
+        } else {
+            if (!deploymentArguments.deploymentConfigFilename.equals(DeploymentHelper.EMPTY)) {
+                File deploymentConfigFile = new File(deploymentArguments.deploymentConfigFilename);
+                deploymentArguments.deploymentConfigFolderPath = deploymentConfigFile.getParent();
+                Path deploymentConfigFolderPath = Paths.get(deploymentArguments.deploymentConfigFolderPath);
+                deploymentArguments.functionConfigPath = String.join("/", deploymentConfigFolderPath.getParent().toString(), "functions");
+                deploymentArguments.connectorConfigPath = String.join("/", deploymentConfigFolderPath.getParent().toString(), "connectors");    
+            }
         }
 
         if (deploymentArguments.buildContainer) {

@@ -1,0 +1,237 @@
+plugins {
+    id 'java'
+    id 'java-library'
+    id 'application'
+    id 'idea'
+
+    // Creates fat JAR
+    id 'com.github.johnrengelman.shadow' version '6.1.0'
+
+    // Downloads binary dependencies
+    id 'de.undercouch.download' version '4.1.1'
+}
+
+def gradleDependencyVersion = '6.8.3'
+
+wrapper {
+    gradleVersion = gradleDependencyVersion
+    distributionType = Wrapper.DistributionType.ALL
+}
+
+// Use the GGProvisioner main class when the JAR is invoked directly
+mainClassName = 'com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner'
+
+distZip.enabled = shadowDistZip.enabled = false
+distTar.enabled = shadowDistTar.enabled = false
+
+// Specify all of our dependency versions
+def daggerVersion = '2.33'
+def configVersion = '1.4.1'
+def ztZipVersion = '1.14'
+def jcommanderVersion = '1.81'
+def slf4jVersion = '2.0.0-alpha1'
+def jcabiVersion = '0.19.0'
+def jtarVersion = '2.3'
+def gsonVersion = '2.8.6'
+def dockerClientVersion = '8.16.0'
+// def awsSdk2Version = '2.16.63'
+def awsSdk2Version = findProperty('awsSdk2Version')
+def mavenInvokerVersion = '3.1.0'
+def commonsTextVersion = '1.9'
+def commonsLangVersion = '3.12.0'
+def commonsIoVersion = '2.8.0'
+def junitVersion = '4.13.2'
+def systemRulesVersion = '1.19.0'
+def mockitoVersion = '3.8.0'
+def vavrVersion = '0.10.3'
+def httpClientVersion = '4.5.13'
+def jodahFailsafeVersion = '2.4.0'
+def testContainersVersion = '1.15.2'
+def hamcrestVersion = '2.2'
+def awsIotCoreWebsocketsVersion = '0.6.3'
+def awaitilityVersion = '4.0.3'
+def immutablesValueVersion = '2.8.9-ea-1'
+def awsLambdaJavaCoreVersion = '1.2.1'
+def resultsIteratorForAwsJavaSdkVersion = '11.0.2'
+def nomenEstOmenVersion = '2.0.0'
+def jschVersion = '0.1.55'
+def jetbrainsAnnotationVersion = '20.1.0'
+def jacksonVersion = '2.12.2'
+
+def buildDirDist = "$buildDir/dist"
+def buildDirFoundation = "$buildDir/foundation"
+
+def greengrassVersion = '1.11.0'
+
+task downloadGreengrassBinaries(type: Download) {
+    // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR
+    src(
+            []
+    )
+    dest "$buildDirDist"
+    overwrite false
+}
+
+task downloadAll {
+    dependsOn downloadGreengrassBinaries
+}
+
+assemble.dependsOn downloadAll
+check.dependsOn downloadAll
+
+group = 'com.awslabs.aws.greengrass.provisioner.AwsGreengrassProvisioner'
+version = '1.0-SNAPSHOT'
+
+description = """"""
+
+shadowJar {
+    // Create a shadow JAR with all of the necessary dependencies
+    archiveFileName = 'AwsGreengrassProvisioner.jar'
+
+  dependencies {
+    exclude(dependency('software.amazon.awssdk:ecr'))
+    exclude(dependency('software.amazon.awssdk:ec2'))
+    exclude(dependency('software.amazon.awssdk:sts'))
+    exclude(dependency('software.amazon.awssdk:cloudformation'))
+    exclude(dependency('software.amazon.awssdk:iot'))
+    exclude(dependency('software.amazon.awssdk:greengrass'))
+    exclude(dependency('software.amazon.awssdk:lambda'))
+    exclude(dependency('software.amazon.awssdk:iam'))
+    exclude(dependency('software.amazon.awssdk:cloudwatchlogs'))
+    exclude(dependency('software.amazon.awssdk:secretsmanager'))
+    exclude(dependency('org.testcontainers:testcontainers'))
+    exclude(dependency('junit:junit'))
+    exclude(dependency('com.github.stefanbirkner:system-rules'))
+    exclude(dependency('org.hamcrest:hamcrest'))
+    exclude(dependency('org.mockito:mockito-core'))
+    exclude(dependency('com.github.awslabs:aws-iot-core-websockets'))
+  }    
+
+    zip64 true
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+repositories {
+    mavenCentral()
+
+    maven { url "https://plugins.gradle.org/m2/" }
+
+    // Required for Gradle tooling API
+    maven { url "https://repo.gradle.org/gradle/libs-releases-local/" }
+
+    // Jitpack for MQTT over WebSockets support
+    maven { url 'https://jitpack.io' }
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += sourceSets.main.output
+            runtimeClasspath += sourceSets.main.output
+
+            srcDir file('src/integration-test/java')
+        }
+    }
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom implementation
+    integrationTestApi.extendsFrom api
+}
+
+task integrationTest(type: Test) {
+    description = 'Runs the integration tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    outputs.upToDateWhen { false }
+    mustRunAfter test
+}
+
+dependencies {
+    implementation platform("software.amazon.awssdk:bom:$awsSdk2Version")
+
+    // Dagger code generation
+    annotationProcessor "com.google.dagger:dagger-compiler:$daggerVersion"
+
+    // Immutables (requires annotation processing for code generation)
+    annotationProcessor "org.immutables:value:$immutablesValueVersion"
+    annotationProcessor "org.immutables:gson:$immutablesValueVersion"
+    implementation "org.immutables:value:$immutablesValueVersion"
+    implementation "org.immutables:gson:$immutablesValueVersion"
+
+    // Dependency injection with Dagger
+    implementation "com.google.dagger:dagger:$daggerVersion"
+
+    implementation "com.typesafe:config:$configVersion"
+    implementation "org.zeroturnaround:zt-zip:$ztZipVersion"
+    implementation "com.beust:jcommander:$jcommanderVersion"
+    implementation "org.slf4j:slf4j-log4j12:$slf4jVersion"
+    implementation "com.jcabi:jcabi-log:$jcabiVersion"
+    implementation "org.kamranzafar:jtar:$jtarVersion"
+    implementation "com.google.code.gson:gson:$gsonVersion"
+    implementation "com.spotify:docker-client:$dockerClientVersion"
+
+    // For Docker-style names
+    implementation "com.oblac:nomen-est-omen:$nomenEstOmenVersion"
+
+    // For scp/ssh support
+    implementation "com.jcraft:jsch:$jschVersion"
+
+    implementation "software.amazon.awssdk:greengrass"
+    implementation "software.amazon.awssdk:iam"
+    implementation "software.amazon.awssdk:iot"
+    implementation "software.amazon.awssdk:lambda"
+    implementation "software.amazon.awssdk:cloudformation"
+    implementation "software.amazon.awssdk:sts"
+    implementation "software.amazon.awssdk:ecr"
+    implementation "software.amazon.awssdk:ec2"
+    implementation "software.amazon.awssdk:cloudwatchlogs"
+    implementation "software.amazon.awssdk:secretsmanager"
+    implementation "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
+    implementation "org.apache.commons:commons-text:$commonsTextVersion"
+    implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
+    implementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+    implementation "io.vavr:vavr:$vavrVersion"
+
+    implementation "commons-io:commons-io:$commonsIoVersion"
+    implementation "com.github.awslabs:results-iterator-for-aws-java-sdk:$resultsIteratorForAwsJavaSdkVersion"
+
+    implementation "org.jetbrains:annotations:$jetbrainsAnnotationVersion"
+
+    // Dependency added to fix - https://github.com/aws/aws-sdk-java-v2/issues/652
+    implementation "org.apache.httpcomponents:httpclient:$httpClientVersion"
+
+    // https://mvnrepository.com/artifact/net.jodah/failsafe
+    implementation "net.jodah:failsafe:$jodahFailsafeVersion"
+
+    implementation "org.testcontainers:testcontainers:$testContainersVersion"
+
+    implementation "org.awaitility:awaitility:$awaitilityVersion"
+
+    // To support AWS Lambda invocations
+    implementation "com.amazonaws:aws-lambda-java-core:$awsLambdaJavaCoreVersion"
+
+    implementation "com.fasterxml.jackson.module:jackson-module-jsonSchema:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-annotations:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-core:$jacksonVersion"
+    implementation "com.fasterxml.jackson.core:jackson-databind:$jacksonVersion"
+
+
+    testImplementation "junit:junit:$junitVersion"
+    testImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
+    testImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
+    testImplementation "org.mockito:mockito-core:$mockitoVersion"
+
+    // To force dependabot to update the Gradle wrapper dependency
+    testImplementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+
+    integrationTestImplementation "junit:junit:$junitVersion"
+    integrationTestImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
+    integrationTestImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
+    integrationTestImplementation "org.mockito:mockito-core:$mockitoVersion"
+    integrationTestImplementation "com.github.awslabs:aws-iot-core-websockets:$awsIotCoreWebsocketsVersion"
+}

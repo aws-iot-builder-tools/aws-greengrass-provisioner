@@ -24,3 +24,25 @@ This avoids potentially breaking a customer's configuration if they used a diffe
 group with a random name and an empty deployment. It can be used to validate that the function works.
 
 - `extract-from-outfile.sh` - Extracts files from the output JSON saved from the `invoke-lambda-function.sh` script
+
+## 1. Deploy the lambda-support stack
+```
+$ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.63
+```
+
+## 2. Provision the greengrass group
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=g1 EVENT_TYPE=Provision ./invoke-lambda-function.sh
+```
+
+## 3. Deployment for the provisioned greengrass group
+```
+$ EVENT_TYPE=Deploy ./invoke-lambda-function.sh
+```
+
+## Reference
+### 1. npm-layer to enable node.js function for lambda-support
+https://github.com/sambaiz/npm-lambda-layer
+
+### 2. aws-sdk-java-v2
+https://github.com/aws/aws-sdk-java-v2

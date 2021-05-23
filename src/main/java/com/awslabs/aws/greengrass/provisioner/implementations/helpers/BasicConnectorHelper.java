@@ -1,5 +1,6 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableConnectorConf;
 import com.awslabs.aws.greengrass.provisioner.interfaces.helpers.*;
@@ -39,19 +40,19 @@ public class BasicConnectorHelper implements ConnectorHelper {
     }
 
     @Override
-    public List<ConnectorConf> getConnectorConfObjects(Config defaultConfig, List<String> connectorConfFileNames) {
+    public List<ConnectorConf> getConnectorConfObjects(DeploymentArguments deploymentArguments, Config defaultConfig, List<String> connectorConfFileNames) {
         List<ConnectorConf> connectorConfList = new ArrayList<>();
-
+        
         List<File> connectorConfFiles = connectorConfFileNames.stream()
                 .map(filename -> String.join(".", filename, "conf"))
-                .map(filename -> String.join("/", CONNECTORS, filename))
+                .map(filename -> String.join("/", deploymentArguments.connectorConfigPath, filename))
                 .map(File::new)
                 .collect(Collectors.toList());
 
         ioHelper.detectMissingConfigFiles(log, "connector", connectorConfFiles);
 
         for (File connectorConfFile : connectorConfFiles) {
-            ConnectorConf connectorConf = Try.of(() -> getConnectorConf(defaultConfig, connectorConfFile)).get();
+            ConnectorConf connectorConf = Try.of(() -> getConnectorConf(deploymentArguments, defaultConfig, connectorConfFile)).get();
             connectorConfList.add(connectorConf);
         }
 
@@ -66,10 +67,11 @@ public class BasicConnectorHelper implements ConnectorHelper {
         return connectorConfList;
     }
 
-    private ConnectorConf getConnectorConf(Config defaultConfig, File connectorConfFile) {
+    private ConnectorConf getConnectorConf(DeploymentArguments deploymentArguments, Config defaultConfig, File connectorConfFile) {
         ImmutableConnectorConf.Builder connectorConfBuilder = ImmutableConnectorConf.builder();
 
-        Config connectorDefaults = ggVariables.getConnectorDefaults();
+        // Config connectorDefaults = ggVariables.getConnectorDefaults();
+        Config connectorDefaults = ConfigFactory.parseFile(new File(String.join("/", deploymentArguments.deploymentConfigFolderPath, "connector.defaults.conf")));
 
         Config config = ConfigFactory.parseFile(connectorConfFile)
                 // Use the connector.defaults.conf values

@@ -12,7 +12,7 @@ import java.util.Optional;
 public interface DeploymentHelper extends Operation<DeploymentArguments> {
     String EMPTY = "EMPTY";
 
-    DeploymentConf getDeploymentConf(ThingName coreThingName, String deploymentConfigFilename, GreengrassGroupName greengrassGroupName);
+    DeploymentConf getDeploymentConf(ThingName coreThingName, DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName);
 
     void createAndWaitForDeployment(Optional<Role> greengrassServiceRole, Optional<Role> greengrassRole, GreengrassGroupId greengrassGroupId, String groupVersionId);
 
