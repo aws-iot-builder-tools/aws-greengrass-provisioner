@@ -118,7 +118,7 @@ fi
 
 PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\" $CSR $CERTIFICATE_ARN $CREDENTIALS_JSON }"
 
-if ["$EVENT_TYPE" = "Provision"]; then
+if [[ "$EVENT_TYPE" == "Provision" ]]; then
   time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt
 else
   time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload file://deploy-payload.json --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt  
