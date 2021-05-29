@@ -37,7 +37,7 @@ $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=g1 EVENT_TYPE=Provision ./invok
 
 ## 3. Deployment for the provisioned greengrass group
 ```
-$ EVENT_TYPE=Deploy ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=g1 EVENT_TYPE=Deploy ./invoke-lambda-function.sh
 ```
 
 ## Reference
