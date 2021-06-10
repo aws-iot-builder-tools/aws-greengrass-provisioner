@@ -7,7 +7,9 @@
   "author": "",
   "license": "Apache",
   "dependencies": {
-    "greengrass-core-sdk": "1.6.1",
-    "express": "4.17.1"
+    "aws-greengrass-core-sdk": "1.7.0",
+    "aws-sdk": "^2.918.0",
+    "express": "4.17.1",
+    "express-promise-router": "^4.1.0"
   }
 }

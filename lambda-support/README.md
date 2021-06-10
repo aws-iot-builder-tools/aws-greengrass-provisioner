@@ -32,12 +32,14 @@ $ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.63
 
 ## 2. Provision the greengrass group
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=g1 EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Provision ./invoke-lambda-function.sh
+
+$ ./extract-from-outfile.sh gocheckin_dev
 ```
 
 ## 3. Deployment for the provisioned greengrass group
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=g1 EVENT_TYPE=Deploy ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Deploy ./invoke-lambda-function.sh
 ```
 
 ## Reference

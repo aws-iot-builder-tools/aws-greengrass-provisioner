@@ -23,4 +23,4 @@ jq -r '.["rootCaPem"]' $OUTFILE > certs/root.ca.pem
 jq -r '.["configJson"]' $OUTFILE > config/config.json
 
 tar cjvf $GROUP_NAME.tar.bz2 certs config
-rm -rf certs config
+# rm -rf certs config

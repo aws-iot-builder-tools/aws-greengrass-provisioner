@@ -166,6 +166,7 @@ Resources:
       LayerName: ggp-config
       Description: "AwsGreengrassProvisioner Config"
       ContentUri: ./layers/ggp-config-layer/
+      # ContentUri: s3://gocheckin-deployment-leon/ggp-config-files/ggp-config-layer-31.zip
       CompatibleRuntimes:
         - java8
       RetentionPolicy: Delete
