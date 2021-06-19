@@ -18,5 +18,7 @@ router.post('/uploadMipsGateRecord', async (req, res) => {
       "code":0,
       "message":"Good!" 
   };
+
   res.send(response);
+  
 })

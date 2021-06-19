@@ -3,7 +3,7 @@ const mountRoutes = require('./router');
 
 // const ggSdk = require('aws-greengrass-core-sdk');
 // const iotClient = new ggSdk.IotData();
-// const storage = require('./handlers/storage');
+const storage = require('./handler/storage');
 
 const GROUP_ID = process.env.GROUP_ID
 const THING_NAME = process.env.AWS_IOT_THING_NAME;
@@ -20,9 +20,29 @@ function publishCallback(err, data) {
 }
 
 // This is a handler which does nothing for this example
-exports.handler = function(event, context) {
+exports.handler = async function(event, context) {
     console.log('event: ' + JSON.stringify(event));
     console.log('context: ' + JSON.stringify(context));
+
+    if (context.clientContext.Custom.subject.indexOf('reservation_update') > -1) {
+
+        await storage.saveReservationData(event);
+
+    } else if (context.clientContext.Custom.subject.indexOf('member_update') > -1) {
+
+        await storage.saveMemberData(event);
+    }  else if (context.clientContext.Custom.subject.indexOf('list_tables') > -1) {
+        const tableList = await storage.listTables();
+
+        console.log('tableList: ' + JSON.stringify(tableList));
+    }
+
+    const promise = new Promise(function(resolve, reject) {
+      console.log("Promise callback");
+      resolve();
+    });
+
+    return promise;
 };
 
 
