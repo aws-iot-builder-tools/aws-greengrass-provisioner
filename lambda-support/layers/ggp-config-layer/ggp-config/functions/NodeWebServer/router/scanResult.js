@@ -12,7 +12,9 @@ router.post('/uploadMipsGateRecord', async (req, res) => {
 
   delete payload.checkPic;
 
-  await storage.saveScanRecord(payload);
+  console.log('uploadMipsGateRecord payload:' + JSON.stringify(payload));
+
+  // await storage.saveScanRecord(payload);
 
   const response = {
       "code":0,

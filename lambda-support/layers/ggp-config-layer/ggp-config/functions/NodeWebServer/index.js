@@ -1,16 +1,17 @@
 const express = require('express');
 const mountRoutes = require('./router');
 
-// const ggSdk = require('aws-greengrass-core-sdk');
-// const iotClient = new ggSdk.IotData();
 const storage = require('./handler/storage');
+const shadow = require('./handler/shadow');
+const eventHandler = require('./handler/event');
 
 const GROUP_ID = process.env.GROUP_ID
-const THING_NAME = process.env.AWS_IOT_THING_NAME;
-const THING_ARN = process.env.AWS_IOT_THING_ARN;
+const AWS_IOT_THING_NAME = process.env.AWS_IOT_THING_NAME;
+const AWS_IOT_THING_ARN = process.env.AWS_IOT_THING_ARN;
+const AWS_GREENGRASS_GROUP_NAME = process.env.AWS_GREENGRASS_GROUP_NAME;
 const PORT = process.env.PORT || 8081;
 
-const base_topic = THING_NAME + '/web_server_node'
+const base_topic = AWS_IOT_THING_NAME + '/web_server_node'
 const log_topic = base_topic + '/log'
 
 function publishCallback(err, data) {
@@ -23,18 +24,71 @@ function publishCallback(err, data) {
 exports.handler = async function(event, context) {
     console.log('event: ' + JSON.stringify(event));
     console.log('context: ' + JSON.stringify(context));
+    // console.log('AWS_IOT_THING_NAME: ' + AWS_IOT_THING_NAME);
+    console.log('base_topic: ' + base_topic);
 
-    if (context.clientContext.Custom.subject.indexOf('reservation_update') > -1) {
+    try {
+        if (context.clientContext.Custom.subject.indexOf('reservation_update') > -1) {
 
-        await storage.saveReservationData(event);
+            await storage.saveReservationRecord(event);
 
-    } else if (context.clientContext.Custom.subject.indexOf('member_update') > -1) {
+        } else if (context.clientContext.Custom.subject.indexOf('member_update') > -1) {
 
-        await storage.saveMemberData(event);
-    }  else if (context.clientContext.Custom.subject.indexOf('list_tables') > -1) {
-        const tableList = await storage.listTables();
+            await storage.saveMemberData(event);
+        } else if (context.clientContext.Custom.subject.indexOf('list_tables') > -1) {
+            const tableList = await storage.listTables();
 
-        console.log('tableList: ' + JSON.stringify(tableList));
+            console.log('tableList: ' + JSON.stringify(tableList));
+        } else if (context.clientContext.Custom.subject.indexOf('get_reservation') > -1) {
+            const result = await storage.getReservation({
+                listingId: event.listingId,
+                reservationCode: event.reservationCode
+            });
+
+            console.log('result: ' + JSON.stringify(result));
+
+        } else if (context.clientContext.Custom.subject.indexOf('check_shadow') > -1) {
+            console.log('event.shadowName:: ' + event.shadowName);
+
+            const getShadowResult = await shadow.getShadow({
+                thingName: AWS_IOT_THING_NAME,
+                shadowName: event.shadowName
+            });
+
+            console.log('getShadowResult caller: ' + JSON.stringify(getShadowResult));
+
+            await storage.saveReservation({
+                reservation: getShadowResult.state.desired.reservation,
+                members: getShadowResult.state.desired.members,
+                version: getShadowResult.version
+            });
+
+
+        } else if (context.clientContext.Custom.subject.indexOf('sync_reservation') > -1) {
+            console.log('event.shadowName:: ' + event.shadowName);
+
+            await eventHandler.syncReservation({
+                shadowName: event.shadowName
+            });
+
+        } else if (context.clientContext.Custom.subject.indexOf('delete_shadow') > -1) {
+            console.log('event.shadowName:: ' + event.shadowName);
+
+            const deleteShadowResult = await shadow.deleteShadow({
+                thingName: AWS_IOT_THING_NAME,
+                shadowName: event.shadowName
+            });
+
+            console.error('deleteShadowResult: ' + JSON.stringify(deleteShadowResult));
+
+        }
+    } catch (err) {
+        console.error('!!!!!!error happened at handler error start!!!!!!');
+        console.error(err.name);
+        console.error(err.message);
+        console.error(err.stack);
+        console.trace();
+        console.error('!!!!!!error happened at handler error end!!!!!!');
     }
 
     const promise = new Promise(function(resolve, reject) {
@@ -105,3 +159,12 @@ app.post('/aiFace/dev2service/api/uploadMipsGateRecord', (req, res) => {
 */
 
 app.listen(PORT, () => console.log(`Example app listening on port ${PORT}!`));
+
+
+shadow.getShadow({
+    thingName: AWS_IOT_THING_NAME
+}).then(value => {
+    console.log('getShadow startupShadowResult');
+});
+
+
