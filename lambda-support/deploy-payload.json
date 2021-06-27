@@ -1,6 +1,0 @@
-{
-  "eventType": "Deploy",
-  "groupName": "gocheckin_dev",
-  "deploymentConfigFilename": "/opt/ggp-config/deployments/node-webserver.conf"
-}
-

@@ -30,17 +30,31 @@ group with a random name and an empty deployment. It can be used to validate tha
 $ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.63
 ```
 
-## 2. Provision the greengrass group
+## 2. Provision the greengrass group - template
 ```
 $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
 $ ./extract-from-outfile.sh gocheckin_dev
 ```
 
-## 3. Deployment for the provisioned greengrass group
+## 3. Deployment for the provisioned greengrass group - template
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Deploy ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=node-webserver ./invoke-lambda-function.sh
 ```
+
+## 4. Provision the greengrass group - instances
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Provision ./invoke-lambda-function.sh
+
+$ ./extract-from-outfile.sh 3i6cSu
+```
+
+## 5. Deployment for the provisioned greengrass group - instances
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=gocheckin-edge-gateway ./invoke-lambda-function.sh
+```
+
+
 
 ## Reference
 ### 1. npm-layer to enable node.js function for lambda-support

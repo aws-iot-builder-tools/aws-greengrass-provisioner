@@ -8,6 +8,13 @@ if [ -z "$EVENT_TYPE" ]; then
   exit 1
 fi
 
+if [ -z "$DEPLOY_CONFIG_NAME" ]; then
+  if [[ "$EVENT_TYPE" == "Deploy" ]]; then
+    echo "When EVENT_TYPE is 'Deploy' it is needed to specify a DEPLOY_CONFIG_NAME"
+    exit 1
+  fi
+fi
+
 if [ -z "$LAMBDA_FUNCTION" ]; then
   if [ -z "$STACK_NAME" ]; then
     echo "Stack name [STACK_NAME] must be specified if the Lambda function name [LAMBDA_FUNCTION] is not specified so it can be looked up"
@@ -116,12 +123,12 @@ if [ -n "$CERTIFICATE_ARN" ]; then
   CERTIFICATE_ARN=", \"certificateArn\": \"$CERTIFICATE_ARN\""
 fi
 
-PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\" $CSR $CERTIFICATE_ARN $CREDENTIALS_JSON }"
-
 if [[ "$EVENT_TYPE" == "Provision" ]]; then
+  PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\" $CSR $CERTIFICATE_ARN $CREDENTIALS_JSON }"
   time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt
-else
-  time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload file://deploy-payload.json --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt  
+elif [[ "$EVENT_TYPE" == "Deploy" ]]; then
+  PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"deploymentConfigFilename\": \"/opt/ggp-config/deployments/$DEPLOY_CONFIG_NAME.conf\" }"
+  time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt  
 fi
 
 

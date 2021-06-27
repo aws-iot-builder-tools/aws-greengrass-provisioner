@@ -161,10 +161,10 @@ app.post('/aiFace/dev2service/api/uploadMipsGateRecord', (req, res) => {
 app.listen(PORT, () => console.log(`Example app listening on port ${PORT}!`));
 
 
-shadow.getShadow({
-    thingName: AWS_IOT_THING_NAME
-}).then(value => {
-    console.log('getShadow startupShadowResult');
-});
+// shadow.getShadow({
+//     thingName: AWS_IOT_THING_NAME
+// }).then(value => {
+//     console.log('getShadow startupShadowResult');
+// });
 
 
