@@ -76,11 +76,7 @@ public class DeployService implements BaseService {
     args.add(lambdaInput.getGroupName());
 
     args.add(DeploymentArguments.SHORT_DEPLOYMENT_CONFIG_OPTION);
-    if (lambdaInput.getDeploymentConfigFilename() != null) {
-        args.add(lambdaInput.getDeploymentConfigFilename());
-    } else {
-        args.add("/opt/ggp-config/deployments/node-webserver.conf");
-    }
+    args.add(lambdaInput.getDeploymentConfigFilename());
 
     args.add(DeploymentArguments.LONG_OEM_JSON_OUTPUT_OPTION);
     args.add(outputFile.getAbsolutePath());
