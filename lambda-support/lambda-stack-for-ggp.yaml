@@ -142,6 +142,7 @@ Resources:
               - Effect: Allow
                 Action: iam:GetRole
                 Resource: !GetAtt GreengrassServiceRole.Arn
+
   NpmLambdaLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -179,7 +180,8 @@ Resources:
       Layers:
         - !Ref GgpConfigLambdaLayer
         - !Ref AwsSdkLambdaLayer
-        - !Ref NpmLambdaLayer
+        # - !Ref NpmLambdaLayer
+        - "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8"
       MemorySize: 3008
       Role: !GetAtt ProvisionerLambdaRole.Arn
       Runtime: java8
