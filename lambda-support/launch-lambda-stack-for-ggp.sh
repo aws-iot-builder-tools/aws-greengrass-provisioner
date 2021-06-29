@@ -24,16 +24,6 @@ then
   echo "No stack name specified, generating a random stack name [$STACK_NAME]" 
 fi
 
-# AWS_SDK_SCRIPT_PATH="./01.aws-sdk-layer.sh"
-
-# echo "Preparing layer of AWS-SDK-JAVA-V2"
-# bash "$AWS_SDK_SCRIPT_PATH" $AWS_SDK2_VERSION
-
-# NPM_SCRIPT_PATH="./02.npm-layer.sh"
-
-# echo "Preparing layer of npm"
-# bash "$NPM_SCRIPT_PATH"
-
 echo "Launching (or updating) stack [$STACK_NAME]"
 
 # Use this value if you have multiple profiles

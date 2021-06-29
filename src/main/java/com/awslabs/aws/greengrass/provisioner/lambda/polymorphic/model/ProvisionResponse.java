@@ -8,8 +8,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 @JsonTypeName("Provision")
 public class ProvisionResponse extends BaseResponse {
 
-    @Override
-    public RequestEventType getEventType() { return RequestEventType.Provision; }
+    // @Override
+    // public RequestEventType getEventType() { return RequestEventType.Provision; }
 
     @JsonProperty(value = "configJson", required = true)
     private String configJson;

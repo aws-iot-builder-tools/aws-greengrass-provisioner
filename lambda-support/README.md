@@ -27,7 +27,7 @@ group with a random name and an empty deployment. It can be used to validate tha
 
 ## 1. Deploy the lambda-support stack
 ```
-$ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.63
+$ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.91
 ```
 
 ## 2. Provision the greengrass group - lambda-new
@@ -57,8 +57,9 @@ $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Deploy DEPLOY
 
 
 ## Reference
-### 1. npm-layer to enable node.js function for lambda-support
+### 1. aws-sdk-java-v2 layer to make the fat jar small enough for lambda function
+https://github.com/komushi/layer-aws-sdk-java
+
+### 2. optional npm-layer to enable node.js function for lambda-support
 https://github.com/sambaiz/npm-lambda-layer
 
-### 2. aws-sdk-java-v2
-https://github.com/aws/aws-sdk-java-v2

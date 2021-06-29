@@ -143,24 +143,7 @@ Resources:
                 Action: iam:GetRole
                 Resource: !GetAtt GreengrassServiceRole.Arn
 
-  NpmLambdaLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: npm
-      Description: "nodejs/npm layer for ggp lambda"
-      ContentUri: ./layers/npm-layer.zip
-      CompatibleRuntimes:
-        - java8
-      RetentionPolicy: Delete
-  AwsSdkLambdaLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: aws-sdk
-      Description: "AWS SDK for java V2"
-      ContentUri: ./layers/aws-sdk-layer/
-      CompatibleRuntimes:
-        - java8
-      RetentionPolicy: Delete
+
   GgpConfigLambdaLayer:
     Type: AWS::Serverless::LayerVersion
     Properties:
@@ -171,6 +154,7 @@ Resources:
       CompatibleRuntimes:
         - java8
       RetentionPolicy: Delete
+  
   ProvisionerPolymorphLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -179,8 +163,9 @@ Resources:
       Handler: com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda::handleRequest
       Layers:
         - !Ref GgpConfigLambdaLayer
-        - !Ref AwsSdkLambdaLayer
+        # - !Ref AwsSdkLambdaLayer
         # - !Ref NpmLambdaLayer
+        - "arn:aws:lambda:ap-northeast-1:187002341337:layer:aws-sdk-java:3"
         - "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8"
       MemorySize: 3008
       Role: !GetAtt ProvisionerLambdaRole.Arn

@@ -8,8 +8,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 @JsonTypeName("Provision")
 public class ProvisionRequest extends BaseRequest {
 
-    @Override
-    public RequestEventType getEventType() { return RequestEventType.Provision; }
+    // @Override
+    // public RequestEventType getEventType() { return RequestEventType.Provision; }
 
     @JsonProperty(value = "coreRoleName", required = true)
     private String coreRoleName;

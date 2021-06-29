@@ -20,7 +20,6 @@ public abstract class BaseRequest {
 
     @JsonProperty(value="eventType", required = true)
     private RequestEventType eventType;
-    // private RequestEventType eventType = RequestEventType.values()[0];      
 
     @JsonProperty(value="groupName", required = true)
     private String groupName;
@@ -37,7 +36,7 @@ public abstract class BaseRequest {
     @JsonProperty(value="region", required = false)
     private String region;
 
-    public abstract RequestEventType getEventType();
+    // public abstract RequestEventType getEventType();
 
     public String getGroupName() {
         return groupName;

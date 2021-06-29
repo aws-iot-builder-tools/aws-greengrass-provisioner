@@ -22,7 +22,7 @@ public abstract class BaseResponse {
     @JsonProperty(value="eventType", required = true)
     private RequestEventType eventType;
     
-    public abstract RequestEventType getEventType();
+    // public abstract RequestEventType getEventType();
 
     @Override
     public String toString() {

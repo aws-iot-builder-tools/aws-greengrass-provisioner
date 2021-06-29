@@ -8,8 +8,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 @JsonTypeName("Deploy")
 public class DeployRequest extends BaseRequest {
 
-    @Override
-    public RequestEventType getEventType() { return RequestEventType.Deploy; }
+    // @Override
+    // public RequestEventType getEventType() { return RequestEventType.Deploy; }
 
     @JsonProperty(value = "deploymentConfigFilename", required = true)
     private String deploymentConfigFilename;

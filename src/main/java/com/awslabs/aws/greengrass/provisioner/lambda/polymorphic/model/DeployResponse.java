@@ -8,8 +8,8 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 @JsonTypeName("Deploy")
 public class DeployResponse extends BaseResponse {
 
-    @Override
-    public RequestEventType getEventType() { return RequestEventType.Deploy; }
+    // @Override
+    // public RequestEventType getEventType() { return RequestEventType.Deploy; }
 
     @JsonProperty(value="groupId", required = true)
     private String groupId;
