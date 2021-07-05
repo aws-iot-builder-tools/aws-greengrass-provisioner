@@ -11,7 +11,7 @@ plugins {
     id 'de.undercouch.download' version '4.1.1'
 }
 
-def gradleDependencyVersion = '6.8.3'
+def gradleDependencyVersion = '7.1.1'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
