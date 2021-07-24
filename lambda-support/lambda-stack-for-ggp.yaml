@@ -123,7 +123,7 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
       Policies:
-        - PolicyName: root
+        - PolicyName: iotadmin
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -143,18 +143,6 @@ Resources:
                 Action: iam:GetRole
                 Resource: !GetAtt GreengrassServiceRole.Arn
 
-
-  GgpConfigLambdaLayer:
-    Type: AWS::Serverless::LayerVersion
-    Properties:
-      LayerName: ggp-config
-      Description: "AwsGreengrassProvisioner Config"
-      ContentUri: ./layers/ggp-config-layer/
-      # ContentUri: s3://gocheckin-deployment-leon/ggp-config-files/ggp-config-layer-31.zip
-      CompatibleRuntimes:
-        - java8
-      RetentionPolicy: Delete
-  
   ProvisionerPolymorphLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -162,11 +150,9 @@ Resources:
       CodeUri: ../build/libs/AwsGreengrassProvisioner.jar
       Handler: com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda::handleRequest
       Layers:
-        - !Ref GgpConfigLambdaLayer
-        # - !Ref AwsSdkLambdaLayer
-        # - !Ref NpmLambdaLayer
         - "arn:aws:lambda:ap-northeast-1:187002341337:layer:aws-sdk-java:3"
         - "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8"
+        - "arn:aws:lambda:ap-northeast-1:187002341337:layer:ggp-config-gocheckin:1"
       MemorySize: 3008
       Role: !GetAtt ProvisionerLambdaRole.Arn
       Runtime: java8

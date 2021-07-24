@@ -60,6 +60,9 @@ $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Deploy DEPLOY
 ### 1. aws-sdk-java-v2 layer to make the fat jar small enough for lambda function
 https://github.com/komushi/layer-aws-sdk-java
 
-### 2. optional npm-layer to enable node.js function for lambda-support
+### 2. aws-sdk-java-v2 layer to make the fat jar small enough for lambda function
+https://github.com/komushi/layer-ggp-config
+
+### 3. optional npm-layer to enable node.js function for lambda-support
 https://github.com/sambaiz/npm-lambda-layer
 
