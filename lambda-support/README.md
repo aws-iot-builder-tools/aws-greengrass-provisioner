@@ -44,14 +44,14 @@ $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Deploy
 
 ## 4. Provision the greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=davyhome EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
-$ ./extract-from-outfile.sh 3i6cSu
+$ ./extract-from-outfile.sh davyhome
 ```
 
 ## 5. Deployment for the provisioned greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=3i6cSu EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=davyhome EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
 ```
 
 
