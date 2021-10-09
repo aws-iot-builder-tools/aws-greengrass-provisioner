@@ -32,26 +32,26 @@ $ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.91
 
 ## 2. Provision the greengrass group - lambda-new
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
-$ ./extract-from-outfile.sh gocheckin_dev
+$ ./extract-from-outfile.sh devseed
 ```
 
 ## 3. Deployment for the provisioned greengrass group - lambda-new
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=gocheckin_dev EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
 ```
 
 ## 4. Provision the greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=davyhome EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
 $ ./extract-from-outfile.sh davyhome
 ```
 
 ## 5. Deployment for the provisioned greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=davyhome EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
 ```
 
 

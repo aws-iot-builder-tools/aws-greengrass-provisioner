@@ -152,7 +152,7 @@ Resources:
       Layers:
         - "arn:aws:lambda:ap-northeast-1:187002341337:layer:aws-sdk-java:3"
         - "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8"
-        - "arn:aws:lambda:ap-northeast-1:187002341337:layer:ggp-config-gocheckin:3"
+        - "arn:aws:lambda:ap-northeast-1:187002341337:layer:ggp-config-gocheckin:6"
       MemorySize: 3008
       Role: !GetAtt ProvisionerLambdaRole.Arn
       Runtime: java8
