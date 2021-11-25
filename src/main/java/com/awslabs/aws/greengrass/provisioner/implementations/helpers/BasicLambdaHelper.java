@@ -264,6 +264,23 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .environment(lambdaEnvironment)
                 .build();
 
+        // Make sure target lambda function's LastUpdateStatus
+        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
+                .functionName(functionName.getName())
+                .build();
+
+        GetFunctionConfigurationResponse functionConfigurationResponse = lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
+
+        if (functionConfigurationResponse.lastUpdateStatus() == LastUpdateStatus.IN_PROGRESS){
+            log.info(String.join("", "Waiting for changing LastUpdateStatus [", functionConf.getFunctionName().getName(), "]"));
+
+            while(functionConfigurationResponse.lastUpdateStatus() != LastUpdateStatus.IN_PROGRESS){
+                functionConfigurationResponse = lambdaClient.getFunctionConfiguration(getFunctionConfigurationRequest);
+                log.info(String.join("", "Waiting for changing LastUpdateStatus [", functionConf.getFunctionName().getName(), "]"));
+            }
+        }
+
+
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
             return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
