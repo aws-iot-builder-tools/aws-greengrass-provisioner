@@ -52,7 +52,7 @@ def awaitilityVersion = '4.0.3'
 def immutablesValueVersion = '2.8.9-ea-1'
 def awsLambdaJavaCoreVersion = '1.2.1'
 def resultsIteratorForAwsJavaSdkVersion = '11.0.2'
-def nomenEstOmenVersion = '2.0.0'
+def nomenEstOmenVersion = '2.1.0'
 def jschVersion = '0.1.55'
 def jetbrainsAnnotationVersion = '20.1.0'
 
