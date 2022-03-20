@@ -1,5 +1,0 @@
-{
-  "eventType" : "Deploy",
-  "eventType" : null,
-  "groupId" : "a9597352-55d4-4af1-a196-dab99f2326a9"
-}
