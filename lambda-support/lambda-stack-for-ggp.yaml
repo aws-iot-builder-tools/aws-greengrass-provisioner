@@ -2,6 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Transform: 'AWS::Serverless-2016-10-31'
 Description: Lambda stack for GGP
 
+Parameters:
+  JavaVersion:
+    Type: String
+    Default: 11
+  LambdaLayers:
+    Type: CommaDelimitedList
+    Default: "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4,arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
+    NoEcho: true
+
 Resources:
   GreengrassServiceRole:
     Type: AWS::IAM::Role
@@ -146,16 +155,16 @@ Resources:
   ProvisionerPolymorphLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
-      # FunctionName: !Sub 'ProvisionerPolymorphLambdaFunction'
       CodeUri: ../build/libs/AwsGreengrassProvisioner.jar
       Handler: com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda::handleRequest
-      Layers:
-        - "arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4"
-        - "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8"
-        - "arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
-      MemorySize: 3008
+      Layers: !Ref LambdaLayers
+      # Layers:
+      #   - "arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4"
+      #   - "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8"
+      #   - "arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
+      MemorySize: 2048
       Role: !GetAtt ProvisionerLambdaRole.Arn
-      Runtime: java8
+      Runtime: !Join [ "", [ "java", !Ref JavaVersion ] ]
       Timeout: 900
       Environment:
         Variables:

@@ -26,8 +26,37 @@ group with a random name and an empty deployment. It can be used to validate tha
 - `extract-from-outfile.sh` - Extracts files from the output JSON saved from the `invoke-lambda-function.sh` script
 
 ## 1. Deploy the lambda-support stack
+
+### 1-1. switch java version
 ```
-$ ./launch-lambda-stack-for-ggp.sh <my-bucket> ggp-lambda-support-stack 2.16.91
+$ sudo update-alternatives --config javac
+$ sudo update-alternatives --config java
+```
+
+### 1-2. Edit JavaVersion and LambdaLayers of lambda-stack-for-ggp.yaml
+```
+Parameters:
+  JavaVersion:
+    Type: String
+    Default: 11
+  LambdaLayers:
+    Type: CommaDelimitedList
+    Default: "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4,arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
+    NoEcho: true
+```
+
+### 1-3. Build and deploy
+
+```
+$ ./launch-lambda-stack-for-ggp.sh <my-bucket> <stack-name> <aws-sdk-java-version>
+```
+
+```
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.17.152
+```
+
+```
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.16.104
 ```
 
 ## 2. Provision the greengrass group - lambda-new
