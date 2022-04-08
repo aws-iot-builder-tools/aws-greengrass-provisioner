@@ -12,7 +12,7 @@ import java.io.File;
 
 public class BasicGGConstants implements GGConstants {
     private static final String DEPLOYMENTS_DIRECTORY = "deployments";
-    public static final String DOCKER_GREENGRASS_VERSION = "1.10.2";
+    public static final String DOCKER_GREENGRASS_VERSION = "1.11.0";
     @Inject
     IoHelper ioHelper;
 

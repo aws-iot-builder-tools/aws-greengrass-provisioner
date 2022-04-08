@@ -5,13 +5,13 @@ plugins {
     id 'idea'
 
     // Creates fat JAR
-    id 'com.github.johnrengelman.shadow' version '6.1.0'
+    id 'com.github.johnrengelman.shadow' version '7.1.0'
 
     // Downloads binary dependencies
-    id 'de.undercouch.download' version '4.1.1'
+    id 'de.undercouch.download' version '4.1.2'
 }
 
-def gradleDependencyVersion = '6.7.1'
+def gradleDependencyVersion = '7.1.1'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -25,41 +25,41 @@ distZip.enabled = shadowDistZip.enabled = false
 distTar.enabled = shadowDistTar.enabled = false
 
 // Specify all of our dependency versions
-def daggerVersion = '2.30.1'
+def daggerVersion = '2.40.5'
 def configVersion = '1.4.1'
 def ztZipVersion = '1.14'
-def jcommanderVersion = '1.80'
-def slf4jVersion = '2.0.0-alpha1'
-def jcabiVersion = '0.19.0'
+def jcommanderVersion = '1.81'
+def slf4jVersion = '2.0.0-alpha5'
+def jcabiVersion = '0.20.1'
 def jtarVersion = '2.3'
-def gsonVersion = '2.8.6'
+def gsonVersion = '2.8.9'
 def dockerClientVersion = '8.16.0'
-def awsSdk2Version = '2.15.53'
-def mavenInvokerVersion = '3.0.1'
+def awsSdk2Version = '2.17.99'
+def mavenInvokerVersion = '3.1.0'
 def commonsTextVersion = '1.9'
-def commonsLangVersion = '3.11'
+def commonsLangVersion = '3.12.0'
 def commonsIoVersion = '2.8.0'
-def junitVersion = '4.13.1'
+def junitVersion = '4.13.2'
 def systemRulesVersion = '1.19.0'
-def mockitoVersion = '3.6.28'
+def mockitoVersion = '4.1.0'
 def vavrVersion = '0.10.3'
 def httpClientVersion = '4.5.13'
-def jodahFailsafeVersion = '2.4.0'
-def testContainersVersion = '1.15.1'
+def jodahFailsafeVersion = '2.4.4'
+def testContainersVersion = '1.16.2'
 def hamcrestVersion = '2.2'
-def awsIotCoreWebsocketsVersion = '0.6.3'
-def awaitilityVersion = '4.0.3'
+def awsIotCoreWebsocketsVersion = '4.0.1'
+def awaitilityVersion = '4.1.1'
 def immutablesValueVersion = '2.8.9-ea-1'
 def awsLambdaJavaCoreVersion = '1.2.1'
 def resultsIteratorForAwsJavaSdkVersion = '11.0.2'
-def nomenEstOmenVersion = '2.0.0'
+def nomenEstOmenVersion = '2.1.0'
 def jschVersion = '0.1.55'
-def jetbrainsAnnotationVersion = '20.1.0'
+def jetbrainsAnnotationVersion = '23.0.0'
 
 def buildDirDist = "$buildDir/dist"
 def buildDirFoundation = "$buildDir/foundation"
 
-def greengrassVersion = '1.10.2'
+def greengrassVersion = '1.11.0'
 
 task downloadGreengrassBinaries(type: Download) {
     // Download the Greengrass binaries into the dist directory so they can be packaged into the JAR
@@ -212,6 +212,9 @@ dependencies {
     testImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
     testImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
+
+    // To force dependabot to update the Gradle wrapper dependency
+    testImplementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
 
     integrationTestImplementation "junit:junit:$junitVersion"
     integrationTestImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
