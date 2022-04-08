@@ -264,17 +264,16 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .environment(lambdaEnvironment)
                 .build();
 
-        // RetryPolicy for preventing error occurred by LastUpdateStatus from updated lambda
-        RetryPolicy<LambdaResponse> lambdaLastUpdateStatusRetryPolicy = new RetryPolicy<LambdaResponse>()
-                .handleIf(throwable -> throwable.getMessage().startsWith("The operation cannot be performed at this time."))
-                .withDelay(Duration.ofSeconds(5))
-                .withMaxRetries(10)
-                .onRetry(failure -> log.warn(String.join("", "Waiting for changing LastUpdateStatus [", functionConf.getFunctionName().getName(), "]")))
-                .onRetriesExceeded(failure -> log.error("The LastUpdateStatus of updating lambda isn't change. Cannot continue."));
+        GetFunctionConfigurationRequest getFunctionConfigurationRequest = GetFunctionConfigurationRequest.builder()
+                .functionName(functionName.getName())
+                .build();
+
+        // Wait for update lambda
+        lambdaClient.waiter().waitUntilFunctionUpdated(getFunctionConfigurationRequest);
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            return Failsafe.with(lambdaIamRoleRetryPolicy, lambdaLastUpdateStatusRetryPolicy).get(() ->
+            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
                     lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
         }
     }
