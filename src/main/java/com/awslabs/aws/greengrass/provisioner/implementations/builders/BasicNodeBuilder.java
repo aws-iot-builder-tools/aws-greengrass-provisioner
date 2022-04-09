@@ -16,6 +16,7 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class BasicNodeBuilder implements NodeBuilder {
@@ -64,12 +65,27 @@ public class BasicNodeBuilder implements NodeBuilder {
         programAndArguments.add("install");
 
         ProcessBuilder processBuilder = processHelper.getProcessBuilder(programAndArguments);
+
+        Map<String, String> envs = processBuilder.environment();
+        envs.put("NPM_CONFIG_USERCONFIG", "/opt/nodejs/.npmrc");
+
         processBuilder.directory(new File(functionConf.getBuildDirectory().get().toString()));
 
         List<String> stdoutStrings = new ArrayList<>();
         List<String> stderrStrings = new ArrayList<>();
 
         Optional<Integer> exitVal = processHelper.getOutputFromProcess(log, processBuilder, true, Optional.of(stdoutStrings::add), Optional.of(stderrStrings::add));
+
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "stdoutStrings");
+        stdoutStrings.forEach(s -> {
+            log.warn(s);
+        });
+
+        loggingHelper.logInfoWithName(log, functionConf.getFunctionName().getName(), "stderrStrings");
+        stderrStrings.forEach(s -> {
+            log.error(s);
+        });
+
 
         if (!exitVal.isPresent() || exitVal.get() != 0) {
             log.error("Failed to install Node dependency.  Make sure Node and npm are installed and on your path.");

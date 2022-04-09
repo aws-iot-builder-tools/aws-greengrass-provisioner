@@ -1,5 +1,15 @@
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
 Description: Lambda stack for GGP
+
+Parameters:
+  JavaVersion:
+    Type: String
+    Default: 11
+  LambdaLayers:
+    Type: CommaDelimitedList
+    Default: "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-northeast-1:187002341337:layer:aws-sdk-java:7,arn:aws:lambda:ap-northeast-1:187002341337:layer:ggp-config-gocheckin:10"
+    NoEcho: true
 
 Resources:
   GreengrassServiceRole:
@@ -67,7 +77,7 @@ Resources:
           - Effect: Allow
             Action: greengrass:UpdateCoreDeploymentStatus
             # Possibly limit to a core name prefix
-            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*/cores/arn:aws:iot:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":thing/*" ] ]
+            Resource: !Join [ "", [ "arn:aws:greengrass:", !Ref "AWS::Region", ":", !Ref "AWS::AccountId", ":/greengrass/groups/*/deployments/*" ] ]
           - Effect: Allow
             Action:
               - greengrass:GetConnectivityInfo
@@ -122,7 +132,7 @@ Resources:
             Principal:
               Service: lambda.amazonaws.com
       Policies:
-        - PolicyName: root
+        - PolicyName: iotadmin
           PolicyDocument:
             Version: 2012-10-17
             Statement:
@@ -141,22 +151,24 @@ Resources:
               - Effect: Allow
                 Action: iam:GetRole
                 Resource: !GetAtt GreengrassServiceRole.Arn
-  ProvisionerLambdaFunction:
-    Type: AWS::Lambda::Function
+
+  ProvisionerPolymorphLambdaFunction:
+    Type: AWS::Serverless::Function
     Properties:
-      Code: ../build/libs/AwsGreengrassProvisioner.jar
-      Handler: com.awslabs.aws.greengrass.provisioner.lambda.AwsGreengrassProvisionerLambda::handleRequest
+      CodeUri: ../build/libs/AwsGreengrassProvisioner.jar
+      Handler: com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda::handleRequest
+      Layers: !Ref LambdaLayers
+      # Layers:
+      #   - "arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4"
+      #   - "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8"
+      #   - "arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
+      MemorySize: 2048
       Role: !GetAtt ProvisionerLambdaRole.Arn
-      Runtime: java8
+      Runtime: !Join [ "", [ "java", !Ref JavaVersion ] ]
       Timeout: 900
-      MemorySize: 3008
       Environment:
         Variables:
           ServiceRoleName: !Ref ServiceRoleAssociation
-  ProvisionerLambdaFunctionVersion:
-    Type: AWS::Lambda::Version
-    Properties:
-      FunctionName: !GetAtt ProvisionerLambdaFunction.Arn
   ServiceRoleDetection:
     Type: Custom::ServiceRoleDetectionLambda
     Properties:

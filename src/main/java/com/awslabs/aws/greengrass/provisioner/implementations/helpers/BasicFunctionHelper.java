@@ -1,6 +1,7 @@
 package com.awslabs.aws.greengrass.provisioner.implementations.helpers;
 
 import com.awslabs.aws.greengrass.provisioner.data.*;
+import com.awslabs.aws.greengrass.provisioner.data.arguments.DeploymentArguments;
 import com.awslabs.aws.greengrass.provisioner.data.conf.DeploymentConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.FunctionConf;
 import com.awslabs.aws.greengrass.provisioner.data.conf.ImmutableFunctionConf;
@@ -84,7 +85,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return functionConf.toPath().getParent();
     }
 
-    private Either<FunctionAliasArn, File> getFunctionAliasArnOrFunctionConfPath(String pathOrUrlOrArn) throws IOException {
+    private Either<FunctionAliasArn, File> getFunctionAliasArnOrFunctionConfPath(String pathOrUrlOrArn, DeploymentArguments deploymentArguments) throws IOException {
         if (pathOrUrlOrArn.contains(EXISTING_LAMBDA_FUNCTION_WILDCARD)) {
             if (pathOrUrlOrArn.matches(ENDS_WITH_ALIAS_REGEX)) {
                 return Either.left(lambdaHelper.findFullFunctionArnByPartialName(pathOrUrlOrArn));
@@ -100,7 +101,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
             return Either.left(ImmutableFunctionAliasArn.builder().aliasArn(pathOrUrlOrArn).build());
         } else {
-            return Either.right(getLocalFunctionConfFile(pathOrUrlOrArn));
+            return Either.right(getLocalFunctionConfFile(pathOrUrlOrArn, deploymentArguments));
         }
     }
 
@@ -122,9 +123,12 @@ public class BasicFunctionHelper implements FunctionHelper {
         return optionalFunctionConfString.get();
     }
 
-    private File getLocalFunctionConfFile(String functionName) throws IOException {
-        String sourceDirectory = String.join("/", FUNCTIONS, functionName);
+    private File getLocalFunctionConfFile(String functionName, DeploymentArguments deploymentArguments) throws IOException {
+        // String sourceDirectory = String.join("/", FUNCTIONS, functionName);
+        String sourceDirectory = String.join("/", deploymentArguments.functionConfigPath, functionName);
         Path sourcePath = new File(sourceDirectory).toPath();
+
+        log.warn(String.join("", "***sourceDirectory*** [", sourceDirectory, "]"));
 
         if (gradleBuilder.isGradleFunction(sourcePath)) {
             // Build Gradle based applications in place
@@ -251,13 +255,14 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    public List<FunctionConf> getFunctionConfObjects(DeploymentArguments deploymentArguments, Config defaultConfig, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Get each enabled function conf file OR the ARN of an existing function
-        List<Either<FunctionAliasArn, File>> enabledFunctions = getEnabledFunctions(deploymentConf);
+        List<Either<FunctionAliasArn, File>> enabledFunctions = getEnabledFunctions(deploymentConf, deploymentArguments);
 
         warnAboutMissingDefaultsIfNecessary();
 
-        return getFunctionConfs(defaultConfig, deploymentConf, enabledFunctions, defaultFunctionIsolationMode);
+        return getFunctionConfs(deploymentArguments, defaultConfig, deploymentConf, enabledFunctions, defaultFunctionIsolationMode);
+
     }
 
     private void warnAboutMissingDefaultsIfNecessary() {
@@ -266,18 +271,18 @@ public class BasicFunctionHelper implements FunctionHelper {
         }
     }
 
-    private List<FunctionConf> getFunctionConfs(Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfs(DeploymentArguments deploymentArguments, Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         // Find any functions with missing config files
         ioHelper.detectMissingConfigs(log, "function", enabledFunctionConfs);
 
-        return getFunctionConfObjects(defaultConfig, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
+        return getFunctionConfObjectList(deploymentArguments, defaultConfig, deploymentConf, enabledFunctionConfs, defaultFunctionIsolationMode);
     }
 
-    private List<FunctionConf> getFunctionConfObjects(Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private List<FunctionConf> getFunctionConfObjectList(DeploymentArguments deploymentArguments, Config defaultConfig, DeploymentConf deploymentConf, List<Either<FunctionAliasArn, File>> enabledFunctionConfs, FunctionIsolationMode defaultFunctionIsolationMode) {
         List<FunctionConf> enabledFunctionConfObjects = new ArrayList<>();
 
         for (Either<FunctionAliasArn, File> enabledFunctionConf : enabledFunctionConfs) {
-            FunctionConf functionConf = Try.of(() -> getFunctionConf(defaultConfig, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
+            FunctionConf functionConf = Try.of(() -> getFunctionConf(deploymentArguments, defaultConfig, deploymentConf, enabledFunctionConf, defaultFunctionIsolationMode)).get();
 
             enabledFunctionConfObjects.add(functionConf);
         }
@@ -293,7 +298,7 @@ public class BasicFunctionHelper implements FunctionHelper {
         return enabledFunctionConfObjects;
     }
 
-    private FunctionConf getFunctionConf(Config defaultConfig, DeploymentConf deploymentConf, Either<FunctionAliasArn, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
+    private FunctionConf getFunctionConf(DeploymentArguments deploymentArguments, Config defaultConfig, DeploymentConf deploymentConf, Either<FunctionAliasArn, File> functionConf, FunctionIsolationMode defaultFunctionIsolationMode) {
         ImmutableFunctionConf.Builder functionConfBuilder = ImmutableFunctionConf.builder();
 
         Config config;
@@ -324,7 +329,8 @@ public class BasicFunctionHelper implements FunctionHelper {
             optionalFunctionPath = Optional.of(functionPath);
         }
 
-        Config functionDefaults = ggVariables.getFunctionDefaults();
+        // Config functionDefaults = ggVariables.getFunctionDefaults();
+        Config functionDefaults = ConfigFactory.parseFile(new File(String.join("/", deploymentArguments.deploymentConfigFolderPath, "function.defaults.conf")));
 
         // Make sure we use the calculated default function isolation mode as the default (forced to no container when using Docker)
         functionDefaults = functionDefaults.withValue(ggConstants.getConfGreengrassContainer(), ConfigValueFactory.fromAnyRef(FunctionIsolationMode.GREENGRASS_CONTAINER.equals(defaultFunctionIsolationMode) ? true : false));
@@ -417,11 +423,11 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .forEach(index -> functionConfBuilder.putEnvironmentVariables(String.join("", "SECRET_", String.valueOf(index)), secretNames.get(index)));
     }
 
-    private List<Either<FunctionAliasArn, File>> getEnabledFunctions(DeploymentConf deploymentConf) {
+    private List<Either<FunctionAliasArn, File>> getEnabledFunctions(DeploymentConf deploymentConf, DeploymentArguments deploymentArguments) {
         // Get all of the functions they've requested
         return deploymentConf.getFunctions().stream()
                 .map(FunctionName::getName)
-                .map(pathOrUrlOrArn -> Try.of(() -> getFunctionAliasArnOrFunctionConfPath(pathOrUrlOrArn)).get())
+                .map(pathOrUrlOrArn -> Try.of(() -> getFunctionAliasArnOrFunctionConfPath(pathOrUrlOrArn, deploymentArguments)).get())
                 .collect(Collectors.toList());
     }
 

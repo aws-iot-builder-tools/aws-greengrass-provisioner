@@ -3,13 +3,25 @@
 set -e
 set -x
 
+if [ -z "$EVENT_TYPE" ]; then
+  echo "No event type(Provision or Deploy) specified, can not continue"
+  exit 1
+fi
+
+if [ -z "$DEPLOY_CONFIG_NAME" ]; then
+  if [[ "$EVENT_TYPE" == "Deploy" ]]; then
+    echo "When EVENT_TYPE is 'Deploy' it is needed to specify a DEPLOY_CONFIG_NAME"
+    exit 1
+  fi
+fi
+
 if [ -z "$LAMBDA_FUNCTION" ]; then
   if [ -z "$STACK_NAME" ]; then
     echo "Stack name [STACK_NAME] must be specified if the Lambda function name [LAMBDA_FUNCTION] is not specified so it can be looked up"
     exit 1
   fi
 
-  LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`ProvisionerLambdaFunction`].PhysicalResourceId' --output text)
+  LAMBDA_FUNCTION=$(aws cloudformation describe-stack-resources --stack-name $STACK_NAME --query 'StackResources[?LogicalResourceId==`ProvisionerPolymorphLambdaFunction`].PhysicalResourceId' --output text)
 
   if [ -z "$LAMBDA_FUNCTION" ]; then
     echo "Lambda function could not be found in the CloudFormation stack, can not continue"
@@ -83,7 +95,7 @@ else
   AWS_SECRET_ACCESS_KEY=$(jq --raw-output .Credentials.SecretAccessKey <(echo $CREDENTIALS))
   AWS_SESSION_TOKEN=$(jq --raw-output .Credentials.SessionToken <(echo $CREDENTIALS))
 
-  CREDENTIALS_JSON=", \"AccessKeyId\": \"$AWS_ACCESS_KEY_ID\", \"SecretAccessKey\": \"$AWS_SECRET_ACCESS_KEY\", \"SessionToken\": \"$AWS_SESSION_TOKEN\""
+  CREDENTIALS_JSON=", \"accessKeyId\": \"$AWS_ACCESS_KEY_ID\", \"secretAccessKey\": \"$AWS_SECRET_ACCESS_KEY\", \"sessionToken\": \"$AWS_SESSION_TOKEN\""
 
   if [ -n "$AWS_DEFAULT_REGION" ];
   then
@@ -104,13 +116,19 @@ bash -c "$CREDENTIALS aws iot get-policy --policy-name $CORE_POLICY_NAME >/dev/n
 
 if [ -n "$CSR" ]; then
   CSR_DATA=$(cat $CSR | tr '\r\n' ' ')
-  CSR=", \"Csr\": \"$CSR_DATA\""
+  CSR=", \"csr\": \"$CSR_DATA\""
 fi
 
 if [ -n "$CERTIFICATE_ARN" ]; then
-  CERTIFICATE_ARN=", \"CertificateArn\": \"$CERTIFICATE_ARN\""
+  CERTIFICATE_ARN=", \"certificateArn\": \"$CERTIFICATE_ARN\""
 fi
 
-PAYLOAD="{ \"GroupName\": \"$GROUP_NAME\", \"CoreRoleName\": \"$CORE_ROLE_NAME\", \"ServiceRoleExists\": true, \"CorePolicyName\": \"$CORE_POLICY_NAME\" $CSR $CERTIFICATE_ARN $CREDENTIALS_JSON }"
+if [[ "$EVENT_TYPE" == "Provision" ]]; then
+  PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"coreRoleName\": \"$CORE_ROLE_NAME\", \"serviceRoleExists\": true, \"corePolicyName\": \"$CORE_POLICY_NAME\" $CSR $CERTIFICATE_ARN $CREDENTIALS_JSON }"
+  time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt
+elif [[ "$EVENT_TYPE" == "Deploy" ]]; then
+  PAYLOAD="{ \"eventType\": \"$EVENT_TYPE\", \"groupName\": \"$GROUP_NAME\", \"deploymentConfigFilename\": \"/opt/ggp-config/deployments/$DEPLOY_CONFIG_NAME.conf\" }"
+  time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" --cli-binary-format raw-in-base64-out $GROUP_NAME.outfile.txt  
+fi
 
-time aws lambda invoke --function-name $LAMBDA_FUNCTION --invocation-type RequestResponse --payload "$PAYLOAD" $GROUP_NAME.outfile.txt
+

@@ -47,7 +47,7 @@ import software.amazon.awssdk.services.greengrass.model.Function;
 import software.amazon.awssdk.services.greengrass.model.*;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.iot.model.CreateRoleAliasResponse;
-import software.amazon.awssdk.services.s3.S3Client;
+// import software.amazon.awssdk.services.s3.S3Client;
 
 import javax.inject.Inject;
 import java.io.ByteArrayOutputStream;
@@ -143,8 +143,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     DeploymentArgumentHelper deploymentArgumentHelper;
     @Inject
     ExceptionHelper exceptionHelper;
-    @Inject
-    S3Client s3Client;
+    // @Inject
+    // S3Client s3Client;
     @Inject
     JsonHelper jsonHelper;
     @Inject
@@ -164,27 +164,31 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @Override
-    public DeploymentConf getDeploymentConf(ThingName coreThingName, String deploymentConfigFilename, GreengrassGroupName greengrassGroupName) {
-        File deploymentConfigFile = new File(deploymentConfigFilename);
+    public DeploymentConf getDeploymentConf(ThingName coreThingName, DeploymentArguments deploymentArguments, GreengrassGroupName greengrassGroupName) {
+        File deploymentConfigFile = new File(deploymentArguments.deploymentConfigFilename);
 
         if (!deploymentConfigFile.exists()) {
-            throw new RuntimeException(String.join("", "The specified deployment configuration file [", deploymentConfigFilename, "] does not exist."));
+            throw new RuntimeException(String.join("", "The specified deployment configuration file [", deploymentArguments.deploymentConfigFilename, "] does not exist."));
         }
 
         Config config = ConfigFactory.parseFile(deploymentConfigFile)
                 .withValue(EnvironmentHelper.ACCOUNT_ID, ConfigValueFactory.fromAnyRef(iamHelper.getAccountId().getId()))
                 .withValue(EnvironmentHelper.REGION, ConfigValueFactory.fromAnyRef(awsHelper.getCurrentRegion().id()))
                 .withValue(EnvironmentHelper.AWS_IOT_THING_NAME, ConfigValueFactory.fromAnyRef(coreThingName.getName()))
-                .withFallback(getFallbackConfig())
+                .withFallback(getFallbackConfig(deploymentArguments.deploymentConfigFolderPath))
                 .resolve();
 
-        return buildDeploymentConf(deploymentConfigFilename, config, greengrassGroupName);
+        return buildDeploymentConf(deploymentArguments.deploymentConfigFilename, config, greengrassGroupName);
     }
 
     private DeploymentConf buildDeploymentConf(String deploymentConfigFilename, Config config, GreengrassGroupName greengrassGroupName) {
         ImmutableDeploymentConf.Builder deploymentConfBuilder = ImmutableDeploymentConf.builder();
 
+        log.warn("No value specified for core syncShadow, defaulting to true");
+
+        log.warn(String.join("", "***deploymentConfigFilename*** [", deploymentConfigFilename, "]"));
         String trimmedDeploymentName = deploymentConfigFilename.replaceAll(".conf$", "").replaceAll("^.*/", "");
+        log.warn(String.join("", "***trimmedDeploymentName*** [", trimmedDeploymentName, "]"));
         deploymentConfBuilder.name(trimmedDeploymentName);
         List<FunctionName> functionNames = config.getStringList("conf.functions")
                 .stream().map(name -> ImmutableFunctionName.builder().name(name).build())
@@ -322,8 +326,9 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         }
     }
 
-    private Config getFallbackConfig() {
-        return ggConstants.getDeploymentDefaults();
+    private Config getFallbackConfig(String deploymentConfigFilePath) {
+        File deploymentDefaultsConf = new File(String.join("/", deploymentConfigFilePath, "deployment.defaults.conf"));
+        return ConfigFactory.parseFile(deploymentDefaultsConf);
     }
 
     /**
@@ -448,6 +453,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
 
     @Override
     public void execute(DeploymentArguments deploymentArguments) {
+        log.warn(String.join("", "***deploymentArguments.deploymentConfigFolderPath*** [", deploymentArguments.deploymentConfigFolderPath, "]"));
+
         // Make the directories for build, if necessary
         ioHelper.createDirectoryIfNecessary(ggConstants.getBuildDirectory());
 
@@ -466,7 +473,7 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         if (isEmptyDeployment(deploymentArguments)) {
             deploymentConf = getEmptyDeploymentConf(deploymentArguments, greengrassGroupName);
         } else {
-            deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments.deploymentConfigFilename, greengrassGroupName)).get();
+            deploymentConf = Try.of(() -> getDeploymentConf(coreThingName, deploymentArguments, greengrassGroupName)).get();
         }
 
         ///////////////////////////////////////////////////
@@ -502,8 +509,14 @@ public class BasicDeploymentHelper implements DeploymentHelper {
             log.warn("Setting default function isolation mode to no container because we're doing a Docker launch");
             defaultFunctionIsolationMode = FunctionIsolationMode.NO_CONTAINER;
         } else {
+            Config functionDefaults = ConfigFactory.parseFile(new File(String.join("/", deploymentArguments.deploymentConfigFolderPath, "function.defaults.conf")));
+            boolean greengrassContainer = functionDefaults.getBoolean(ggConstants.getConfGreengrassContainer());
+
             // If we're not doing a Docker launch use the default values in the configuration file
-            defaultFunctionIsolationMode = ggVariables.getDefaultFunctionIsolationMode();
+            defaultFunctionIsolationMode = (greengrassContainer ? FunctionIsolationMode.GREENGRASS_CONTAINER : FunctionIsolationMode.NO_CONTAINER);
+
+            // If we're not doing a Docker launch use the default values in the configuration file
+            // defaultFunctionIsolationMode = ggVariables.getDefaultFunctionIsolationMode();
         }
 
         ////////////////////////////////////////////////////////////
@@ -519,13 +532,13 @@ public class BasicDeploymentHelper implements DeploymentHelper {
         // Find enabled functions and create function conf objects for them //
         //////////////////////////////////////////////////////////////////////
 
-        List<FunctionConf> functionConfs = getFunctionConfs(deploymentConf, defaultFunctionIsolationMode, defaultConfig);
+        List<FunctionConf> functionConfs = getFunctionConfs(deploymentArguments, deploymentConf, defaultFunctionIsolationMode, defaultConfig);
 
         ///////////////////////////
         // Create the connectors //
         ///////////////////////////
 
-        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(defaultConfig, deploymentConf.getConnectors());
+        List<ConnectorConf> connectorConfs = connectorHelper.getConnectorConfObjects(deploymentArguments, defaultConfig, deploymentConf.getConnectors());
 
         log.info("Creating connector definition");
         Optional<String> optionalConnectionDefinitionVersionArn = greengrassHelper.createConnectorDefinitionVersion(connectorConfs);
@@ -1162,8 +1175,8 @@ public class BasicDeploymentHelper implements DeploymentHelper {
     }
 
     @NotNull
-    public List<FunctionConf> getFunctionConfs(DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode, Config defaultConfig) {
-        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(defaultConfig, deploymentConf, defaultFunctionIsolationMode);
+    public List<FunctionConf> getFunctionConfs(DeploymentArguments deploymentArguments, DeploymentConf deploymentConf, FunctionIsolationMode defaultFunctionIsolationMode, Config defaultConfig) {
+        List<FunctionConf> functionConfs = functionHelper.getFunctionConfObjects(deploymentArguments, defaultConfig, deploymentConf, defaultFunctionIsolationMode);
 
         // Find Python functions that may not have had their language updated, this should never happen
         Predicate<FunctionConf> legacyPythonPredicate = functionConf -> functionConf.getLanguage().equals(Language.Python);

@@ -24,3 +24,8 @@ build
 /deployments
 /credentials
 /ggds
+.classpath
+.project
+.settings/
+bin/
+lambda-support/layers/npm-layer.zip

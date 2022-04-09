@@ -4,10 +4,17 @@ set -e
 
 BUCKET_NAME=$1
 STACK_NAME=$2
+AWS_SDK2_VERSION=$3
 
 if [ -z "$BUCKET_NAME" ];
 then
   echo "A bucket name must be specified"
+  exit 1
+fi
+
+if [ -z "$AWS_SDK2_VERSION" ];
+then
+  echo "No AWS SDK JAVA V2 version specified" 
   exit 1
 fi
 
@@ -26,8 +33,9 @@ PROFILE=""
 TEMP_FILE=$(mktemp)
 pushd .
 cd ..
-./gradlew build
+./gradlew build --build-file ./build.gradle.lambda -PawsSdk2Version=$AWS_SDK2_VERSION -x test
 popd
 aws cloudformation $PROFILE package --template-file lambda-stack-for-ggp.yaml --s3-bucket $BUCKET_NAME --output-template-file $TEMP_FILE
 aws cloudformation $PROFILE deploy --stack-name $STACK_NAME --template-file $TEMP_FILE --capabilities CAPABILITY_NAMED_IAM || aws cloudformation $PROFILE describe-stack-events --stack-name $STACK_NAME
+# aws cloudformation $PROFILE deploy --stack-name $STACK_NAME --template-file $TEMP_FILE --parameter-overrides JavaVersion=$JAVA_VERSION --capabilities CAPABILITY_NAMED_IAM || aws cloudformation $PROFILE describe-stack-events --stack-name $STACK_NAME
 rm $TEMP_FILE

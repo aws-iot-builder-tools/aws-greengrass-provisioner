@@ -18,9 +18,12 @@ import org.gradle.tooling.BuildException;
 import org.jetbrains.annotations.NotNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import software.amazon.awssdk.core.waiters.WaiterResponse;
 import software.amazon.awssdk.services.iam.model.Role;
 import software.amazon.awssdk.services.lambda.LambdaClient;
 import software.amazon.awssdk.services.lambda.model.*;
+import software.amazon.awssdk.services.lambda.waiters.LambdaWaiter;
 
 import javax.inject.Inject;
 import java.io.File;
@@ -214,6 +217,30 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+        Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
+        
+        if (getFunctionResponseOptional.isPresent()) {
+            GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
+            
+            log.info(String.join("", "publishLambdaFunctionVersion Function State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+        }
+        
+        LambdaWaiter waiter = lambdaClient.waiter();
+        
+        GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionName.getName()).build();
+        
+        WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
+        
+        waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
+        
+        Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
+        
+        if (newGetFunctionResponseOptional.isPresent()) {
+            GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
+            
+            log.info(String.join("", "publishLambdaFunctionVersion Function New State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+        }
+        
         PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
         String qualifier = publishVersionResponse.version();
@@ -227,6 +254,23 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
+/*
+    @Override
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+        
+        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
+
+        String qualifier = publishVersionResponse.version();
+        String qualifiedArn = publishVersionResponse.functionArn();
+        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
+
+        return ImmutableLambdaFunctionArnInfo.builder()
+                .qualifier(qualifier)
+                .qualifiedArn(qualifiedArn)
+                .baseArn(baseArn)
+                .build();
+    }
+*/
     private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
 

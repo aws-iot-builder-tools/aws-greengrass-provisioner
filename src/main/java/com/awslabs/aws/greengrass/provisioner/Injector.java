@@ -8,6 +8,10 @@ import com.awslabs.iot.helpers.interfaces.V2IotHelper;
 import com.awslabs.resultsiterator.v2.interfaces.V2SdkErrorHandler;
 import dagger.Component;
 
+import com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.AwsGreengrassProvisionerPolymorphLambda;
+import com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.service.ProvisionService;
+import com.awslabs.aws.greengrass.provisioner.lambda.polymorphic.service.DeployService;
+
 @Component(modules = AwsGreengrassProvisionerModule.class)
 public interface Injector {
     AwsGreengrassProvisioner awsGreengrassProvisioner();
@@ -15,6 +19,11 @@ public interface Injector {
     V2SdkErrorHandler v2SdkErrorHandler();
 
     AwsGreengrassProvisionerLambda awsGreengrassProvisionerLambda();
+
+    AwsGreengrassProvisionerPolymorphLambda awsGreengrassProvisionerPolymorphLambda();
+
+    ProvisionService provisionService();
+    DeployService deployService();
 
     IoHelper ioHelper();
 

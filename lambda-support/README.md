@@ -24,3 +24,74 @@ This avoids potentially breaking a customer's configuration if they used a diffe
 group with a random name and an empty deployment. It can be used to validate that the function works.
 
 - `extract-from-outfile.sh` - Extracts files from the output JSON saved from the `invoke-lambda-function.sh` script
+
+## 1. Deploy the lambda-support stack
+
+### 1-1. switch java version
+```
+$ sudo update-alternatives --config javac
+$ sudo update-alternatives --config java
+```
+
+### 1-2. Edit JavaVersion and LambdaLayers of lambda-stack-for-ggp.yaml
+```
+Parameters:
+  JavaVersion:
+    Type: String
+    Default: 11
+  LambdaLayers:
+    Type: CommaDelimitedList
+    Default: "arn:aws:lambda:ap-southeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-southeast-1:187002341337:layer:aws-sdk-java:4,arn:aws:lambda:ap-southeast-1:187002341337:layer:ggp-config-gocheckin:1"
+    NoEcho: true
+```
+
+### 1-3. Build and deploy
+
+```
+$ ./launch-lambda-stack-for-ggp.sh <my-bucket> <stack-name> <aws-sdk-java-version>
+```
+
+```
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.17.152
+```
+
+```
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.16.104
+```
+
+## 2. Provision the greengrass group - lambda-new
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Provision ./invoke-lambda-function.sh
+
+$ ./extract-from-outfile.sh devseed
+```
+
+## 3. Deployment for the provisioned greengrass group - lambda-new
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
+```
+
+## 4. Provision the greengrass group - lambda-existing
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Provision ./invoke-lambda-function.sh
+
+$ ./extract-from-outfile.sh davyhome
+```
+
+## 5. Deployment for the provisioned greengrass group - lambda-existing
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
+```
+
+
+
+## Reference
+### 1. aws-sdk-java-v2 layer to make the fat jar small enough for lambda function
+https://github.com/komushi/layer-aws-sdk-java
+
+### 2. aws-sdk-java-v2 layer to make the fat jar small enough for lambda function
+https://github.com/komushi/layer-ggp-config
+
+### 3. optional npm-layer to enable node.js function for lambda-support
+https://github.com/sambaiz/npm-lambda-layer
+
