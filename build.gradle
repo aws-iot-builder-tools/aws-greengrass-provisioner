@@ -11,7 +11,7 @@ plugins {
     id 'de.undercouch.download' version '4.1.2'
 }
 
-def gradleDependencyVersion = '7.1.1'
+def gradleDependencyVersion = '7.4'
 
 wrapper {
     gradleVersion = gradleDependencyVersion
@@ -187,7 +187,7 @@ dependencies {
     implementation "org.apache.maven.shared:maven-invoker:$mavenInvokerVersion"
     implementation "org.apache.commons:commons-text:$commonsTextVersion"
     implementation "org.apache.commons:commons-lang3:$commonsLangVersion"
-    implementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
+    implementation "org.gradle:gradle-tooling-api:7.1.1"
     implementation "io.vavr:vavr:$vavrVersion"
 
     implementation "commons-io:commons-io:$commonsIoVersion"
@@ -212,9 +212,6 @@ dependencies {
     testImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
     testImplementation "org.hamcrest:hamcrest:$hamcrestVersion"
     testImplementation "org.mockito:mockito-core:$mockitoVersion"
-
-    // To force dependabot to update the Gradle wrapper dependency
-    testImplementation "org.gradle:gradle-tooling-api:$gradleDependencyVersion"
 
     integrationTestImplementation "junit:junit:$junitVersion"
     integrationTestImplementation "com.github.stefanbirkner:system-rules:$systemRulesVersion"
