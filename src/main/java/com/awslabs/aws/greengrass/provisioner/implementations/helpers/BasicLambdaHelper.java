@@ -12,6 +12,7 @@ import com.awslabs.lambda.data.ImmutableFunctionAliasArn;
 import com.awslabs.lambda.helpers.interfaces.V2LambdaHelper;
 import io.vavr.control.Either;
 import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.FailsafeExecutor;
 import net.jodah.failsafe.RetryPolicy;
 import org.apache.commons.text.StringEscapeUtils;
 import org.gradle.tooling.BuildException;
@@ -52,6 +53,22 @@ public class BasicLambdaHelper implements LambdaHelper {
     ExecutableBuilder executableBuilder;
     @Inject
     LoggingHelper loggingHelper;
+
+    private final RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<LambdaResponse>()
+            .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
+            .withDelay(Duration.ofSeconds(5))
+            .withMaxRetries(10)
+            .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
+            .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
+
+    private final RetryPolicy<LambdaResponse> lambdaPendingRetryPolicy = new RetryPolicy<LambdaResponse>()
+            .handleIf(throwable -> throwable.getMessage().contains("is currently in the following state: 'Pending'"))
+            .withDelay(Duration.ofSeconds(5))
+            .withMaxRetries(10)
+            .onRetry(failure -> log.warn("Waiting for the Lambda function to come out of the pending state..."))
+            .onRetriesExceeded(failure -> log.error("Lambda function never came out of the pending state. Cannot continue."));
+
+    private final FailsafeExecutor<LambdaResponse> lambdaFailsafeExecutor = Failsafe.with(lambdaIamRoleRetryPolicy, lambdaPendingRetryPolicy);
 
     @Inject
     public BasicLambdaHelper() {
@@ -170,26 +187,20 @@ public class BasicLambdaHelper implements LambdaHelper {
             runtime = functionConf.getLanguage().getRuntime().toString();
         }
 
-        // Sometimes the Lambda IAM role isn't immediately visible so we need retries
-        RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<LambdaResponse>()
-                .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
-                .withDelay(Duration.ofSeconds(5))
-                .withMaxRetries(10)
-                .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
-                .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
             // Update the function
-            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+            //   NOTE: Sometimes the Lambda IAM role isn't immediately visible so we need retries
+            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime));
         }
 
         // Create a new function
-        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime));
     }
 
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
-        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
+        PublishVersionResponse publishVersionResponse = lambdaFailsafeExecutor.get(() -> v2LambdaHelper.publishFunctionVersion(functionName));
 
         String qualifier = publishVersionResponse.version();
         String qualifiedArn = publishVersionResponse.functionArn();
@@ -202,7 +213,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
-    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
 
         UpdateFunctionCodeRequest.Builder updateFunctionCodeRequestBuilder = UpdateFunctionCodeRequest.builder()
@@ -219,7 +230,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+            lambdaFailsafeExecutor.get(() ->
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
@@ -241,7 +252,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+            return lambdaFailsafeExecutor.get(() ->
                     lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
         }
     }
@@ -256,7 +267,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         return newEnvironment;
     }
 
-    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
+    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Creating new Lambda function");
 
         // No environment, start with an empty one
@@ -275,7 +286,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         // Make sure multiple threads don't do this at the same time
         synchronized (this) {
-            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
+            return lambdaFailsafeExecutor.get(() ->
                     lambdaClient.createFunction(createFunctionRequest));
         }
     }
