@@ -216,11 +216,11 @@ public class BasicLambdaHelper implements LambdaHelper {
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
             // Update the function
             //   NOTE: Sometimes the Lambda IAM role isn't immediately visible so we need retries
-            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaFailsafeExecutor));
+            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime));
         }
 
         // Create a new function
-        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaFailsafeExecutor));
+        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime));
     }
 
     @Override
@@ -238,7 +238,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
-    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, FailsafeExecutor<LambdaResponse> lambdaFailsafeExecutor) {
+    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
 
         UpdateFunctionCodeRequest.Builder updateFunctionCodeRequestBuilder = UpdateFunctionCodeRequest.builder()
@@ -292,7 +292,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         return newEnvironment;
     }
 
-    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, FailsafeExecutor<LambdaResponse> lambdaFailsafeExecutor) {
+    private CreateFunctionResponse createNewLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Creating new Lambda function");
 
         // No environment, start with an empty one
