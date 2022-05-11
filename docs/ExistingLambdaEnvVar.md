@@ -6,7 +6,7 @@ For example, given the following configuration stored as `value` of the ```GGP_F
 
 ```bash
 conf {
-    language = "PYTHON2_7",
+    language = "PYTHON3_8",
     functionName = "existingLambda1",
     handlerName = "existingLambda1.lambda_handler",
     aliasName = "live",
@@ -35,7 +35,7 @@ conf {
 ```
 The parameters are:
 - ```language```: currently AWS IoT Greengrass supports Lambda functions authored in the following languages:
-  - Python 2.7 (```PYTHON2_7```) and 3.7 (```PYTHON3_7```)
+  - Python 3.7 (```PYTHON3_7```) and Python 3.8 (```PYTHON3_8```)
   - Node v6.10 (```NODEJS6_10```) and Node v8.10 (```NODEJS6_10```)
   - Java 8 (```JAVA8```)
   - C, C++ and any language that supports importing C libraries (```EXECUTABLE```)
