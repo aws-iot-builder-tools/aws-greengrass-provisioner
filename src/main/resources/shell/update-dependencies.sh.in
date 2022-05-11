@@ -87,26 +87,6 @@ fi
 
 set +e
 
-PIP=$(which pip)
-PIP_MISSING=$?
-
-if [ $PIP_MISSING -eq 1 ]; then
-  # Only install these if pip3 is missing
-  PIP_PACKAGES="python2.7 python-pip python-setuptools"
-else
-  PIP_PACKAGES=
-fi
-
-PYTHON2_7=$(which python2.7)
-PYTHON2_7_MISSING=$?
-
-if [ $PYTHON2_7_MISSING -eq 1 ]; then
-  # Only install these if python2.7 is missing
-  PYTHON2_7_PACKAGES="python2.7"
-else
-  PYTHON2_7_PACKAGES=
-fi
-
 PIP3=$(which pip3)
 PIP3_MISSING=$?
 
@@ -139,7 +119,7 @@ if [ "$COUNTER" -gt 3 ]; then
   exit 1
 fi
 
-$INSTALLER -y install sqlite3 bzip2 $PIP_PACKAGES $PYTHON2_7_PACKAGES $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
+$INSTALLER -y install sqlite3 bzip2 $PIP3_PACKAGES $PYTHON3_7_PACKAGES git jq
 $INSTALLER -y install $INSTALLER_SPECIFIC_PACKAGES
 $INSTALLER -y install mosh
 

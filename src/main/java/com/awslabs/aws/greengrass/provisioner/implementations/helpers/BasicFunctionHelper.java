@@ -341,8 +341,8 @@ public class BasicFunctionHelper implements FunctionHelper {
         Language language = Language.valueOf(config.getString("conf.language"));
 
         if (language.equals(Language.Python)) {
-            log.warn("Legacy Python function forced to Python 2.7");
-            language = Language.PYTHON2_7;
+            log.warn("Legacy Python function forced to Python 3.7");
+            language = Language.PYTHON3_7;
         } else if (language.equals(Language.Java)) {
             log.warn("Legacy Java function forced to Java 8");
             language = Language.JAVA8;
@@ -639,10 +639,6 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .filter(functionConf -> gradleBuilder.isGradleFunction(functionConf))
                 .collect(Collectors.toList());
 
-        List<FunctionConf> python2Functions = functionConfsToCheck.stream()
-                .filter(getPython2Predicate())
-                .collect(Collectors.toList());
-
         List<FunctionConf> python3Functions = functionConfsToCheck.stream()
                 .filter(getPython3Predicate())
                 .collect(Collectors.toList());
@@ -657,7 +653,6 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         List<FunctionConf> allBuildableFunctions = new ArrayList<>();
         allBuildableFunctions.addAll(javaGradleFunctions);
-        allBuildableFunctions.addAll(python2Functions);
         allBuildableFunctions.addAll(python3Functions);
         allBuildableFunctions.addAll(nodeFunctions);
         allBuildableFunctions.addAll(executableFunctions);
@@ -682,13 +677,8 @@ public class BasicFunctionHelper implements FunctionHelper {
     }
 
     @Override
-    public Predicate<FunctionConf> getPython2Predicate() {
-        return functionConf -> functionConf.getLanguage().equals(Language.PYTHON2_7);
-    }
-
-    @Override
     public Predicate<FunctionConf> getPython3Predicate() {
-        return functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7);
+        return functionConf -> functionConf.getLanguage().equals(Language.PYTHON3_7) || functionConf.getLanguage().equals(Language.PYTHON3_8);
     }
 
     @Override
@@ -981,11 +971,6 @@ public class BasicFunctionHelper implements FunctionHelper {
                 .map(lambdaHelper::buildJavaFunction)
                 .collect(Collectors.toList());
 
-        List<ZipFilePathAndFunctionConf> python2Functions = functionConfList.stream()
-                .filter(getPython2Predicate())
-                .map(lambdaHelper::buildPython2Function)
-                .collect(Collectors.toList());
-
         List<ZipFilePathAndFunctionConf> python3Functions = functionConfList.stream()
                 .filter(getPython3Predicate())
                 .map(lambdaHelper::buildPython3Function)
@@ -1000,7 +985,6 @@ public class BasicFunctionHelper implements FunctionHelper {
 
         allFunctions.addAll(executableFunctions);
         allFunctions.addAll(gradleFunctions);
-        allFunctions.addAll(python2Functions);
         allFunctions.addAll(python3Functions);
         allFunctions.addAll(nodeFunctions);
 

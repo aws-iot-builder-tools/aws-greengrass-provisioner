@@ -115,11 +115,6 @@ public class AwsGreengrassProvisionerModule {
     }
 
     @Provides
-    public Python2Builder providePython2Builder(BasicPython2Builder basicPython2Builder) {
-        return basicPython2Builder;
-    }
-
-    @Provides
     public Python3Builder providePython3Builder(BasicPython3Builder basicPython3Builder) {
         return basicPython3Builder;
     }

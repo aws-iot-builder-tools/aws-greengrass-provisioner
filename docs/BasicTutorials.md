@@ -63,7 +63,7 @@ Let us suppose that you have one or more Raspberry Pi(s) (Edge device) that you 
 Every 5 seconds the "Hello World" function publishes a message, sent on the following topic:
 
 ```json
-${AWS_IOT_THING_NAME}/python2/hello/world
+${AWS_IOT_THING_NAME}/python3/hello/world
 ```
 
 With a message that looks like:
@@ -74,7 +74,7 @@ With a message that looks like:
 
 You can find more details about the Lambda function [here][lf1].
 
-[lf1]: https://github.com/aws-samples/aws-greengrass-lambda-functions/tree/master/functions/HelloWorldPython2
+[lf1]: https://github.com/aws-samples/aws-greengrass-lambda-functions/tree/master/functions/HelloWorldPython3
 
 ## Main steps
 
@@ -94,14 +94,14 @@ This process, if done manually, is error-prone and time-consuming. Let us see ho
 Go to the folder where you git cloned the repository and in the console, run:
 
 ```bash
-./ggp.sh -g test1 -a ARM64 -d deployments/python2-hello-world.conf --script
+./ggp.sh -g test1 -a ARM64 -d deployments/python3-hello-world.conf --script
 ```
 
 With this command, you provide to the GGP:
 
 - The new Greengrass group name you want to create: `test1`
 - The platform of the Edge that you want to setup: `ARM64` (i.e. Raspberry Pi)
-- The Lambda function that you want to create: `python2-hello-world`
+- The Lambda function that you want to create: `python3-hello-world`
 - The flag `--script` signaling that you want a *1-click bootstrap setup* script for the Edge
 
 Now, you are ready to *ssh copy* the setup script on one of your Raspberry Pis and execute it. Make sure that the Raspberry Pi is turned on, connected to the same Wi-Fi network, pingable, has shh enabled and then run:
@@ -133,7 +133,7 @@ You can now perform the same steps for another RaspberryPi.
 
 ### On the Raspberry Pi
 
-When the script is finished and Greengrass starts it will pull down your deployment of the `python2-hello-world`. Your console will be monitoring the Greengrass logs at this point. You can CTRL-C out of it if you need to get back to the system. You can start the monitoring again by running ./monitor.sh.
+When the script is finished and Greengrass starts it will pull down your deployment of the `python3-hello-world`. Your console will be monitoring the Greengrass logs at this point. You can CTRL-C out of it if you need to get back to the system. You can start the monitoring again by running ./monitor.sh.
 
 After a successful deployment, the last four lines you see in the console should look like:
 
@@ -158,7 +158,7 @@ Hello world! Sent from Greengrass Core running on platform: Linux-4.9.30-v7+-arm
 
 For each new Lambda function, function configuration defaults are stored in `deployments/function.defaults.conf` (in our case [here][hello-conf])
 
-[hello-conf]: https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/functions/HelloWorldPython2/function.conf
+[hello-conf]: https://github.com/aws-samples/aws-greengrass-lambda-functions/blob/master/functions/HelloWorldPython3/function.conf
 
 Note that this is where you configure the main settings of the Lambda function running inside Greengrass Core, such as:
 
@@ -205,11 +205,11 @@ When GGP is executed the following steps will take place:
    - Creating core definition
    - Creating logger definition
 
-4. **Lambda Function Creation: _python2-hello-world_**
+4. **Lambda Function Creation: _python3-hello-world_**
 
    - Creating Lambda role
    - Updating assume role policy for existing role
-   - Creating Python function [HelloWorldPython2]
+   - Creating Python function [HelloWorldPython3]
    - Copying Greengrass SDK, Installing Python dependencies, retrieving Python dependencies, packaging function for AWS Lambda, publishing Lambda function version, creating new alias
 
 5. **Lambda function association to Greengrass group**
@@ -243,10 +243,10 @@ When GGP is executed the following steps will take place:
 
 Let us suppose that you want use GGP with 1 or more existing Lambda(s). In this example, you have 2 lambda already available in your AWS console:
 
-- HelloWorldPython1
-- HelloWorldPython2
+- HelloWorldPython3a
+- HelloWorldPython3b
 
-Each one need to have a ```live``` alias **not** associated to ```Version: $LATEST```, otherwise it GG deployment is bound to fail.
+Each one needs to have a ```live``` alias **not** associated to ```Version: $LATEST```, otherwise the GG deployment is bound to fail.
 
 ## Main steps
 For GGP to work you need to setup the following folder structure:
@@ -263,7 +263,7 @@ Where the conf file ```existingLambda.conf``` contains the ARN of the existing L
 
 ```bash
 conf {
-  functions = ["arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython1:live","arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython2:live"]
+  functions = ["arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython3a:live","arn:aws:lambda:us-east-1:xxxxxxxxxxxx:function:HelloWorldPython3b:live"]
 }
 ```
 
@@ -280,7 +280,7 @@ Now, you need to configure the GG group. In the previous example, the configurat
 For example:
 
 ```bash
-conf {  language = "PYTHON2_7"  functionName = "HelloWorldPython"  handlerName = "HelloWorldPython.function_handler"  aliasName = "PROD"  memorySizeInKb = 131072  pinned = true  timeoutInSeconds = 60  fromCloudSubscriptions = []  toCloudSubscriptions = [${AWS_IOT_THING_NAME}"/python2/hello/world"]  outputTopics = []  inputTopics = []}
+conf {  language = "PYTHON3_8"  functionName = "HelloWorldPython3"  handlerName = "HelloWorldPython3.function_handler"  aliasName = "PROD"  memorySizeInKb = 131072  pinned = true  timeoutInSeconds = 60  fromCloudSubscriptions = []  toCloudSubscriptions = [${AWS_IOT_THING_NAME}"/python3/hello/world"]  outputTopics = []  inputTopics = []}
 ```
 
 [The docs for ```GGP_FUNCTION_CONF```](ExistingLambdaEnvVar.md) explain in more detail how this works for additional options.
@@ -305,11 +305,11 @@ If you have a CloudFormation template associated with your Lambda you can even a
       Handler: handlers.lambda_handler
       MemorySize: 512
       Role: ...
-      Runtime: python2.7
+      Runtime: python3.7
       Timeout: 150
       Environment:
           Variables: 
-            GGP_FUNCTION_CONF: conf {  language = "PYTHON2_7"  functionName = "HelloWorldPython"  handlerName = "HelloWorldPython.function_handler"  aliasName = "PROD"  memorySizeInKb = 131072  pinned = true  timeoutInSeconds = 60  fromCloudSubscriptions = []  toCloudSubscriptions = [${AWS_IOT_THING_NAME}"/python2/hello/world"]  outputTopics = []  inputTopics = []}
+            GGP_FUNCTION_CONF: conf {  language = "PYTHON3_8"  functionName = "HelloWorldPython3"  handlerName = "HelloWorldPython3.function_handler"  aliasName = "PROD"  memorySizeInKb = 131072  pinned = true  timeoutInSeconds = 60  fromCloudSubscriptions = []  toCloudSubscriptions = [${AWS_IOT_THING_NAME}"/python3/hello/world"]  outputTopics = []  inputTopics = []}
 
 ...
 ```

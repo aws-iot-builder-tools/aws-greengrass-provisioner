@@ -45,8 +45,6 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Inject
     GradleBuilder gradleBuilder;
     @Inject
-    Python2Builder python2Builder;
-    @Inject
     Python3Builder python3Builder;
     @Inject
     NodeBuilder nodeBuilder;
@@ -111,29 +109,6 @@ public class BasicLambdaHelper implements LambdaHelper {
                     .functionConf(functionConf)
                     .build();
         }
-    }
-
-    @Override
-    public ImmutableZipFilePathAndFunctionConf buildPython2Function(FunctionConf functionConf) {
-        log.info(String.join("", "Creating Python 2 function [", functionConf.getFunctionName().getName(), "]"));
-
-        Optional<String> error = python2Builder.verifyHandlerExists(functionConf);
-
-        if (error.isPresent()) {
-            return ImmutableZipFilePathAndFunctionConf.builder()
-                    .functionConf(functionConf)
-                    .error(error)
-                    .build();
-        }
-
-        python2Builder.buildFunctionIfNecessary(functionConf);
-
-        String zipFilePath = python2Builder.getArchivePath(functionConf);
-
-        return ImmutableZipFilePathAndFunctionConf.builder()
-                .zipFilePath(zipFilePath)
-                .functionConf(functionConf)
-                .build();
     }
 
     @Override

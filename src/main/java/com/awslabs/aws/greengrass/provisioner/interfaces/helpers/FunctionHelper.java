@@ -26,8 +26,6 @@ public interface FunctionHelper {
 
     void verifyFunctionsAreSupported(List<FunctionConf> functionConfs);
 
-    Predicate<FunctionConf> getPython2Predicate();
-
     Predicate<FunctionConf> getPython3Predicate();
 
     Predicate<FunctionConf> getNodePredicate();
