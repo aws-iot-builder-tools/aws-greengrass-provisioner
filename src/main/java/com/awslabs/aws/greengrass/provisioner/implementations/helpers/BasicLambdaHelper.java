@@ -216,12 +216,12 @@ public class BasicLambdaHelper implements LambdaHelper {
             
             waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
             
-            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
+            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getFunctionName());
             
             if (newGetFunctionResponseOptional.isPresent()) {
                 GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
                 
-                log.info(String.join("", "createOrUpdateFunction Function New State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+                log.info(String.join("", "createOrUpdateFunction Function New State [", functionConf.getFunctionName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
             }
 
             // Update the function
