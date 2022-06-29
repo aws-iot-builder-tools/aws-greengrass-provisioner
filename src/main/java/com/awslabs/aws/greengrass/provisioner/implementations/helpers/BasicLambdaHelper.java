@@ -207,6 +207,23 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
+
+            LambdaWaiter waiter = lambdaClient.waiter();
+
+            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getFunctionName()).build();
+
+            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
+            
+            waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
+            
+            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
+            
+            if (newGetFunctionResponseOptional.isPresent()) {
+                GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
+                
+                log.info(String.join("", "createOrUpdateFunction Function New State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+            }
+
             // Update the function
             return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
         }
@@ -214,6 +231,38 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Create a new function
         return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
     }
+
+/*
+    @Override
+    public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConfAndFunctionCode functionConfAndFunctionCode, Role role) {
+        String runtime;
+
+        FunctionConf functionConf = functionConfAndFunctionCode.functionConf();
+        FunctionCode functionCode = functionConfAndFunctionCode.functionCode();
+
+        if (functionConf.getLanguage().equals(Language.EXECUTABLE)) {
+            runtime = ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE;
+        } else {
+            runtime = functionConf.getLanguage().getRuntime().toString();
+        }
+
+        // Sometimes the Lambda IAM role isn't immediately visible so we need retries
+        RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<LambdaResponse>()
+                .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
+                .withDelay(Duration.ofSeconds(5))
+                .withMaxRetries(10)
+                .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
+                .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
+
+        if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
+            // Update the function
+            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+        }
+
+        // Create a new function
+        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+    }
+*/
 
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
