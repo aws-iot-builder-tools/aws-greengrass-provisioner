@@ -83,6 +83,10 @@ $ ./extract-from-outfile.sh davyhome
 $ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
 ```
 
+## 6. Update the lambda by specifying an existing group name - lambda-new
+```
+$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
+```
 
 
 ## Reference
