@@ -210,18 +210,18 @@ public class BasicLambdaHelper implements LambdaHelper {
 
             LambdaWaiter waiter = lambdaClient.waiter();
 
-            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getFunctionName().getName()).build();
+            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName()).build();
 
             WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
             
             waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
             
-            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getFunctionName());
+            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getGroupFunctionName());
             
             if (newGetFunctionResponseOptional.isPresent()) {
                 GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
                 
-                log.info(String.join("", "createOrUpdateFunction Function New State [", functionConf.getFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+                log.info(String.join("", "createOrUpdateFunction Function New State [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
             }
 
             // Update the function
