@@ -208,20 +208,29 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
+
             // Update the function
-            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+            UpdateFunctionConfigurationResponse updateFunctionConfigurationResponse = updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
+
+            waitFunction(functionName, false);
+            
+            return Either.right(updateFunctionConfigurationResponse);
         }
 
         // Create a new function
-        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+        CreateFunctionResponse createFunctionResponse = createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
+
+        waitFunction(functionName, true);
+
+        return Either.left(createFunctionResponse);
     }
 
 
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
 
-        waitFunction(functionName);
-        
+        // waitFunction(functionName);
+
         PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
         String qualifier = publishVersionResponse.version();
@@ -253,7 +262,7 @@ public class BasicLambdaHelper implements LambdaHelper {
     }
 */
 
-    private void waitFunction(FunctionName functionName) {
+    private void waitFunction(FunctionName functionName, boolean newFunction) {
         
         Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
         
@@ -267,9 +276,15 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionName.getName()).build();
 
-        WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
-        
-        waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);
+        if (newFunction) {
+            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
+            
+            waitUntilFunctionActive.matched().response().ifPresent(System.out::println);    
+        } else {
+            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
+            
+            waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);            
+        }
         
         Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
         
@@ -301,7 +316,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
-        waitFunction(functionName);
+        waitFunction(functionName, false);
 
         Map<String, String> existingEnvironment = v2LambdaHelper.getFunctionEnvironment(functionName);
 
