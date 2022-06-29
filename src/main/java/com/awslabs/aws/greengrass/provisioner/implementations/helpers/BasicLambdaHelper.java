@@ -208,6 +208,14 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
 
+            Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getGroupFunctionName());
+            
+            if (getFunctionResponseOptional.isPresent()) {
+                GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
+
+                log.info(String.join("", "createOrUpdateFunction Function State, LastUpdateStatus : [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().   lastUpdateStatus().toString(), "]"));
+            }
+
             LambdaWaiter waiter = lambdaClient.waiter();
 
             GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName().getName()).build();
@@ -221,7 +229,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             if (newGetFunctionResponseOptional.isPresent()) {
                 GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
                 
-                log.info(String.join("", "createOrUpdateFunction Function New State [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+                log.info(String.join("", "createOrUpdateFunction Function New State, LastUpdateStatus : [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().   lastUpdateStatus().toString(), "]"));
             }
 
             // Update the function
