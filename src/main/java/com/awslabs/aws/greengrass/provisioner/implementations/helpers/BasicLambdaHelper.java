@@ -208,6 +208,14 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
 
+            Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getFunctionName().getName());
+            
+            if (getFunctionResponseOptional.isPresent()) {
+                GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
+                
+                log.info(String.join("", "createOrUpdateFunction Function State [", functionConf.getFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+            }
+
             LambdaWaiter waiter = lambdaClient.waiter();
 
             GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getFunctionName().getName()).build();
