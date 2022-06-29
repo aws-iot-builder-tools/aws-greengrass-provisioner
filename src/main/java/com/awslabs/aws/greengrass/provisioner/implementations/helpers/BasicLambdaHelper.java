@@ -212,7 +212,7 @@ public class BasicLambdaHelper implements LambdaHelper {
             // Update the function
             UpdateFunctionConfigurationResponse updateFunctionConfigurationResponse = updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
 
-            waitFunction(functionName, false);
+            waitFunction(functionConf.getGroupFunctionName(), false);
             
             return Either.right(updateFunctionConfigurationResponse);
         }
@@ -220,7 +220,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Create a new function
         CreateFunctionResponse createFunctionResponse = createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
 
-        waitFunction(functionName, true);
+        waitFunction(functionConf.getGroupFunctionName(), true);
 
         return Either.left(createFunctionResponse);
     }
