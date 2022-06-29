@@ -210,7 +210,7 @@ public class BasicLambdaHelper implements LambdaHelper {
 
             LambdaWaiter waiter = lambdaClient.waiter();
 
-            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName()).build();
+            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName().getName()).build();
 
             WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
             
