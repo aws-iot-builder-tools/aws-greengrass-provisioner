@@ -220,9 +220,9 @@ public class BasicLambdaHelper implements LambdaHelper {
 
             GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName().getName()).build();
 
-            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
+            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
             
-            waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
+            waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);
             
             Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getGroupFunctionName());
             
