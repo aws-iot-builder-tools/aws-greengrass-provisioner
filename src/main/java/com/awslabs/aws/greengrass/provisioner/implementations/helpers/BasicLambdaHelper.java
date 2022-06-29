@@ -185,6 +185,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
+
     @Override
     public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConfAndFunctionCode functionConfAndFunctionCode, Role role) {
         String runtime;
@@ -207,127 +208,77 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
 
         if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
-
-            Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getGroupFunctionName());
-            
-            if (getFunctionResponseOptional.isPresent()) {
-                GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
-
-                log.info(String.join("", "createOrUpdateFunction Function State, LastUpdateStatus : [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().lastUpdateStatus().toString(), "]"));
-            }
-
-            LambdaWaiter waiter = lambdaClient.waiter();
-
-            GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionConf.getGroupFunctionName().getName()).build();
-
-            WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
-            
-            waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);
-            
-            Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionConf.getGroupFunctionName());
-            
-            if (newGetFunctionResponseOptional.isPresent()) {
-                GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
-                
-                log.info(String.join("", "createOrUpdateFunction Function New State, LastUpdateStatus : [", functionConf.getGroupFunctionName().getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().   lastUpdateStatus().toString(), "]"));
-            }
-
             // Update the function
             return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
         }
 
         // Create a new function
         return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+    }
+
+
+    @Override
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+
+        waitFunction(functionName);
+        
+        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
+
+        String qualifier = publishVersionResponse.version();
+        String qualifiedArn = publishVersionResponse.functionArn();
+        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
+
+        return ImmutableLambdaFunctionArnInfo.builder()
+                .qualifier(qualifier)
+                .qualifiedArn(qualifiedArn)
+                .baseArn(baseArn)
+                .build();
     }
 
 /*
     @Override
-    public Either<CreateFunctionResponse, UpdateFunctionConfigurationResponse> createOrUpdateFunction(FunctionConfAndFunctionCode functionConfAndFunctionCode, Role role) {
-        String runtime;
+    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+        
+        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
-        FunctionConf functionConf = functionConfAndFunctionCode.functionConf();
-        FunctionCode functionCode = functionConfAndFunctionCode.functionCode();
+        String qualifier = publishVersionResponse.version();
+        String qualifiedArn = publishVersionResponse.functionArn();
+        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
 
-        if (functionConf.getLanguage().equals(Language.EXECUTABLE)) {
-            runtime = ARN_AWS_GREENGRASS_RUNTIME_FUNCTION_EXECUTABLE;
-        } else {
-            runtime = functionConf.getLanguage().getRuntime().toString();
-        }
-
-        // Sometimes the Lambda IAM role isn't immediately visible so we need retries
-        RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy = new RetryPolicy<LambdaResponse>()
-                .handleIf(throwable -> throwable.getMessage().startsWith("The role defined for the function cannot be assumed by Lambda."))
-                .withDelay(Duration.ofSeconds(5))
-                .withMaxRetries(10)
-                .onRetry(failure -> log.warn("Waiting for IAM role to be visible to AWS Lambda..."))
-                .onRetriesExceeded(failure -> log.error("IAM role never became visible to AWS Lambda. Cannot continue."));
-
-        if (v2LambdaHelper.functionExists(functionConf.getGroupFunctionName())) {
-            // Update the function
-            return Either.right(updateExistingLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
-        }
-
-        // Create a new function
-        return Either.left(createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy));
+        return ImmutableLambdaFunctionArnInfo.builder()
+                .qualifier(qualifier)
+                .qualifiedArn(qualifiedArn)
+                .baseArn(baseArn)
+                .build();
     }
 */
 
-    @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
+    private void waitFunction(FunctionName functionName) {
+        
         Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
         
         if (getFunctionResponseOptional.isPresent()) {
             GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
-            
-            log.info(String.join("", "publishLambdaFunctionVersion Function State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+
+            log.info(String.join("", "waitFunction Function State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().lastUpdateStatus().toString(), "]"));
         }
-        
+
         LambdaWaiter waiter = lambdaClient.waiter();
-        
+
         GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionName.getName()).build();
+
+        WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
         
-        WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionActive = waiter.waitUntilFunctionActive(functionRequest);
-        
-        waitUntilFunctionActive.matched().response().ifPresent(System.out::println);
+        waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);
         
         Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
         
         if (newGetFunctionResponseOptional.isPresent()) {
             GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
             
-            log.info(String.join("", "publishLambdaFunctionVersion Function New State [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), "]"));
+            log.info(String.join("", "waitFunction Function New State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().   lastUpdateStatus().toString(), "]"));
         }
-        
-        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
-
-        String qualifier = publishVersionResponse.version();
-        String qualifiedArn = publishVersionResponse.functionArn();
-        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
-
-        return ImmutableLambdaFunctionArnInfo.builder()
-                .qualifier(qualifier)
-                .qualifiedArn(qualifiedArn)
-                .baseArn(baseArn)
-                .build();
     }
-
-/*
-    @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
-        
-        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
-
-        String qualifier = publishVersionResponse.version();
-        String qualifiedArn = publishVersionResponse.functionArn();
-        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
-
-        return ImmutableLambdaFunctionArnInfo.builder()
-                .qualifier(qualifier)
-                .qualifiedArn(qualifiedArn)
-                .baseArn(baseArn)
-                .build();
-    }
-*/
 
     private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
@@ -350,38 +301,7 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
         }
 
-
-
-
-
-
-        Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
-        
-        if (getFunctionResponseOptional.isPresent()) {
-            GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
-
-            log.info(String.join("", "updateExistingLambdaFunction Function State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().lastUpdateStatus().toString(), "]"));
-        }
-
-        LambdaWaiter waiter = lambdaClient.waiter();
-
-        GetFunctionConfigurationRequest functionRequest = GetFunctionConfigurationRequest.builder().functionName(functionName.getName()).build();
-
-        WaiterResponse<GetFunctionConfigurationResponse> waitUntilFunctionUpdated = waiter.waitUntilFunctionUpdated(functionRequest);
-        
-        waitUntilFunctionUpdated.matched().response().ifPresent(System.out::println);
-        
-        Optional<GetFunctionResponse> newGetFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
-        
-        if (newGetFunctionResponseOptional.isPresent()) {
-            GetFunctionResponse getFunctionResponse = newGetFunctionResponseOptional.get();
-            
-            log.info(String.join("", "updateExistingLambdaFunction Function New State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().   lastUpdateStatus().toString(), "]"));
-        }
-
-
-
-
+        waitFunction(functionName);
 
         Map<String, String> existingEnvironment = v2LambdaHelper.getFunctionEnvironment(functionName);
 
