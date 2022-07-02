@@ -220,7 +220,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Create a new function
         CreateFunctionResponse createFunctionResponse = createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
 
-        waitFunction(functionConf.getGroupFunctionName(), true);
+        // waitFunction(functionConf.getGroupFunctionName(), true);
 
         return Either.left(createFunctionResponse);
     }
