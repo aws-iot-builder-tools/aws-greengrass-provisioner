@@ -220,7 +220,7 @@ public class BasicLambdaHelper implements LambdaHelper {
         // Create a new function
         CreateFunctionResponse createFunctionResponse = createNewLambdaFunction(functionConf, role, functionConf.getFunctionName(), functionConf.getGroupFunctionName(), functionCode, runtime, lambdaIamRoleRetryPolicy);
 
-        // waitFunction(functionConf.getGroupFunctionName(), true);
+        waitFunction(functionConf.getGroupFunctionName(), true);
 
         return Either.left(createFunctionResponse);
     }
@@ -229,7 +229,7 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
 
-        waitFunction(functionName, true);
+        // waitFunction(functionName, true);
 
         PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
@@ -246,13 +246,15 @@ public class BasicLambdaHelper implements LambdaHelper {
 
     private void waitFunction(FunctionName functionName, boolean newFunction) {
         
-        Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
+        // Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
         
-        if (getFunctionResponseOptional.isPresent()) {
-            GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
+        // if (getFunctionResponseOptional.isPresent()) {
+        //     GetFunctionResponse getFunctionResponse = getFunctionResponseOptional.get();
 
-            log.info(String.join("", "waitFunction Function State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().lastUpdateStatus().toString(), "]"));
-        }
+        //     log.info(String.join("", "waitFunction Function State, LastUpdateStatus : [", functionName.getName(), ":", getFunctionResponse.configuration().state().toString(), ",", getFunctionResponse.configuration().lastUpdateStatus().toString(), "]"));
+        // }
+
+        log.info(String.join("", "waitFunction Function functionName :", functionName.getName()));
 
         LambdaWaiter waiter = lambdaClient.waiter();
 
