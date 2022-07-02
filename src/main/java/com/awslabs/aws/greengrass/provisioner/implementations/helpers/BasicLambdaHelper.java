@@ -244,24 +244,6 @@ public class BasicLambdaHelper implements LambdaHelper {
                 .build();
     }
 
-/*
-    @Override
-    public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
-        
-        PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
-
-        String qualifier = publishVersionResponse.version();
-        String qualifiedArn = publishVersionResponse.functionArn();
-        String baseArn = qualifiedArn.replaceAll(String.join("", ":", qualifier, "$"), "");
-
-        return ImmutableLambdaFunctionArnInfo.builder()
-                .qualifier(qualifier)
-                .qualifiedArn(qualifiedArn)
-                .baseArn(baseArn)
-                .build();
-    }
-*/
-
     private void waitFunction(FunctionName functionName, boolean newFunction) {
         
         Optional<GetFunctionResponse> getFunctionResponseOptional = v2LambdaHelper.getFunction(functionName);
@@ -340,52 +322,6 @@ public class BasicLambdaHelper implements LambdaHelper {
                     lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
         }
     }
-
-/*
-    private UpdateFunctionConfigurationResponse updateExistingLambdaFunction(FunctionConf functionConf, Role role, FunctionName baseFunctionName, FunctionName functionName, FunctionCode functionCode, String runtime, RetryPolicy<LambdaResponse> lambdaIamRoleRetryPolicy) {
-        loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function code");
-
-        UpdateFunctionCodeRequest.Builder updateFunctionCodeRequestBuilder = UpdateFunctionCodeRequest.builder()
-                .functionName(functionName.getName());
-
-        if (functionCode.zipFile() != null) {
-            updateFunctionCodeRequestBuilder.zipFile(functionCode.zipFile());
-        } else {
-            updateFunctionCodeRequestBuilder.s3Bucket(functionCode.s3Bucket());
-            updateFunctionCodeRequestBuilder.s3Key(functionCode.s3Key());
-        }
-
-        UpdateFunctionCodeRequest updateFunctionCodeRequest = updateFunctionCodeRequestBuilder.build();
-
-        // Make sure multiple threads don't do this at the same time
-        synchronized (this) {
-            Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                    lambdaClient.updateFunctionCode(updateFunctionCodeRequest));
-        }
-
-        Map<String, String> existingEnvironment = v2LambdaHelper.getFunctionEnvironment(functionName);
-
-        HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, existingEnvironment);
-
-        Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
-
-        loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function configuration");
-
-        UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
-                .functionName(functionName.getName())
-                .role(role.arn())
-                .handler(functionConf.getHandlerName())
-                .runtime(runtime)
-                .environment(lambdaEnvironment)
-                .build();
-
-        // Make sure multiple threads don't do this at the same time
-        synchronized (this) {
-            return Failsafe.with(lambdaIamRoleRetryPolicy).get(() ->
-                    lambdaClient.updateFunctionConfiguration(updateFunctionConfigurationRequest));
-        }
-    }
-*/
 
     @NotNull
     private HashMap<String, String> updateGgpFunctionConfInEnvironment(FunctionConf functionConf, Map<String, String> existingEnvironment) {
