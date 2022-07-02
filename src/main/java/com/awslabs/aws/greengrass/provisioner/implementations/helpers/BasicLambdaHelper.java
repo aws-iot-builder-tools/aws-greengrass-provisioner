@@ -229,7 +229,7 @@ public class BasicLambdaHelper implements LambdaHelper {
     @Override
     public LambdaFunctionArnInfo publishLambdaFunctionVersion(FunctionName functionName) {
 
-        // waitFunction(functionName);
+        waitFunction(functionName);
 
         PublishVersionResponse publishVersionResponse = v2LambdaHelper.publishFunctionVersion(functionName);
 
