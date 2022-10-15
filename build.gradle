@@ -27,7 +27,7 @@ distTar.enabled = shadowDistTar.enabled = false
 // Specify all of our dependency versions
 def daggerVersion = '2.44'
 def configVersion = '1.4.2'
-def ztZipVersion = '1.14'
+def ztZipVersion = '1.15'
 def jcommanderVersion = '1.82'
 def slf4jVersion = '2.0.3'
 def jcabiVersion = '0.22.0'
