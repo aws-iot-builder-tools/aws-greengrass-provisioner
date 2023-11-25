@@ -6,7 +6,8 @@ public enum Language {
     Python(null), // Legacy
     Java(null),   // Legacy
     Node(null),   // Legacy
-    NODEJS12_X(Runtime.NODEJS12_X),
+    // NODEJS12_X(Runtime.NODEJS12_X),
+    NODEJS18_X(Runtime.NODEJS18_X),
     JAVA8(Runtime.JAVA8),
     PYTHON2_7(Runtime.PYTHON2_7),
     PYTHON3_7(Runtime.PYTHON3_7),

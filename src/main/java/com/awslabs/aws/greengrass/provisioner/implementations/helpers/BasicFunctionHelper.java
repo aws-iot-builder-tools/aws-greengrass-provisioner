@@ -353,8 +353,8 @@ public class BasicFunctionHelper implements FunctionHelper {
             log.warn("Legacy Java function forced to Java 8");
             language = Language.JAVA8;
         } else if (language.equals(Language.Node)) {
-            log.warn("Legacy Node function forced to Node 12.x");
-            language = Language.NODEJS12_X;
+            log.warn("Legacy Node function forced to Node 18.x");
+            language = Language.NODEJS18_X;
         }
 
         functionConfBuilder.language(language);
@@ -699,7 +699,7 @@ public class BasicFunctionHelper implements FunctionHelper {
 
     @Override
     public Predicate<FunctionConf> getNodePredicate() {
-        return functionConf -> functionConf.getLanguage().equals(Language.NODEJS12_X);
+        return functionConf -> functionConf.getLanguage().equals(Language.NODEJS18_X);
     }
 
     @Override
