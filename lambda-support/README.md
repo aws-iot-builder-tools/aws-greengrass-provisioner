@@ -52,12 +52,9 @@ $ ./launch-lambda-stack-for-ggp.sh <my-bucket> <stack-name> <aws-sdk-java-versio
 ```
 
 ```
-$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-stack 2.17.167
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-stack 2.21.29
 ```
 
-```
-$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-stack 2.16.104
-```
 
 ## 2. Provision the greengrass group - lambda-new
 ```
