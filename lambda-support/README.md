@@ -52,40 +52,40 @@ $ ./launch-lambda-stack-for-ggp.sh <my-bucket> <stack-name> <aws-sdk-java-versio
 ```
 
 ```
-$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.17.152
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-stack 2.17.167
 ```
 
 ```
-$ ./launch-lambda-stack-for-ggp.sh gocheckin-ap-southeast-1 ggp-lambda-support-stack 2.16.104
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-stack 2.16.104
 ```
 
 ## 2. Provision the greengrass group - lambda-new
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=seed EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
-$ ./extract-from-outfile.sh devseed
+$ ./extract-from-outfile.sh seed
 ```
 
 ## 3. Deployment for the provisioned greengrass group - lambda-new
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=seed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
 ```
 
 ## 4. Provision the greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Provision ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=shirakawa EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
 $ ./extract-from-outfile.sh davyhome
 ```
 
 ## 5. Deployment for the provisioned greengrass group - lambda-existing
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=shirakawa EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=shirakawa EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-existing ./invoke-lambda-function.sh
 ```
 
 ## 6. Update the lambda by specifying an existing group name - lambda-new
 ```
-$ STACK_NAME=ggp-lambda-support-stack GROUP_NAME=devseed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
+$ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=seed EVENT_TYPE=Deploy DEPLOY_CONFIG_NAME=lambda-new ./invoke-lambda-function.sh
 ```
 
 
