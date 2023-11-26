@@ -8,7 +8,7 @@ Parameters:
     Default: 11
   LambdaLayers:
     Type: CommaDelimitedList
-    Default: "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-northeast-1:769412733712:layer:aws-sdk-java:1,arn:aws:lambda:ap-northeast-1:769412733712:layer:ggp-config-gocheckin:1"
+    Default: "arn:aws:lambda:ap-northeast-1:553035198032:layer:git-lambda2:8,arn:aws:lambda:ap-northeast-1:769412733712:layer:aws-sdk-java:6,arn:aws:lambda:ap-northeast-1:769412733712:layer:ggp-config-gocheckin:3"
     NoEcho: true
 
 Resources:
