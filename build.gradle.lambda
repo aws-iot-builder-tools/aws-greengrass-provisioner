@@ -87,25 +87,26 @@ description = """"""
 shadowJar {
     // Create a shadow JAR with all of the necessary dependencies
     archiveFileName = 'AwsGreengrassProvisioner.jar'
+    minimize()
 
-  dependencies {
-    exclude(dependency('software.amazon.awssdk:ecr'))
-    exclude(dependency('software.amazon.awssdk:ec2'))
-    exclude(dependency('software.amazon.awssdk:sts'))
-    exclude(dependency('software.amazon.awssdk:cloudformation'))
-    exclude(dependency('software.amazon.awssdk:iot'))
-    exclude(dependency('software.amazon.awssdk:greengrass'))
-    exclude(dependency('software.amazon.awssdk:lambda'))
-    exclude(dependency('software.amazon.awssdk:iam'))
-    exclude(dependency('software.amazon.awssdk:cloudwatchlogs'))
-    exclude(dependency('software.amazon.awssdk:secretsmanager'))
-    exclude(dependency('org.testcontainers:testcontainers'))
-    exclude(dependency('junit:junit'))
-    exclude(dependency('com.github.stefanbirkner:system-rules'))
-    exclude(dependency('org.hamcrest:hamcrest'))
-    exclude(dependency('org.mockito:mockito-core'))
-    exclude(dependency('com.github.awslabs:aws-iot-core-websockets'))
-  }    
+    dependencies {
+        exclude(dependency('software.amazon.awssdk:ecr'))
+        exclude(dependency('software.amazon.awssdk:ec2'))
+        exclude(dependency('software.amazon.awssdk:sts'))
+        exclude(dependency('software.amazon.awssdk:cloudformation'))
+        exclude(dependency('software.amazon.awssdk:iot'))
+        exclude(dependency('software.amazon.awssdk:greengrass'))
+        exclude(dependency('software.amazon.awssdk:lambda'))
+        exclude(dependency('software.amazon.awssdk:iam'))
+        exclude(dependency('software.amazon.awssdk:cloudwatchlogs'))
+        exclude(dependency('software.amazon.awssdk:secretsmanager'))
+        exclude(dependency('org.testcontainers:testcontainers'))
+        exclude(dependency('junit:junit'))
+        exclude(dependency('com.github.stefanbirkner:system-rules'))
+        exclude(dependency('org.hamcrest:hamcrest'))
+        exclude(dependency('org.mockito:mockito-core'))
+        exclude(dependency('com.github.awslabs:aws-iot-core-websockets'))
+    }    
 
     zip64 true
 }
