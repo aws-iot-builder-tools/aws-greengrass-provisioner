@@ -310,6 +310,10 @@ public class BasicLambdaHelper implements LambdaHelper {
 
         loggingHelper.logInfoWithName(log, baseFunctionName.getName(), "Updating Lambda function configuration");
 
+        if (functionConf.getLambdaLanguage() != null) {
+            runtime = functionConf.getLambdaLanguage().getRuntime().toString();
+        }
+
         UpdateFunctionConfigurationRequest updateFunctionConfigurationRequest = UpdateFunctionConfigurationRequest.builder()
                 .functionName(functionName.getName())
                 .role(role.arn())
@@ -342,6 +346,14 @@ public class BasicLambdaHelper implements LambdaHelper {
         HashMap<String, String> newEnvironment = updateGgpFunctionConfInEnvironment(functionConf, new HashMap<>());
 
         Environment lambdaEnvironment = Environment.builder().variables(newEnvironment).build();
+
+        log.error(String.join("runtime before ", "\t", runtime));
+
+        if (functionConf.getLambdaLanguage() != null) {
+            runtime = functionConf.getLambdaLanguage().getRuntime().toString();
+        }
+
+        log.error(String.join("runtime after ", "\t", runtime));
 
         CreateFunctionRequest createFunctionRequest = CreateFunctionRequest.builder()
                 .functionName(functionName.getName())

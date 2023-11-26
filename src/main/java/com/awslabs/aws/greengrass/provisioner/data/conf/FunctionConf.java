@@ -23,6 +23,8 @@ public abstract class FunctionConf {
 
     public abstract Language getLanguage();
 
+    public abstract Language getLambdaLanguage();
+
     public abstract EncodingType getEncodingType();
 
     public abstract Optional<Path> getBuildDirectory();

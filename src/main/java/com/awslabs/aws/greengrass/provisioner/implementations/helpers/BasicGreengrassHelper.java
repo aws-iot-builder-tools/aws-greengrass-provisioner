@@ -173,7 +173,8 @@ public class BasicGreengrassHelper implements GreengrassHelper {
         FunctionConfiguration.Builder functionConfigurationBuilder = FunctionConfiguration.builder()
                 .encodingType(functionConf.getEncodingType())
                 .pinned(functionConf.isPinned())
-                .timeout(functionConf.getTimeoutInSeconds());
+                .timeout(functionConf.getTimeoutInSeconds())
+                .functionRuntimeOverride(functionConf.getLanguage().getRuntime().toString());
 
         FunctionExecutionConfig.Builder functionExecutionConfigBuilder = FunctionExecutionConfig.builder();
 
@@ -200,10 +201,15 @@ public class BasicGreengrassHelper implements GreengrassHelper {
 
         functionConfigurationBuilder = functionConfigurationBuilder.environment(functionConfigurationEnvironmentBuilder.build());
 
+
+        FunctionConfiguration functionConfiguration = functionConfigurationBuilder.build();
+        
+        log.error(String.join("functionConfiguration", "\t", functionConfiguration.toString()));
+
         Function function = Function.builder()
                 .functionArn(functionArn)
                 .id(ioHelper.getUuid())
-                .functionConfiguration(functionConfigurationBuilder.build())
+                .functionConfiguration(functionConfiguration)
                 .build();
 
         return function;

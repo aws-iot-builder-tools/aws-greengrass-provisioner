@@ -34,7 +34,6 @@ def jcabiVersion = '0.20.1'
 def jtarVersion = '2.3'
 def gsonVersion = '2.8.9'
 def dockerClientVersion = '8.16.0'
-// def awsSdk2Version = '2.16.63'
 def awsSdk2Version = findProperty('awsSdk2Version')
 def mavenInvokerVersion = '3.1.0'
 def commonsTextVersion = '1.9'
@@ -87,14 +86,17 @@ description = """"""
 shadowJar {
     // Create a shadow JAR with all of the necessary dependencies
     archiveFileName = 'AwsGreengrassProvisioner.jar'
-    minimize()
 
     dependencies {
+
         exclude(dependency('software.amazon.awssdk:ecr'))
         exclude(dependency('software.amazon.awssdk:ec2'))
         exclude(dependency('software.amazon.awssdk:sts'))
         exclude(dependency('software.amazon.awssdk:cloudformation'))
         exclude(dependency('software.amazon.awssdk:iot'))
+        exclude(dependency('software.amazon.awssdk:iotdataplane'))
+        exclude(dependency('software.amazon.awssdk:s3'))
+        exclude(dependency('software.amazon.awssdk:sqs'))
         exclude(dependency('software.amazon.awssdk:greengrass'))
         exclude(dependency('software.amazon.awssdk:lambda'))
         exclude(dependency('software.amazon.awssdk:iam'))
@@ -106,7 +108,14 @@ shadowJar {
         exclude(dependency('org.hamcrest:hamcrest'))
         exclude(dependency('org.mockito:mockito-core'))
         exclude(dependency('com.github.awslabs:aws-iot-core-websockets'))
-    }    
+        exclude(dependency('com.amazonaws:aws-java-sdk-ec2'))
+        exclude(dependency('com.amazonaws:aws-java-sdk-iot'))
+        exclude(dependency('com.amazonaws:aws-java-sdk-greengrass'))
+        exclude(dependency('com.amazonaws:aws-java-sdk-iam'))
+        exclude(dependency('com.amazonaws:aws-java-sdk-kms'))
+        exclude(dependency('com.amazonaws:aws-java-sdk-s3'))
+        
+    }
 
     zip64 true
 }

@@ -52,7 +52,7 @@ $ ./launch-lambda-stack-for-ggp.sh <my-bucket> <stack-name> <aws-sdk-java-versio
 ```
 
 ```
-$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-java11-stack 2.21.29
+$ ./launch-lambda-stack-for-ggp.sh gocheckin-edge-ap-northeast-1 ggp-lambda-support-java11-stack 2.17.291
 ```
 
 
