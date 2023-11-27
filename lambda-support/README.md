@@ -72,7 +72,7 @@ $ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=seed EVENT_TYPE=Deploy D
 ```
 $ STACK_NAME=ggp-lambda-support-java11-stack GROUP_NAME=shirakawa EVENT_TYPE=Provision ./invoke-lambda-function.sh
 
-$ ./extract-from-outfile.sh davyhome
+$ ./extract-from-outfile.sh shirakawa
 ```
 
 ## 5. Deployment for the provisioned greengrass group - lambda-existing
